@@ -1,0 +1,64 @@
+import Foundation
+import SwiftUI
+
+/// Handles `frigate://` links:
+///   frigate://add?url=http://host:8971&name=Home      add a server (asks nothing, tests on connect)
+///   frigate://live | review | history | settings      switch tab
+///   frigate://camera/<camera>[?server=<name>]         open a camera's live view
+///   frigate://playback/<camera>[?server=<name>]       open playback for today
+///   frigate://event/<review id>[?server=<name>]       open a review item
+extension AppModel {
+    func handle(_ url: URL) async {
+        guard url.scheme == "frigate" else { return }
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func q(_ name: String) -> String? { items.first { $0.name == name }?.value }
+        let arg = url.pathComponents.dropFirst().first
+
+        let conn: ServerConnection? = {
+            if let name = q("server") { return orderedConnections.first { $0.server.name.caseInsensitiveCompare(name) == .orderedSame } }
+            if case .server(let id) = scope { return connections[id] }
+            return orderedConnections.first
+        }()
+
+        switch url.host {
+        case "add":
+            guard let raw = q("url"), let base = ServerConfig.normalizedURL(raw) else { return }
+            if servers.contains(where: { $0.url == base.absoluteString }) { return }
+            save(ServerConfig(name: q("name") ?? base.host ?? "Frigate", url: base.absoluteString), password: nil)
+        case "live": tab = .live; livePath = NavigationPath()
+        case "review":
+            tab = .review
+            reviewPath = NavigationPath()
+            if let v = q("view") { reviewKindRequest = v }
+        case "history": tab = .history; historyPath = NavigationPath()
+        case "settings": tab = .settings
+        case "camera":
+            guard let conn, let arg else { return }
+            tab = .live
+            livePath = NavigationPath()
+            livePath.append(CameraRoute(serverID: conn.server.id, camera: arg))
+        case "playback":
+            guard let conn, let arg else { return }
+            tab = .history
+            historyPath = NavigationPath()
+            historyPath.append(PlaybackRoute(serverID: conn.server.id, camera: arg, day: Calendar.current.startOfDay(for: Date()), reviewID: q("review"), showTimeline: q("view") == "timeline"))
+        case "event":
+            guard let conn, let arg, let client = conn.client else { return }
+            var item: ReviewItem
+            do { item = try await client.get(ReviewItem.self, "api/review/\(arg)") } catch {
+                NSLog("Frigate deep link: could not load review \(arg): \(error)")
+                return
+            }
+            // The single-item endpoint has no reviewed flag; read it from the list.
+            if let listed = try? await client.reviews(cameras: [item.camera], after: item.start.addingTimeInterval(-1),
+                                                      before: item.start.addingTimeInterval(1), limit: 20),
+               let match = listed.first(where: { $0.id == item.id }) {
+                item = match
+            }
+            tab = .review
+            reviewPath = NavigationPath()
+            reviewPath.append(EventRoute(serverID: conn.server.id, review: item))
+        default: break
+        }
+    }
+}
