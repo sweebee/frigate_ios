@@ -59,6 +59,7 @@ struct EventDetailView: View {
         }
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
         .confirmationDialog("Delete this review item and its recordings?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { Task { await delete() } }
