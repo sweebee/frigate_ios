@@ -316,7 +316,7 @@ struct ReviewRow: View {
                 .frame(width: 112, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(alignment: .bottomTrailing) {
-                    Text(item.inProgress ? "LIVE" : FrigateFormat.duration(item.duration))
+                    Text(item.inProgress ? "LIVE" : FrigateFormat.reviewDuration(item))
                         .font(.system(size: 10, weight: .semibold).monospacedDigit())
                         .padding(.horizontal, 5).padding(.vertical, 1)
                         .background(item.inProgress ? Theme.recording : .black.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))

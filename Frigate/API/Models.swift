@@ -352,6 +352,12 @@ enum FrigateFormat {
         return duration(t)
     }
 
+    /// Review items are normally seconds to minutes long. Frigate sometimes closes one only
+    /// after a restart, days later; show such lengths as "> 1 h" instead of e.g. 128:46:38.
+    static func reviewDuration(_ item: ReviewItem) -> String {
+        item.duration > 3600 ? L("> 1 h") : duration(item.duration)
+    }
+
     static func duration(_ t: TimeInterval) -> String {
         let total = Int(t.rounded())
         let h = total / 3600, m = (total % 3600) / 60, s = total % 60

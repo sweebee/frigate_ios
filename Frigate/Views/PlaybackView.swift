@@ -431,7 +431,7 @@ struct PlaybackView: View {
                                     .frame(width: 96, height: 54)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                     .overlay(alignment: .bottomTrailing) {
-                                        Text(FrigateFormat.duration(r.duration))
+                                        Text(recordedDurationText(r))
                                             .font(.system(size: 10, weight: .semibold).monospacedDigit())
                                             .padding(.horizontal, 4).padding(.vertical, 1)
                                             .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
@@ -529,6 +529,14 @@ struct PlaybackView: View {
             .multilineTextAlignment(.center)
             .padding()
         }
+    }
+
+    /// Length of a review item as far as it was recorded; "no video" when nothing was.
+    private func recordedDurationText(_ r: ReviewItem) -> String {
+        let s = r.startTime + annotationOffset, e = (r.endTime ?? Date().timeIntervalSince1970) + annotationOffset
+        let recorded = map.spans.reduce(0.0) { $0 + max(0, min($1.wallEnd, e) - max($1.wallStart, s)) }
+        if recorded <= 0 && !map.isEmpty { return L("No video") }
+        return recorded > 0 ? FrigateFormat.duration(recorded) : FrigateFormat.reviewDuration(r)
     }
 
     /// Play/pause. On a gap, play continues from the next recording.

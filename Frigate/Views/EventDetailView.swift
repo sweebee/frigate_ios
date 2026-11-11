@@ -12,6 +12,8 @@ struct EventDetailView: View {
     @State private var downloading = false
     @State private var confirmDelete = false
     @State private var errorMessage: String?
+    /// Frigate kept no recording for this item (e.g. retention expired or the camera was down).
+    @State private var noRecording = false
 
     /// Seconds of recording shown before and after the review item.
     private let padding: Double = 5
@@ -36,7 +38,8 @@ struct EventDetailView: View {
         let now = Date().timeIntervalSince1970
         let itemEnd = item.endTime ?? now
         let eventEnd = events.map { $0.endTime ?? now }.filter { $0 > item.startTime }.max() ?? itemEnd
-        return min(max(itemEnd, eventEnd), itemEnd + 60, now) + offset
+        // Cap at 10 minutes: a review item left open by Frigate can span days.
+        return min(max(itemEnd, eventEnd), itemEnd + 60, now, item.startTime + 600) + offset
     }
     /// Whole seconds, as the /vod endpoint uses, so the event range lines up with the video.
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
@@ -100,7 +103,13 @@ struct EventDetailView: View {
         ZStack {
             PlayerLayerView(player: player.player)
                 .zoomable()
-            if let error = player.error {
+            if noRecording {
+                VStack(spacing: 8) {
+                    Image(systemName: "video.slash").font(.system(size: 26))
+                    Text("No recording for this event").font(.system(size: 14, weight: .medium))
+                }
+                .foregroundStyle(.white.opacity(0.85)).padding()
+            } else if let error = player.error {
                 VStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle").font(.title2)
                     Text(error).font(.system(size: 13)).multilineTextAlignment(.center)
@@ -195,6 +204,10 @@ struct EventDetailView: View {
         let day = FrigateFormat.dayTitle(item.start)
         let s = FrigateFormat.time(item.start, seconds: true)
         guard let end = item.end else { return L("\(day), \(s), in progress") }
+        // Frigate sometimes closes an item days later; then show the end date too.
+        if !Calendar.current.isDate(end, inSameDayAs: item.start) {
+            return L("\(day), \(s) to \(FrigateFormat.dayTitle(end)) \(FrigateFormat.time(end, seconds: true))")
+        }
         return L("\(day), \(s) to \(FrigateFormat.time(end, seconds: true))")
     }
 
@@ -208,7 +221,7 @@ struct EventDetailView: View {
                 return (isPlate ? L("PLATE") : (item.labels.contains("person") ? L("FACE") : L("SUB LABEL")), s)
             }
             if item.labels.contains("person") { return (L("FACE"), L("Unknown")) }
-            return (L("DURATION"), FrigateFormat.shortDuration(trackedDuration))
+            return (L("DURATION"), item.duration > 3600 ? L("> 1 h") : FrigateFormat.shortDuration(trackedDuration))
         }()
         return HStack(spacing: 8) {
             tile(L("SCORE"), score.map { "\(Int(($0 * 100).rounded()))%" } ?? "–")
@@ -319,7 +332,13 @@ struct EventDetailView: View {
         let ids = item.data.detections ?? []
         events = (try? await client.events(ids: ids)) ?? []
         if player.url == nil {
-            player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd))
+            let segs = (try? await client.recordings(camera: item.camera, after: Date(timeIntervalSince1970: clipStart),
+                                                     before: Date(timeIntervalSince1970: clipEnd))) ?? []
+            if segs.isEmpty {
+                noRecording = true
+            } else {
+                player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd))
+            }
         }
         var entries: [TimelineEntry] = []
         await withTaskGroup(of: [TimelineEntry].self) { group in

@@ -247,6 +247,16 @@
         }
       }
     },
+    "%@, %@ to %@ %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@ tot %3$@ %4$@"
+          }
+        }
+      }
+    },
     "%@, %@, in progress": {
       "localizations": {
         "nl": {
@@ -611,6 +621,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "24 u geleden"
+          }
+        }
+      }
+    },
+    "> 1 h": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "> 1 u"
           }
         }
       }
@@ -1344,6 +1364,16 @@
         }
       }
     },
+    "No recording for this event": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen opname van deze gebeurtenis"
+          }
+        }
+      }
+    },
     "No recordings for %@": {
       "localizations": {
         "nl": {
@@ -1360,6 +1390,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen servers online"
+          }
+        }
+      }
+    },
+    "No video": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen video"
           }
         }
       }
