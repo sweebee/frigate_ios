@@ -57,6 +57,12 @@ struct PlaybackView: View {
     let route: PlaybackRoute
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    // Landscape playback state.
+    @State private var overlayVisible = true
+    @State private var showEventsPanel = false
+    @State private var overlayToken = 0
+    @State private var timelineScale: Double = 2
     @State private var camera: String
     @State private var day: Date
     @State private var tab: Tab = .events
@@ -111,7 +117,29 @@ struct PlaybackView: View {
         return reviews.first { t >= $0.startTime - 5 && t <= ($0.endTime ?? .infinity) + 5 }
     }
 
+    /// iPhone held sideways: full-screen video with an overlay, like an NVR app.
+    private var isLandscape: Bool { verticalSizeClass == .compact }
+
     var body: some View {
+        Group {
+            if isLandscape { landscapeBody } else { portraitBody }
+        }
+        .overlay(alignment: .top) { ExportToast(state: exporter.state) }
+        .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .sheet(isPresented: $showDatePicker) {
+            RecordingCalendarSheet(day: $day, sources: client.map { [(client: $0, cameras: Optional([camera]))] } ?? [])
+        }
+        .task(id: "\(camera)|\(day.timeIntervalSince1970)") { await load() }
+        .onDisappear { player.stop() }
+        .onChange(of: player.finishedCount) { _, _ in
+            // Continue with the next hour that has recordings.
+            guard let chunkStart else { return }
+            let next = chunkStart + chunkLength
+            if next < dayEnd { seek(toWall: next, autoplay: true) }
+        }
+    }
+
+    private var portraitBody: some View {
         VStack(spacing: 0) {
             header
             videoPlayer
@@ -140,19 +168,6 @@ struct PlaybackView: View {
         }
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
-        .overlay(alignment: .top) { ExportToast(state: exporter.state) }
-        .sheet(item: $share) { ShareSheet(items: $0.items) }
-        .sheet(isPresented: $showDatePicker) {
-            RecordingCalendarSheet(day: $day, sources: client.map { [(client: $0, cameras: Optional([camera]))] } ?? [])
-        }
-        .task(id: "\(camera)|\(day.timeIntervalSince1970)") { await load() }
-        .onDisappear { player.stop() }
-        .onChange(of: player.finishedCount) { _, _ in
-            // Continue with the next hour that has recordings.
-            guard let chunkStart else { return }
-            let next = chunkStart + chunkLength
-            if next < dayEnd { seek(toWall: next, autoplay: true) }
-        }
     }
 
     private let chunkLength: Double = 3600
@@ -331,6 +346,23 @@ struct PlaybackView: View {
                 .padding(10)
             }
         }
+    }
+
+    private var speedMenu: some View {
+        Menu {
+            ForEach([Float(0.5), 1, 2, 4, 8], id: \.self) { r in
+                Button { player.setRate(r) } label: {
+                    if player.rate == r { Label(rateTitle(r), systemImage: "checkmark") } else { Text(rateTitle(r)) }
+                }
+            }
+        } label: {
+            Text(rateTitle(player.rate))
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(.black.opacity(0.6), in: Circle())
+        }
+        .accessibilityLabel("Playback speed")
     }
 
     private func rateTitle(_ r: Float) -> String { r == 0.5 ? "½x" : "\(Int(r))x" }
@@ -629,5 +661,217 @@ struct PlaybackTimeline: View {
         case ..<200: return 1800
         default: return 3600
         }
+    }
+}
+
+// MARK: - Landscape
+
+extension PlaybackView {
+    /// Full-screen video. A tap shows or hides the overlay; it hides by itself after 4 seconds
+    /// of playback without touches.
+    var landscapeBody: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            PlayerLayerView(player: player.player)
+                .zoomable()
+                .ignoresSafeArea()
+                .onTapGesture { toggleOverlay() }
+            if loading {
+                ProgressView().tint(.white)
+            } else if map.isEmpty {
+                Text("No recordings for \(FrigateFormat.dayTitle(day).lowercased())")
+                    .font(.system(size: 14)).foregroundStyle(.white.opacity(0.8))
+            } else if player.isBuffering {
+                ProgressView().tint(.white)
+            }
+            if overlayVisible {
+                landscapeOverlay.transition(.opacity)
+            } else {
+                VStack {
+                    Spacer()
+                    GeometryReader { geo in
+                        let p = max(0, min(1, (wallTime - dayStart) / max(dayEnd - dayStart, 1)))
+                        ZStack(alignment: .leading) {
+                            Rectangle().fill(Color.white.opacity(0.15))
+                            Rectangle().fill(Theme.accent).frame(width: geo.size.width * p)
+                        }
+                    }
+                    .frame(height: 3)
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
+            if showEventsPanel {
+                HStack(spacing: 0) {
+                    Spacer()
+                    landscapeEventsPanel
+                }
+                .transition(.move(edge: .trailing))
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
+        .task(id: overlayToken) {
+            // Auto-hide while playing.
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled, player.wantsToPlay, !showEventsPanel, scrubTime == nil else { return }
+            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
+        }
+    }
+
+    private func toggleOverlay() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            if showEventsPanel { showEventsPanel = false; return }
+            overlayVisible.toggle()
+        }
+        overlayToken += 1
+    }
+
+    private func keepOverlay() { overlayToken += 1 }
+
+    private var landscapeOverlay: some View {
+        VStack(spacing: 0) {
+            // Top bar
+            HStack(spacing: 12) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Back")
+                Stable(key: [camera, conn?.server.name ?? ""] + (conn?.cameras.map(\.name) ?? [])) { cameraMenu }.stable()
+                Spacer()
+                Text("\(FrigateFormat.dayTitle(Date(timeIntervalSince1970: wallTime))) · \(FrigateFormat.time(Date(timeIntervalSince1970: wallTime), seconds: true))")
+                    .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(.black.opacity(0.55), in: Capsule())
+                if let r = currentReview, let label = r.labels.first { LabelTag(label: label) }
+                Button { showDatePicker = true; keepOverlay() } label: {
+                    Image(systemName: "calendar").font(.system(size: 19)).foregroundStyle(Theme.text).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Pick date")
+            }
+            .foregroundStyle(Theme.text)
+            .padding(.horizontal, 8)
+            .background(Color.black.opacity(0.55).ignoresSafeArea(edges: [.top, .horizontal]))
+
+            // Middle: play controls centered, side buttons on the right.
+            ZStack {
+                HStack(spacing: 18) {
+                    OverlayButton(systemImage: "gobackward.10", size: 50, label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
+                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", size: 60,
+                                  label: player.wantsToPlay ? "Pause" : "Play") { player.toggle(); keepOverlay() }
+                    OverlayButton(systemImage: "goforward.10", size: 50, label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
+                }
+                HStack {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        OverlayButton(systemImage: "list.bullet", label: "Events") {
+                            withAnimation(.easeOut(duration: 0.2)) { showEventsPanel = true }
+                            keepOverlay()
+                        }
+                        saveMenu.scaleEffect(44 / 36)
+                        speedMenu
+                    }
+                    .padding(.trailing, 12)
+                }
+            }
+            .frame(maxHeight: .infinity)
+
+            // Bottom: horizontal timeline.
+            ZStack(alignment: .top) {
+                HorizontalTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion,
+                                   reviews: visibleReviews, map: map,
+                                   onScrub: { scrubTime = $0 },
+                                   onScrubEnd: { t in
+                                       scrubTime = nil
+                                       seek(toWall: t, autoplay: player.wantsToPlay)
+                                       keepOverlay()
+                                   },
+                                   onInteract: keepOverlay,
+                                   scale: $timelineScale)
+                    .padding(.top, 6)
+                Rectangle().fill(Theme.accent).frame(width: 2, height: 52).allowsHitTesting(false)
+            }
+            .overlay(alignment: .bottom) {
+                HStack(spacing: 16) {
+                    Button { timelineScale = min(timelineScale * 2, HorizontalTimeline.maxScale); keepOverlay() } label: {
+                        Image(systemName: "minus.magnifyingglass").font(.system(size: 18))
+                    }
+                    .accessibilityLabel("Zoom out")
+                    Button { timelineScale = max(timelineScale / 2, HorizontalTimeline.minScale); keepOverlay() } label: {
+                        Image(systemName: "plus.magnifyingglass").font(.system(size: 18))
+                    }
+                    .accessibilityLabel("Zoom in")
+                    Spacer()
+                    Button {
+                        model.tab = .live
+                        model.livePath = NavigationPath()
+                        model.livePath.append(CameraRoute(serverID: route.serverID, camera: camera))
+                    } label: {
+                        Text("Live").font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                            .padding(.horizontal, 12).padding(.vertical, 4)
+                            .overlay(Capsule().stroke(Theme.accent, lineWidth: 1))
+                    }
+                }
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.horizontal, 12)
+                .offset(y: 30)
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 34)
+            .background(Color.black.opacity(0.6).ignoresSafeArea(edges: [.bottom, .horizontal]))
+        }
+    }
+
+    private var landscapeEventsPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                SectionLabel(text: L("\(FrigateFormat.dayTitle(day)) · \(visibleReviews.count) events"))
+                Button { withAnimation(.easeOut(duration: 0.2)) { showEventsPanel = false } } label: {
+                    Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32)
+                }
+                .accessibilityLabel("Close")
+            }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(visibleReviews) { r in
+                            let playing = currentReview?.id == r.id
+                            Button {
+                                seek(toWall: r.startTime - 3 + annotationOffset, autoplay: true)
+                                keepOverlay()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    RemoteImage(url: client?.thumbnailURL(for: r), session: client?.session ?? .shared)
+                                        .frame(width: 72, height: 42)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        HStack(spacing: 4) { ForEach(r.labels.prefix(2), id: \.self) { LabelTag(label: $0) } }
+                                        Text(FrigateFormat.time(r.start, seconds: true)).font(.system(size: 13, weight: .semibold))
+                                    }
+                                    Spacer(minLength: 0)
+                                    if playing {
+                                        Text("Playing").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.accent)
+                                    }
+                                }
+                                .padding(6)
+                                .card(border: playing ? Theme.accent : Theme.cardBorder, radius: 10)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .id(r.id)
+                        }
+                    }
+                }
+                .onAppear { if let id = currentReview?.id { proxy.scrollTo(id, anchor: .center) } }
+            }
+        }
+        .foregroundStyle(Theme.text)
+        .padding(12)
+        .frame(width: 310)
+        .frame(maxHeight: .infinity)
+        .background(Theme.card.opacity(0.97).ignoresSafeArea())
     }
 }

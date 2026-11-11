@@ -1,0 +1,87 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Playback landscape</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+body{margin:0;background:#1b1d21;font-family:-apple-system,system-ui,sans-serif;padding:24px 0}
+.ph{position:relative;width:844px;height:390px;margin:0 auto;border-radius:44px;background:#0A0B0D;border:8px solid #2b2f36;overflow:hidden;color:#F2F4F7}
+.cam{position:absolute;inset:0;background:#2a2f36}
+.bar{position:absolute;left:0;right:0}
+.pill{background:rgba(0,0,0,.55);border-radius:999px;padding:5px 12px;font-size:14px}
+.rb{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-size:20px}
+.lab{font-size:15px;color:#c9cfd6;text-align:center;margin:12px auto 30px;max-width:760px;line-height:1.5}
+h1{color:#F2F4F7;font-size:20px;text-align:center;font-weight:600;margin:0 0 6px}
+</style></head><body>
+<h1>Horizontaal terugkijken</h1>
+<div class="ph">
+  <div class="cam">
+    <div style="position:absolute;left:0;right:0;bottom:0;height:46%;background:#3a4049"></div>
+    <div style="position:absolute;left:52%;top:38%;width:150px;height:70px;background:#1d2228;border-radius:14px"></div>
+    <div style="position:absolute;left:16px;top:62px;font-family:Menlo,monospace;font-size:13px;color:#e8e8e8">11-11-2026 Wed 20:17:29</div>
+  </div>
+  <div class="bar" style="top:0;height:58px;background:rgba(10,11,13,.6);display:flex;align-items:center;gap:12px;padding:0 50px 0 50px">
+    <i class="ti ti-chevron-left" style="font-size:24px;color:#5B9BFF"></i>
+    <div><div style="font-size:17px;font-weight:600">Ingang Zuid <i class="ti ti-chevron-down" style="font-size:13px"></i></div><div style="font-size:12px;color:#9AA3AF">Markslag</div></div>
+    <div style="flex:1"></div>
+    <span class="pill">Vandaag · 20:17:29</span>
+    <span style="background:#FFD60A;color:#1A1206;border-radius:6px;padding:3px 9px;font-size:13px;font-weight:600">auto</span>
+    <i class="ti ti-calendar" style="font-size:22px;margin-left:8px"></i>
+  </div>
+  <div style="position:absolute;right:50px;top:76px;display:flex;flex-direction:column;gap:12px">
+    <div class="rb"><i class="ti ti-list"></i></div>
+    <div class="rb"><i class="ti ti-download"></i></div>
+    <div class="rb" style="font-size:14px;font-weight:600">1x</div>
+  </div>
+  <div style="position:absolute;left:50%;top:150px;transform:translateX(-50%);display:flex;gap:18px;align-items:center">
+    <div class="rb" style="width:50px;height:50px"><i class="ti ti-rotate"></i></div>
+    <div class="rb" style="width:60px;height:60px;font-size:26px"><i class="ti ti-player-pause"></i></div>
+    <div class="rb" style="width:50px;height:50px"><i class="ti ti-rotate-clockwise"></i></div>
+  </div>
+  <div class="bar" style="bottom:0;height:98px;background:rgba(10,11,13,.75)">
+    <div style="position:absolute;left:50px;right:50px;top:14px;height:40px" id="tl"></div>
+    <div style="position:absolute;left:50%;top:8px;height:52px;width:2px;background:#5B9BFF"></div>
+    <div style="position:absolute;left:50%;top:-16px;transform:translateX(-50%);background:#5B9BFF;color:#0A0B0D;font-size:13px;font-weight:600;border-radius:6px;padding:2px 8px">20:17:29</div>
+    <div style="position:absolute;left:50px;right:50px;bottom:10px;display:flex;align-items:center;gap:14px;font-size:13px;color:#9AA3AF">
+      <i class="ti ti-zoom-out" style="font-size:20px"></i><i class="ti ti-zoom-in" style="font-size:20px"></i>
+      <span>Sleep de tijdlijn · knijp om in te zoomen</span>
+      <div style="flex:1"></div>
+      <span style="border:1px solid #5B9BFF;color:#5B9BFF;border-radius:999px;padding:3px 12px">Live</span>
+    </div>
+  </div>
+</div>
+<p class="lab"><b>1. Overlay zichtbaar.</b> Tik op het beeld om alles te verbergen. Tijdlijn horizontaal met de afspeelpositie in het midden; beweging grijs-geel, gebeurtenissen in labelkleur.</p>
+
+<div class="ph">
+  <div class="cam">
+    <div style="position:absolute;left:0;right:0;bottom:0;height:46%;background:#3a4049"></div>
+    <div style="position:absolute;left:55%;top:38%;width:150px;height:70px;background:#1d2228;border-radius:14px"></div>
+    <div style="position:absolute;left:16px;top:14px;font-family:Menlo,monospace;font-size:13px;color:#e8e8e8">11-11-2026 Wed 20:17:31</div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;height:3px;background:#2A2E35"><div style="width:62%;height:3px;background:#5B9BFF"></div></div>
+</div>
+<p class="lab"><b>2. Overlay verborgen.</b> Alleen beeld met een dunne voortgangslijn. Tik om terug te halen; na 4 seconden zonder aanraken verdwijnt de overlay vanzelf.</p>
+
+<div class="ph">
+  <div class="cam">
+    <div style="position:absolute;left:0;right:0;bottom:0;height:46%;background:#3a4049"></div>
+    <div style="position:absolute;left:30%;top:38%;width:150px;height:70px;background:#1d2228;border-radius:14px"></div>
+    <div style="position:absolute;left:16px;top:62px;font-family:Menlo,monospace;font-size:13px;color:#e8e8e8">11-11-2026 Wed 20:17:29</div>
+  </div>
+  <div class="bar" style="top:0;height:58px;background:rgba(10,11,13,.6);display:flex;align-items:center;gap:12px;padding:0 50px">
+    <i class="ti ti-chevron-left" style="font-size:24px;color:#5B9BFF"></i>
+    <div><div style="font-size:17px;font-weight:600">Ingang Zuid</div><div style="font-size:12px;color:#9AA3AF">Markslag</div></div>
+  </div>
+  <div style="position:absolute;top:0;right:0;bottom:0;width:300px;background:rgba(21,23,27,.97);border-left:1px solid #23272E;padding:16px 50px 16px 16px;box-sizing:border-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:12px;color:#9AA3AF;letter-spacing:.4px">VANDAAG · 79 GEBEURTENISSEN</span><i class="ti ti-x"></i></div>
+    <div id="evl"></div>
+  </div>
+</div>
+<p class="lab"><b>3. Gebeurtenissenpaneel.</b> Via de lijst-knop schuift een smal paneel in van rechts; tik een gebeurtenis om ernaartoe te springen zonder de video te verlaten.</p>
+<script>
+const tl=document.getElementById('tl');let h='';
+for(let i=0;i<150;i++){const x=i/150*100;const ev=[46,47,48,63,64,76,77,78,79,95,112,113].includes(i);const ht=ev?32:Math.max(4,Math.abs(Math.sin(i*1.7))*20);
+h+=`<div style="position:absolute;left:${x}%;bottom:0;width:${ev?4:3}px;height:${ht}px;border-radius:1px;background:${ev?(i>75&&i<80?'#FF9F43':'#FFD60A'):'#6b6550'}"></div>`;}
+['20:00','20:10','20:20','20:30'].forEach((t,k)=>{h+=`<div style="position:absolute;left:${6+k*29}%;top:-6px;font-size:11px;color:#9AA3AF">${t}</div>`});
+tl.innerHTML=h;
+const evl=document.getElementById('evl');
+[['auto','20:17:15','#FFD60A',true],['auto','20:16:02','#FFD60A',false],['persoon','20:12:40','#FF9F43',false],['auto','20:08:11','#FFD60A',false]].forEach(([l,t,c,p])=>{
+evl.innerHTML+=`<div style="display:flex;gap:10px;align-items:center;padding:7px;border-radius:10px;margin-bottom:8px;background:#1A1D22;border:1px solid ${p?'#5B9BFF':'#23272E'}"><div style="width:72px;height:42px;border-radius:6px;background:#2a2f36"></div><div><span style="background:${c};color:#1A1206;border-radius:5px;padding:1px 6px;font-size:12px;font-weight:600">${l}</span><div style="font-size:13px;margin-top:3px">${t}</div></div>${p?'<span style="margin-left:auto;color:#5B9BFF;font-size:12px">Speelt af</span>':''}</div>`;});
+</script></body></html>
