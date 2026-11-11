@@ -1374,6 +1374,16 @@
         }
       }
     },
+    "Not recording": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen opname"
+          }
+        }
+      }
+    },
     "Nothing here": {
       "localizations": {
         "nl": {

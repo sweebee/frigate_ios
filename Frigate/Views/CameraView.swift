@@ -12,6 +12,8 @@ struct CameraView: View {
     @State private var fullscreen = false
     @State private var showPTZ = false
     @State private var snapshotBusy = false
+    /// nil until checked; true when a recording segment was written recently.
+    @State private var recordingNow: Bool?
     @State private var errorMessage: String?
 
     private var conn: ServerConnection? { model.connection(for: route.serverID) }
@@ -50,6 +52,7 @@ struct CameraView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
         .task { await loadReviews() }
+        .task { await watchRecording() }
         .onDisappear { player.suspended = true }
         .onChange(of: scenePhase) { _, phase in
             // Stop in the background, start fresh when the app is back.
@@ -144,14 +147,20 @@ struct CameraView: View {
         .aspectRatio(player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .overlay(alignment: .topLeading) {
-            if camera.record?.enabled == true {
+            if let recordingNow {
                 HStack(spacing: 5) {
-                    StatusDot(color: Theme.recording, size: 6)
-                    Text("REC")
+                    if recordingNow {
+                        StatusDot(color: Theme.recording, size: 6)
+                        Text("REC")
+                    } else {
+                        Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10))
+                        Text("Not recording")
+                    }
                 }
                 .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(recordingNow ? Theme.text : Theme.onLabel)
                 .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                .background(recordingNow ? Color.black.opacity(0.6) : Theme.warning, in: RoundedRectangle(cornerRadius: 6))
                 .padding(10)
             }
         }
@@ -268,6 +277,29 @@ struct CameraView: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)
+    }
+
+    /// Shows REC only while Frigate is actually writing recordings for this camera.
+    /// Segments land 5 to 20 seconds after the fact, so allow 45 seconds before warning,
+    /// and need two misses in a row so a single slow write does not flip the badge.
+    private func watchRecording() async {
+        var misses = 0
+        while !Task.isCancelled {
+            if let client = conn?.client {
+                let now = Date()
+                if let segs = try? await client.recordings(camera: route.camera, after: now.addingTimeInterval(-120), before: now) {
+                    let latest = segs.map(\.endTime).max() ?? 0
+                    let fresh = now.timeIntervalSince1970 - latest < 45
+                    misses = fresh ? 0 : misses + 1
+                    if fresh { recordingNow = true }
+                    else if misses >= 2 || recordingNow == nil {
+                        // Recording switched off in Frigate: no badge rather than a warning.
+                        recordingNow = camera?.record?.enabled == true ? false : nil
+                    }
+                }
+            }
+            try? await Task.sleep(for: .seconds(10))
+        }
     }
 
     private func loadReviews() async {
