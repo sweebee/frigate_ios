@@ -94,6 +94,8 @@ struct PlaybackView: View {
     /// Wall-clock time shown on the timeline while dragging.
     @State private var scrubTime: Double?
     @State private var exporter = ClipExporter()
+    /// Low-resolution preview shown while dragging a timeline.
+    @State private var preview = PreviewScrubber()
     @State private var share: ShareItem?
 
     init(route: PlaybackRoute) {
@@ -133,6 +135,7 @@ struct PlaybackView: View {
                 if steady >= 2 { break }
             }
             if heldTime == t { heldTime = nil }
+            preview.hide()
         }
     }
 
@@ -197,7 +200,7 @@ struct PlaybackView: View {
             case .timeline:
                 PlaybackTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion, reviews: visibleReviews,
                                  map: map, isFollowing: scrubTime == nil,
-                                 onScrub: { heldTime = nil; scrubTime = $0 },
+                                 onScrub: { heldTime = nil; scrubTime = $0; preview.show($0) },
                                  onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) })
             }
         }
@@ -330,7 +333,8 @@ struct PlaybackView: View {
         ZStack {
             PlayerLayerView(player: player.player)
                 .zoomable()
-                .overlay { if gapTime != nil { gapPlaceholder } }
+                .overlay { if gapTime != nil && !preview.showing { gapPlaceholder } }
+                .overlay { if preview.showing { PlayerLayerView(player: preview.player) } }
                 .onTapGesture { toggleOverlay() }
             if loading {
                 ProgressView().tint(.white)
@@ -501,6 +505,7 @@ struct PlaybackView: View {
         motion = m ?? []
         segments = (s ?? []).sorted { $0.startTime < $1.startTime }
         map = RecordingMap(segments: segments, from: start, to: end)
+        await preview.prepare(client: client, camera: camera, start: start, end: end)
         chunkStart = nil
         chunkMap = RecordingMap()
         loading = false
@@ -595,6 +600,7 @@ struct PlaybackView: View {
                 player.pause()
                 gapTime = t
                 heldTime = nil
+                preview.hide()
                 return
             }
         }
@@ -781,7 +787,8 @@ extension PlaybackView {
             Color.black.ignoresSafeArea()
             PlayerLayerView(player: player.player)
                 .zoomable()
-                .overlay { if gapTime != nil { gapPlaceholder } }
+                .overlay { if gapTime != nil && !preview.showing { gapPlaceholder } }
+                .overlay { if preview.showing { PlayerLayerView(player: preview.player) } }
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
             if loading {
@@ -899,7 +906,7 @@ extension PlaybackView {
             ZStack(alignment: .top) {
                 HorizontalTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion,
                                    reviews: visibleReviews, map: map,
-                                   onScrub: { heldTime = nil; scrubTime = $0 },
+                                   onScrub: { heldTime = nil; scrubTime = $0; preview.show($0) },
                                    onScrubEnd: { t, snap in
                                        finishScrub(at: t, snap: snap)
                                        keepOverlay()
