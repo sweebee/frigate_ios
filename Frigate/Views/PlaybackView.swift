@@ -132,7 +132,7 @@ struct PlaybackView: View {
                                  onScrub: { scrubTime = $0 },
                                  onScrubEnd: { t in
                                      scrubTime = nil
-                                     seek(toWall: t, autoplay: player.isPlaying)
+                                     seek(toWall: t, autoplay: player.wantsToPlay)
                                  })
             }
         }
@@ -309,7 +309,7 @@ struct PlaybackView: View {
             if !map.isEmpty {
                 HStack(spacing: 10) {
                     OverlayButton(systemImage: "gobackward.10", label: "Back 10 seconds") { player.skip(-10) }
-                    OverlayButton(systemImage: player.isPlaying ? "pause.fill" : "play.fill", label: player.isPlaying ? "Pause" : "Play") { player.toggle() }
+                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", label: player.wantsToPlay ? "Pause" : "Play") { player.toggle() }
                     OverlayButton(systemImage: "goforward.10", label: "Forward 10 seconds") { player.skip(10) }
                     Menu {
                         ForEach([Float(0.5), 1, 2, 4, 8], id: \.self) { r in

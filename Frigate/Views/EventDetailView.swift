@@ -92,7 +92,7 @@ struct EventDetailView: View {
                 .foregroundStyle(.white).padding()
             } else if player.isBuffering || player.duration == 0 {
                 ProgressView().tint(.white)
-            } else if !player.isPlaying {
+            } else if !player.wantsToPlay {
                 OverlayButton(systemImage: "play.fill", size: 56, label: "Play") { player.play() }
             }
         }

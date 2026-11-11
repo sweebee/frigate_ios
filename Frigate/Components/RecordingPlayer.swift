@@ -19,6 +19,7 @@ final class RecordingPlayer {
     private var statusObserver: NSKeyValueObservation?
     private var itemStatusObserver: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
+    private var stallObserver: NSObjectProtocol?
     private(set) var url: URL?
     private var pendingStart: Double?
 
@@ -49,7 +50,8 @@ final class RecordingPlayer {
             // Segments load from the Frigate server directly, so send its login cookies too.
             "AVURLAssetHTTPCookiesKey": HTTPCookieStorage.shared.cookies ?? [],
         ]))
-        item.preferredForwardBufferDuration = NetworkStatus.shared.isExpensive ? 8 : 4
+        // 0 lets AVPlayer pick a buffer that fits the connection; on slow links it buffers more.
+        item.preferredForwardBufferDuration = 0
         itemStatusObserver = item.observe(\.status) { [weak self] item, _ in
             let failed = item.status == .failed
             let message = item.error?.localizedDescription
@@ -72,7 +74,15 @@ final class RecordingPlayer {
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.isPlaying = false
+                self?.wantsToPlay = false
                 self?.finishedCount += 1
+            }
+        }
+        if let stallObserver { NotificationCenter.default.removeObserver(stallObserver) }
+        stallObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemPlaybackStalled, object: item, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                // Keep going once enough has loaded; play() waits for the buffer.
+                if let self, self.wantsToPlay { self.player.play() }
             }
         }
         player.replaceCurrentItem(with: item)
@@ -81,13 +91,24 @@ final class RecordingPlayer {
         if autoplay { play() }
     }
 
+    /// Whether the user wants playback running. A stall must not count as pausing.
+    private(set) var wantsToPlay = false
+
     func play() {
         if duration > 0, currentTime >= duration - 0.3 { seek(to: 0) }
-        player.playImmediately(atRate: rate)
+        wantsToPlay = true
+        // play() (unlike playImmediately) waits for enough buffered video and resumes by
+        // itself after a stall, instead of stopping when the buffer runs dry on slow links.
+        player.defaultRate = rate
+        player.play()
     }
 
-    func pause() { player.pause() }
-    func toggle() { isPlaying ? pause() : play() }
+    func pause() {
+        wantsToPlay = false
+        player.pause()
+    }
+
+    func toggle() { wantsToPlay ? pause() : play() }
 
     func seek(to seconds: Double, precise: Bool = false) {
         let t = max(0, duration > 0 ? min(seconds, duration) : seconds)
@@ -107,10 +128,12 @@ final class RecordingPlayer {
 
     func setRate(_ r: Float) {
         rate = r
-        if isPlaying { player.rate = r }
+        player.defaultRate = r
+        if wantsToPlay { player.rate = r }
     }
 
     func stop() {
+        wantsToPlay = false
         player.pause()
         player.replaceCurrentItem(with: nil)
     }
