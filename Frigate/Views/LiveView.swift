@@ -173,15 +173,18 @@ struct CameraTile: View {
                     .clipped()
                     .opacity(online ? 1 : 0.4)
 
-                HStack(spacing: 5) {
-                    StatusDot(color: online ? Theme.online : Theme.offline, size: 6)
-                    Text(online ? "LIVE" : "OFFLINE")
+                // Only flag cameras that are down; online is the normal state.
+                if !online {
+                    HStack(spacing: 5) {
+                        StatusDot(color: Theme.offline, size: 6)
+                        Text("OFFLINE")
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.text)
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 6))
+                    .padding(8)
                 }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Theme.text)
-                .padding(.horizontal, 7).padding(.vertical, 3)
-                .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 6))
-                .padding(8)
             }
             .overlay(alignment: .bottomLeading) {
                 if !objects.isEmpty {
