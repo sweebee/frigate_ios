@@ -239,3 +239,27 @@ struct ToggleRow: View {
         .accessibilityValue(isOn ? L("On") : L("Off"))
     }
 }
+
+/// Re-renders its content only when `key` changes. Wrap menus in it on screens that update
+/// many times per second (playback time, clocks): an open Menu flickers when it is rebuilt.
+struct Stable<Key: Equatable, Content: View>: View, Equatable {
+    let key: Key
+    @ViewBuilder let content: () -> Content
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.key == rhs.key }
+    var body: some View { content() }
+}
+
+extension Stable {
+    /// Use with `.equatable()` so SwiftUI compares the key before rebuilding.
+    func stable() -> some View { self.equatable() }
+}
+
+/// A clock that ticks on its own, so its parent does not redraw every second.
+struct ClockLabel: View {
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            Text(FrigateFormat.time(ctx.date, seconds: true))
+        }
+    }
+}

@@ -7,7 +7,6 @@ struct CameraView: View {
     @State private var player = LivePlayerState()
     @State private var reviews: [ReviewItem] = []
     @State private var loadingReviews = true
-    @State private var now = Date()
     @State private var share: ShareItem?
     @State private var fullscreen = false
     @State private var showPTZ = false
@@ -50,12 +49,6 @@ struct CameraView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
         .task { await loadReviews() }
-        .task {
-            while !Task.isCancelled {
-                now = Date()
-                try? await Task.sleep(for: .seconds(1))
-            }
-        }
         .onAppear {
             if player.stream.isEmpty {
                 // On mobile data start with the lighter sub stream when the camera has one.
@@ -156,7 +149,7 @@ struct CameraView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            Text(FrigateFormat.time(now, seconds: true))
+            ClockLabel()
                 .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))

@@ -45,6 +45,12 @@ struct RecordingMap {
     }
 }
 
+private struct FilterBarKey: Equatable {
+    let filter: ReviewFilter
+    let reviewIDs: [String]
+    let camera: String
+}
+
 struct PlaybackView: View {
     enum Tab: Hashable { case events, timeline }
 
@@ -91,6 +97,13 @@ struct PlaybackView: View {
     /// Review items that pass the type, label and zone filters.
     private var visibleReviews: [ReviewItem] { reviews.filter(filter.matches) }
 
+    /// The event offered in the save menu: the last one that started before the playhead.
+    /// Unlike `currentReview` it does not disappear when the event ends, so an open menu stays put.
+    private var menuReview: ReviewItem? {
+        let t = wallTime
+        return visibleReviews.filter { $0.startTime - 5 <= t }.max { $0.startTime < $1.startTime }
+    }
+
     private var currentReview: ReviewItem? {
         let t = wallTime
         return reviews.first { t >= $0.startTime - 5 && t <= ($0.endTime ?? .infinity) + 5 }
@@ -105,9 +118,12 @@ struct PlaybackView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
-            ReviewFilterBar(filter: $filter, reviews: reviews,
-                            zones: (conn?.config?.cameras[camera]?.zones?.keys).map(Array.init) ?? [])
-                .padding(.bottom, 8)
+            Stable(key: FilterBarKey(filter: filter, reviewIDs: reviews.map(\.id), camera: camera)) {
+                ReviewFilterBar(filter: $filter, reviews: reviews,
+                                zones: (conn?.config?.cameras[camera]?.zones?.keys).map(Array.init) ?? [])
+            }
+            .stable()
+            .padding(.bottom, 8)
             switch tab {
             case .events: eventsList
             case .timeline:
@@ -143,8 +159,12 @@ struct PlaybackView: View {
 
     /// Save button on the video: the event that is playing, or a span around the playhead.
     private var saveMenu: some View {
+        Stable(key: [menuReview?.id ?? "", exporter.isWorking ? "busy" : ""]) { saveMenuContent }.stable()
+    }
+
+    private var saveMenuContent: some View {
         Menu {
-            if let r = currentReview {
+            if let r = menuReview {
                 Section("\(r.labels.first.map(FrigateFormat.labelName)?.capitalizedFirst ?? L("Event")) at \(FrigateFormat.time(r.start, seconds: true))") {
                     Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                         Label("Save event to Photos", systemImage: "square.and.arrow.down")
@@ -211,6 +231,18 @@ struct PlaybackView: View {
             }
             .accessibilityLabel("Back")
             Spacer()
+            Stable(key: [camera, conn?.server.name ?? ""] + (conn?.cameras.map(\.name) ?? [])) { cameraMenu }.stable()
+            Spacer()
+            Button { showDatePicker = true } label: {
+                Image(systemName: "calendar").font(.system(size: 19)).foregroundStyle(Theme.text).frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Pick date")
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 6)
+    }
+
+    private var cameraMenu: some View {
             Menu {
                 ForEach(conn?.cameras ?? [], id: \.name) { cam in
                     Button {
@@ -231,14 +263,6 @@ struct PlaybackView: View {
                 .foregroundStyle(Theme.text)
                 .frame(minHeight: 44)
             }
-            Spacer()
-            Button { showDatePicker = true } label: {
-                Image(systemName: "calendar").font(.system(size: 19)).foregroundStyle(Theme.text).frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Pick date")
-        }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 6)
     }
 
     // MARK: Player
