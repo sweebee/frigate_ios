@@ -88,14 +88,14 @@ struct HorizontalTimeline: View {
             guard t + step > dayStart, t < dayEnd else { continue }
             let mid = t + step / 2
             // Blue line under the bars where video was recorded, so gaps are visible.
-            if map.hasRecording(at: mid) {
+            if map.hasRecording(from: t, to: t + step) {
                 ctx.fill(Path(CGRect(x: x, y: baseline - 2, width: barWidth, height: 2)), with: .color(Theme.accent.opacity(0.7)))
             }
             if let r = reviews.first(where: { t + step > $0.startTime && t < ($0.endTime ?? dayEnd) }) {
                 let h = barArea
                 ctx.fill(Path(roundedRect: CGRect(x: x, y: barBase - h, width: barWidth - 1, height: h), cornerRadius: 1),
                          with: .color(Theme.labelColor(r.labels.first ?? "")))
-            } else if map.hasRecording(at: mid) {
+            } else if map.hasRecording(from: t, to: t + step) {
                 let level = motion.filter { $0.startTime >= t - 15 && $0.startTime < t + step }.map { $0.motion ?? 0 }.max() ?? 0
                 let h = max(3, CGFloat(level / maxMotion) * barArea * 0.8)
                 ctx.fill(Path(roundedRect: CGRect(x: x, y: barBase - h, width: barWidth - 1, height: h), cornerRadius: 1),

@@ -40,6 +40,11 @@ struct RecordingMap {
         return spans.last?.wallEnd ?? first.wallStart
     }
 
+    /// Whether any recording overlaps `start..<end`.
+    func hasRecording(from start: Double, to end: Double) -> Bool {
+        spans.contains { $0.wallStart < end && $0.wallEnd > start }
+    }
+
     func hasRecording(at wall: Double) -> Bool {
         spans.contains { wall >= $0.wallStart && wall <= $0.wallEnd }
     }
@@ -707,7 +712,7 @@ struct PlaybackTimeline: View {
             row.opacity = opacity
 
             // Blue line along the left edge where video was recorded, so gaps are visible.
-            if map.hasRecording(at: (rowStart + rowEnd) / 2) {
+            if map.hasRecording(from: rowStart, to: rowEnd) {
                 row.fill(Path(CGRect(x: gutter - 7, y: rowY, width: 3, height: rowHeight)), with: .color(Theme.accent.opacity(0.7)))
             }
             // Bar width follows the motion in this row; events add their label color and a tint.
@@ -719,7 +724,7 @@ struct PlaybackTimeline: View {
                 let w = max(motionWidth, 14)
                 row.fill(Path(roundedRect: CGRect(x: gutter + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
                          with: .color(color))
-            } else if map.hasRecording(at: (rowStart + rowEnd) / 2) {
+            } else if map.hasRecording(from: rowStart, to: rowEnd) {
                 let w = max(4, motionWidth)
                 row.fill(Path(roundedRect: CGRect(x: gutter + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
                          with: .color(level > 0 ? Theme.motion : Theme.controlBorder))
