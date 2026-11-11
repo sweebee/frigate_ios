@@ -21,13 +21,14 @@ final class RecordingPlayer {
     private var endObserver: NSObjectProtocol?
     private var stallObserver: NSObjectProtocol?
     private(set) var url: URL?
-    private var pendingStart: Double?
+    private(set) var pendingStart: Double?
 
     init() {
         player.automaticallyWaitsToMinimizeStalling = true
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self] t in
             MainActor.assumeIsolated {
-                guard let self, !self.isScrubbing else { return }
+                // While a new item is still moving to its start position it reports 0; ignore that.
+                guard let self, !self.isScrubbing, self.pendingStart == nil else { return }
                 self.currentTime = t.seconds.isFinite ? t.seconds : 0
                 if let d = self.player.currentItem?.duration.seconds, d.isFinite { self.duration = d }
             }

@@ -117,10 +117,15 @@ struct PlaybackView: View {
         scrubTime = nil
         seek(toWall: t, autoplay: player.wantsToPlay)
         Task {
-            for _ in 0..<40 {
+            // Release only once the player is ready and has reported a nearby position
+            // on two checks in a row, so a new hour loading cannot flash its start.
+            var steady = 0
+            for _ in 0..<60 {
                 try? await Task.sleep(for: .milliseconds(150))
                 if heldTime != t { return }
-                if abs(playerWallTime - t) < 1.5 { break }
+                let ready = player.duration > 0 && player.pendingStart == nil
+                steady = ready && abs(playerWallTime - t) < 1.5 ? steady + 1 : 0
+                if steady >= 2 { break }
             }
             if heldTime == t { heldTime = nil }
         }
