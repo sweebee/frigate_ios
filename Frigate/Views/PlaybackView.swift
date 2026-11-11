@@ -498,7 +498,7 @@ struct PlaybackView: View {
         // Start playing right away: at the requested review item, else the latest event, else near the end.
         if let id = pendingReviewID, let item = reviews.first(where: { $0.id == id }) {
             seek(toWall: item.startTime - 3 + annotationOffset, autoplay: true)
-        } else if let latest = reviews.first {
+        } else if let latest = reviews.first(where: { map.hasRecording(at: $0.startTime + annotationOffset + 1) }) {
             seek(toWall: latest.startTime - 3 + annotationOffset, autoplay: true)
         } else {
             seek(toWall: max(last.wallStart, last.wallEnd - 60), autoplay: true)
@@ -681,6 +681,10 @@ struct PlaybackTimeline: View {
             var row = ctx
             row.opacity = opacity
 
+            // Blue line along the left edge where video was recorded, so gaps are visible.
+            if map.hasRecording(at: (rowStart + rowEnd) / 2) {
+                row.fill(Path(CGRect(x: gutter - 7, y: rowY, width: 3, height: rowHeight)), with: .color(Theme.accent.opacity(0.7)))
+            }
             // Bar width follows the motion in this row; events add their label color and a tint.
             let level = motion.filter { $0.startTime >= rowStart - 15 && $0.startTime < rowEnd }.map { $0.motion ?? 0 }.max() ?? 0
             let motionWidth = CGFloat(level / maxMotion) * barAreaWidth * 0.9

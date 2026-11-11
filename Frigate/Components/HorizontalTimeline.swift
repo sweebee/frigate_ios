@@ -25,7 +25,7 @@ struct HorizontalTimeline: View {
 
     var body: some View {
         Canvas { ctx, size in draw(ctx, size: size) }
-            .frame(height: barArea + 18)
+            .frame(height: barArea + 22)
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 2)
                 .onChanged { v in
@@ -75,6 +75,7 @@ struct HorizontalTimeline: View {
         let step = Double(barWidth) * scale
         let maxMotion = max(motion.map { $0.motion ?? 0 }.max() ?? 1, 1)
         let baseline = size.height
+        let barBase = baseline - 4
         // Align buckets to multiples of `step` so bars do not shimmer while playing.
         let leftTime = wallTime - Double(center) * scale
         let firstBucket = (leftTime / step).rounded(.down) * step
@@ -85,14 +86,18 @@ struct HorizontalTimeline: View {
             defer { t += step }
             guard t + step > dayStart, t < dayEnd else { continue }
             let mid = t + step / 2
+            // Blue line under the bars where video was recorded, so gaps are visible.
+            if map.hasRecording(at: mid) {
+                ctx.fill(Path(CGRect(x: x, y: baseline - 2, width: barWidth, height: 2)), with: .color(Theme.accent.opacity(0.7)))
+            }
             if let r = reviews.first(where: { t + step > $0.startTime && t < ($0.endTime ?? dayEnd) }) {
                 let h = barArea
-                ctx.fill(Path(roundedRect: CGRect(x: x, y: baseline - h, width: barWidth - 1, height: h), cornerRadius: 1),
+                ctx.fill(Path(roundedRect: CGRect(x: x, y: barBase - h, width: barWidth - 1, height: h), cornerRadius: 1),
                          with: .color(Theme.labelColor(r.labels.first ?? "")))
             } else if map.hasRecording(at: mid) {
                 let level = motion.filter { $0.startTime >= t - 15 && $0.startTime < t + step }.map { $0.motion ?? 0 }.max() ?? 0
                 let h = max(3, CGFloat(level / maxMotion) * barArea * 0.8)
-                ctx.fill(Path(roundedRect: CGRect(x: x, y: baseline - h, width: barWidth - 1, height: h), cornerRadius: 1),
+                ctx.fill(Path(roundedRect: CGRect(x: x, y: barBase - h, width: barWidth - 1, height: h), cornerRadius: 1),
                          with: .color(level > 0 ? Theme.motion.opacity(0.75) : Theme.controlBorder))
             }
         }
