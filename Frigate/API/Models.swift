@@ -331,6 +331,17 @@ enum FrigateFormat {
         return f.string(from: date)
     }
 
+    /// "1.9 s" under a minute, otherwise "m:ss".
+    static func shortDuration(_ t: TimeInterval) -> String {
+        if t < 60 {
+            let f = NumberFormatter()
+            f.maximumFractionDigits = t < 10 ? 1 : 0
+            f.minimumFractionDigits = 0
+            return "\(f.string(from: NSNumber(value: max(t, 0.1))) ?? "0") s"
+        }
+        return duration(t)
+    }
+
     static func duration(_ t: TimeInterval) -> String {
         let total = Int(t.rounded())
         let h = total / 3600, m = (total % 3600) / 60, s = total % 60

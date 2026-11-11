@@ -192,7 +192,7 @@ struct EventDetailView: View {
                 return (isPlate ? L("PLATE") : (item.labels.contains("person") ? L("FACE") : L("SUB LABEL")), s)
             }
             if item.labels.contains("person") { return (L("FACE"), L("Unknown")) }
-            return (L("DURATION"), FrigateFormat.duration(item.duration))
+            return (L("DURATION"), FrigateFormat.shortDuration(trackedDuration))
         }()
         return HStack(spacing: 8) {
             tile(L("SCORE"), score.map { "\(Int(($0 * 100).rounded()))%" } ?? "–")
@@ -201,6 +201,13 @@ struct EventDetailView: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 16)
+    }
+
+    /// How long the objects were tracked; Frigate often closes the review item itself much sooner.
+    private var trackedDuration: TimeInterval {
+        let spans = events.map { ($0.startTime, $0.endTime ?? Date().timeIntervalSince1970) }
+        guard let start = spans.map(\.0).min(), let end = spans.map(\.1).max() else { return item.duration }
+        return max(item.duration, end - start)
     }
 
     private func tile(_ title: String, _ value: String) -> some View {

@@ -167,9 +167,18 @@ final class FrigateClient: @unchecked Sendable {
 
     // MARK: Events
 
+    /// Fetches events one by one: Frigate ignores an id filter on /api/events and would
+    /// return the latest events of every camera instead.
     func events(ids: [String]) async throws -> [FrigateEvent] {
         guard !ids.isEmpty else { return [] }
-        return try await get([FrigateEvent].self, "api/events", query: ["ids": ids.joined(separator: ","), "limit": String(ids.count)])
+        return await withTaskGroup(of: FrigateEvent?.self) { group in
+            for id in ids.prefix(20) {
+                group.addTask { try? await self.get(FrigateEvent.self, "api/events/\(id)") }
+            }
+            var out: [FrigateEvent] = []
+            for await e in group { if let e { out.append(e) } }
+            return out.sorted { $0.startTime < $1.startTime }
+        }
     }
 
     func activeEvents() async throws -> [FrigateEvent] {
