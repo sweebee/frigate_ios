@@ -78,8 +78,9 @@ final class PreviewScrubber {
         guard !seeking, let t = pendingTime, let src = loadedSrc, let target = players[src] else { return }
         pendingTime = nil
         seeking = true
-        let tol = CMTime(seconds: 2, preferredTimescale: 600)
-        target.seek(to: CMTime(seconds: max(0, t), preferredTimescale: 600), toleranceBefore: tol, toleranceAfter: tol) { [weak self] done in
+        // Exact seeks: preview files have a keyframe only every few minutes, so a seek with
+        // tolerance lands far too early. They are small, so decoding up to the frame is quick.
+        target.seek(to: CMTime(seconds: max(0, t), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] done in
             Task { @MainActor in
                 guard let self else { return }
                 self.seeking = false
