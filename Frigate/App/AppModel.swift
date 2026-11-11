@@ -162,13 +162,16 @@ final class AppModel {
     var historyPath = NavigationPath()
     /// Set by deep links to switch the Review segment (alert, detection, motion).
     var reviewKindRequest: String?
-    /// Show review items from all servers instead of only the selected one. Off by default.
-    private(set) var combinedReview: Bool = false
-
-    func setCombinedReview(_ on: Bool) {
-        combinedReview = on
-        UserDefaults.standard.set(on, forKey: "combinedReview2")
+    /// Play the low-resolution live stream in the camera overview instead of snapshots.
+    var liveGrid: Bool = UserDefaults.standard.bool(forKey: "liveGrid") {
+        didSet { UserDefaults.standard.set(liveGrid, forKey: "liveGrid") }
     }
+    /// Also play live tiles on mobile data.
+    var liveGridOnCellular: Bool = UserDefaults.standard.bool(forKey: "liveGridOnCellular") {
+        didSet { UserDefaults.standard.set(liveGridOnCellular, forKey: "liveGridOnCellular") }
+    }
+    /// Whether the overview should show live video right now.
+    var showsLiveGrid: Bool { liveGrid && (liveGridOnCellular || !NetworkStatus.shared.isExpensive) }
     /// Set to open the add-server sheet.
     var showAddServer = false
 
@@ -181,7 +184,6 @@ final class AppModel {
            let s = try? JSONDecoder().decode(Scope.self, from: data) {
             scope = s
         }
-        combinedReview = UserDefaults.standard.bool(forKey: "combinedReview2")
         for s in servers { connections[s.id] = ServerConnection(server: s) }
         if case .server(let id) = scope, !servers.contains(where: { $0.id == id }) { scope = .all }
     }
@@ -206,7 +208,7 @@ final class AppModel {
 
     /// Connections used for Review, which may combine all servers.
     var reviewConnections: [ServerConnection] {
-        combinedReview ? orderedConnections : scopedConnections
+        scopedConnections
     }
 
     var scopeTitle: String {

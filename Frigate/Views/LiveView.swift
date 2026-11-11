@@ -151,6 +151,7 @@ struct LiveView: View {
 struct CameraTile: View {
     let conn: ServerConnection
     let camera: CameraConfig
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         let online = conn.isCameraOnline(camera.name)
@@ -160,9 +161,14 @@ struct CameraTile: View {
                 Color.clear
                     .aspectRatio(16 / 10, contentMode: .fit)
                     .overlay {
-                        RemoteImage(url: conn.client?.latestImageURL(camera: camera.name, height: 270),
-                                    session: conn.client?.session ?? .shared,
-                                    refresh: online ? (objects.isEmpty ? 6 : 2) * (NetworkStatus.shared.isExpensive ? 2.5 : 1) : nil)
+                        ZStack {
+                            RemoteImage(url: conn.client?.latestImageURL(camera: camera.name, height: 270),
+                                        session: conn.client?.session ?? .shared,
+                                        refresh: online ? (objects.isEmpty ? 6 : 2) * (NetworkStatus.shared.isExpensive ? 2.5 : 1) : nil)
+                            if online && model.showsLiveGrid, let client = conn.client {
+                                TileLivePlayer(client: client, camera: camera)
+                            }
+                        }
                     }
                     .clipped()
                     .opacity(online ? 1 : 0.4)
@@ -210,5 +216,28 @@ struct CameraTile: View {
         if !(conn.activeObjects[camera.name] ?? []).isEmpty { return L("Now") }
         if let last = conn.lastActivity[camera.name] { return FrigateFormat.relative(last) }
         return ""
+    }
+}
+
+/// Muted live video of a camera's lowest-resolution stream for the overview grid.
+/// The snapshot underneath stays visible until the video plays.
+struct TileLivePlayer: View {
+    let client: FrigateClient
+    let camera: CameraConfig
+    @State private var state = LivePlayerState()
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        LivePlayerView(client: client, camera: camera.name, state: state, fill: true)
+            .opacity(state.playing ? 1 : 0)
+            .allowsHitTesting(false)
+            .onAppear {
+                // Sub stream when the camera has one, without the snapshot fallback.
+                state.stream = camera.streams.count > 1 ? (camera.streams.last?.name ?? camera.name) : camera.name
+                state.preferred = .mse
+                state.suspended = false
+            }
+            .onDisappear { state.suspended = true }
+            .onChange(of: scenePhase) { _, phase in state.suspended = phase != .active }
     }
 }

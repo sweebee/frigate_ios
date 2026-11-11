@@ -745,6 +745,16 @@
         }
       }
     },
+    "Also on mobile data": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ook op mobiele data"
+          }
+        }
+      }
+    },
     "Audio": {
       "localizations": {
         "nl": {
@@ -841,16 +851,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sluit"
-          }
-        }
-      }
-    },
-    "Combined review": {
-      "localizations": {
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gecombineerd beoordelen"
           }
         }
       }
@@ -1154,6 +1154,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Live"
+          }
+        }
+      }
+    },
+    "Live video in overview": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live video in overzicht"
           }
         }
       }
@@ -1583,6 +1593,16 @@
         }
       }
     },
+    "Plays the low-resolution stream of every camera instead of refreshing snapshots. Uses more data and battery.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speelt de stream met lage resolutie van elke camera af in plaats van verversende foto's. Kost meer data en batterij."
+          }
+        }
+      }
+    },
     "Preparing video…": {
       "localizations": {
         "nl": {
@@ -1972,16 +1992,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toon"
-          }
-        }
-      }
-    },
-    "Show alerts from all servers in Review": {
-      "localizations": {
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toon meldingen van alle servers bij Beoordelen"
           }
         }
       }

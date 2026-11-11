@@ -54,10 +54,18 @@ struct ServersView: View {
                     }
 
                     VStack(spacing: 0) {
-                        ToggleRow(title: L("Combined review"), subtitle: L("Show alerts from all servers in Review"),
-                                  isOn: model.combinedReview) { model.setCombinedReview($0) }
+                        ToggleRow(title: L("Live video in overview"),
+                                  subtitle: L("Plays the low-resolution stream of every camera instead of refreshing snapshots. Uses more data and battery."),
+                                  isOn: model.liveGrid) { on in withAnimation { model.liveGrid = on } }
                             .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
                             .frame(minHeight: 60)
+                        if model.liveGrid {
+                            Rectangle().fill(Theme.cardBorder).frame(height: 1)
+                            ToggleRow(title: L("Also on mobile data"), isOn: model.liveGridOnCellular) { model.liveGridOnCellular = $0 }
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 52)
+                        }
                     }
                     .card()
                     .padding(.top, 10)

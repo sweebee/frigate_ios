@@ -45,6 +45,8 @@ struct LivePlayerView: UIViewRepresentable {
     let client: FrigateClient
     let camera: String
     @Bindable var state: LivePlayerState
+    /// Fill the frame (crop) and use MSE only, for small grid tiles.
+    var fill: Bool = false
 
     func makeCoordinator() -> Coordinator { Coordinator(state: state) }
 
@@ -89,13 +91,14 @@ struct LivePlayerView: UIViewRepresentable {
             return
         }
         let stream = state.stream.isEmpty ? camera : state.stream
-        let modes: [String]
+        var modes: [String]
         switch state.preferred {
         case .auto: modes = ["mse", "webrtc", "mjpeg"]
         case .mse: modes = ["mse", "mjpeg"]
         case .webrtc: modes = ["webrtc", "mjpeg"]
         case .mjpeg: modes = ["mjpeg"]
         }
+        if fill { modes = ["mse"] }
         let params: [String: Any] = [
             "mse": client.liveSocketURL(stream: stream, mode: "mse").absoluteString,
             "webrtc": client.liveSocketURL(stream: stream, mode: "webrtc").absoluteString,
@@ -103,6 +106,7 @@ struct LivePlayerView: UIViewRepresentable {
             "snapshot": client.latestImageURL(camera: camera, height: 720).absoluteString,
             "modes": modes,
             "muted": state.muted,
+            "fit": fill ? "cover" : "contain",
         ]
         let json = String(data: (try? JSONSerialization.data(withJSONObject: params)) ?? Data(), encoding: .utf8) ?? "{}"
         state.status = "Connecting"
@@ -151,6 +155,7 @@ video,img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;ba
 <video id="v" playsinline autoplay muted></video>
 <script>
 const P = __PARAMS__;
+document.getElementById('v').style.objectFit = P.fit || 'contain';
 const video = document.getElementById('v');
 video.muted = P.muted;
 let ws = null, pc = null, img = null, timer = null, stopped = false;

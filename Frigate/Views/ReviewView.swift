@@ -118,7 +118,7 @@ struct ReviewView: View {
     private var filters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                if model.combinedReview && model.orderedConnections.count > 1 {
+                if model.scope == .all && model.orderedConnections.count > 1 {
                     Menu {
                         Button { serverFilter = nil } label: { checkLabel(L("All servers"), serverFilter == nil) }
                         ForEach(model.orderedConnections) { c in
