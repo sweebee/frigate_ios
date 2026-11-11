@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Camera playback</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0A0B0D; color: #F2F4F7; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+  <div style="padding: 52px 8px 6px; display: flex; align-items: center; justify-content: space-between">
+    <a href="HistoryOverview.dc.html" aria-label="Back to History" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: {{accent}}; text-decoration: none">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <button style="min-height: 44px; border: none; background: transparent; color: #F2F4F7; font-family: Inter, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0">
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 17px; font-weight: 600">Driveway
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      </span>
+      <span style="font-size: 12px; font-weight: 500; color: #9AA3AF">Home NVR</span>
+    </button>
+    <button aria-label="Pick date" style="width: 44px; height: 44px; border: none; background: transparent; color: #F2F4F7; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+    </button>
+  </div>
+
+  <div style="position: relative; width: 390px; height: 219px; background: #1A1E24; flex-shrink: 0">
+    <svg width="390" height="219" viewBox="0 0 390 219" aria-hidden="true">
+      <rect width="390" height="219" fill="#1A1E24"></rect>
+      <path d="M0 120 L390 108 L390 219 L0 219 Z" fill="#20252D"></path>
+      <path d="M120 219 L180 112 L230 112 L300 219" fill="#262C35"></path>
+      <rect x="168" y="140" width="70" height="34" rx="6" fill="#39414D"></rect>
+      <circle cx="270" cy="112" r="9" fill="#39414D"></circle>
+      <path d="M258 158 Q259 124 270 121 Q281 124 282 158 Z" fill="#39414D"></path>
+    </svg>
+    <sc-if value="{{isEvents}}" hint-placeholder-val="{{ true }}">
+      <div style="position: absolute; left: {{player.boxX}}; top: 96px; width: {{player.boxW}}; height: 82px; border: 2px solid {{player.color}}; border-radius: 4px"></div>
+    </sc-if>
+    <div style="position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; align-items: center">
+      <span style="padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.6); font-size: 12px; font-weight: 600">{{player.stamp}}</span>
+      <sc-if value="{{isEvents}}" hint-placeholder-val="{{ true }}">
+        <span style="padding: 3px 8px; border-radius: 6px; background: {{player.color}}; color: #1A1206; font-size: 11px; font-weight: 700">{{player.label}}</span>
+      </sc-if>
+    </div>
+    <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex; justify-content: center; gap: 10px">
+      <button aria-label="Back 10 seconds" style="width: 44px; height: 44px; border-radius: 22px; border: none; background: rgba(0,0,0,0.6); color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"></path></svg>
+      </button>
+      <button aria-label="Pause" style="width: 44px; height: 44px; border-radius: 22px; border: none; background: rgba(0,0,0,0.6); color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
+      </button>
+      <button aria-label="Forward 10 seconds" style="width: 44px; height: 44px; border-radius: 22px; border: none; background: rgba(0,0,0,0.6); color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"></path></svg>
+      </button>
+    </div>
+  </div>
+  <div style="position: relative; height: 3px; background: #2A2E35; flex-shrink: 0">
+    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{player.progress}}; background: {{accent}}"></div>
+  </div>
+
+  <div style="padding: 12px 16px 10px">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border-radius: 10px; background: #1A1D22">
+      <button onClick="{{showEvents}}" style="height: 34px; border: none; border-radius: 8px; background: {{tabs.eventsBg}}; color: {{tabs.eventsFg}}; font: 600 14px Inter, sans-serif">Events</button>
+      <button onClick="{{showTimeline}}" style="height: 34px; border: none; border-radius: 8px; background: {{tabs.timelineBg}}; color: {{tabs.timelineFg}}; font: 600 14px Inter, sans-serif">Timeline</button>
+    </div>
+  </div>
+
+  <sc-if value="{{isEvents}}" hint-placeholder-val="{{ true }}">
+    <div style="flex: 1; padding: 0 16px 96px; display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 12px; font-weight: 600; color: #9AA3AF; letter-spacing: 0.4px; padding: 2px 4px 0">TODAY · 5 EVENTS</span>
+      <sc-for list="{{events}}" as="e" hint-placeholder-count="4">
+        <button onClick="{{e.pick}}" style="display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 12px; background: #15171B; border: 1px solid {{e.border}}; color: #F2F4F7; text-align: left; font-family: Inter, sans-serif">
+          <span style="position: relative; flex: 0 0 96px; height: 54px; border-radius: 8px; overflow: hidden; background: #1A1E24; display: block">
+            <svg width="96" height="54" viewBox="0 0 96 54" aria-hidden="true"><path d="M0 36 L96 32 L96 54 L0 54 Z" fill="#20252D"></path><path d="M30 54 L44 30 L56 30 L72 54" fill="#262C35"></path><circle cx="66" cy="22" r="4" fill="#39414D"></circle><path d="M60 40 Q61 28 66 26 Q71 28 72 40 Z" fill="#39414D"></path></svg>
+            <span style="position: absolute; bottom: 3px; right: 3px; padding: 1px 4px; border-radius: 4px; background: rgba(0,0,0,0.7); font-size: 10px; font-weight: 600">{{e.dur}}</span>
+          </span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <span style="display: flex; gap: 5px">
+              <sc-for list="{{e.labels}}" as="l" hint-placeholder-count="1">
+                <span style="padding: 2px 7px; border-radius: 5px; background: {{l.bg}}; color: #1A1206; font-size: 11px; font-weight: 700">{{l.name}}</span>
+              </sc-for>
+            </span>
+            <span style="font-size: 14px; font-weight: 600">{{e.time}}</span>
+            <span style="font-size: 12px; color: #9AA3AF">{{e.zone}}</span>
+          </span>
+          <sc-if value="{{e.playing}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size: 12px; font-weight: 600; color: {{accent}}; padding-right: 6px">Playing</span>
+          </sc-if>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isTimeline}}" hint-placeholder-val="{{ false }}">
+    <div style="position: relative; height: 370px; overflow: hidden">
+      <div style="display: flex; flex-direction: column">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="74">
+          <div style="height: 5px; display: flex; opacity: {{r.op}}">
+            <div style="position: relative; width: 64px; height: 5px">
+              <span style="position: absolute; left: 0; top: 2px; width: {{r.tick}}; height: 1px; background: #6B7480"></span>
+              <span style="position: absolute; left: 20px; top: -6px; font-size: 11px; line-height: 14px; color: #9AA3AF">{{r.label}}</span>
+            </div>
+            <div style="flex: 1; height: 5px; display: flex; align-items: center; justify-content: center; background: {{r.tint}}">
+              <span style="width: {{r.w}}; height: 3px; border-radius: 2px; background: {{r.color}}"></span>
+            </div>
+            <div style="width: 64px"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="position: absolute; left: 64px; right: 0; top: 186px; display: flex; align-items: center; gap: 6px; pointer-events: none">
+        <span style="flex: 1; height: 2px; background: {{accent}}"></span>
+        <span style="padding: 2px 6px; margin-right: 8px; border-radius: 5px; background: {{accent}}; color: #0A0B0D; font-size: 11px; font-weight: 700">14:12:40</span>
+      </div>
+      <div style="position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 8px">
+        <button aria-label="Zoom in" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; display: flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"></path></svg>
+        </button>
+        <button aria-label="Zoom out" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; display: flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3M8 11h6"></path></svg>
+        </button>
+      </div>
+    </div>
+  </sc-if>
+
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: rgba(16,18,21,0.96); border-top: 1px solid #23272E; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-top: 6px; box-sizing: border-box">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px; text-decoration: none">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"></rect><rect x="13" y="3" width="8" height="8" rx="2"></rect><rect x="3" y="13" width="8" height="8" rx="2"></rect><rect x="13" y="13" width="8" height="8" rx="2"></rect></svg>
+      <span>Live</span>
+    </a>
+    <a href="Review.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px; text-decoration: none">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <span>Review</span>
+    </a>
+    <a href="HistoryOverview.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: {{accent}}; font-size: 11px; font-weight: 600; min-height: 44px; text-decoration: none">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+      <span>History</span>
+    </a>
+    <a href="Servers.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px; text-decoration: none">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tab":{"editor":"enum","options":["events","timeline"],"default":"events"},"accent":{"editor":"color","default":"#5B9BFF","options":["#5B9BFF","#3DD6B5","#FFB547"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: null, sel: 0 };
+  }
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent ?? '#5B9BFF';
+    var tab = this.state.tab ?? this.props.tab ?? 'events';
+    var isEvents = tab === 'events';
+
+    var person = { name: 'person', bg: '#FF9F43' };
+    var car = { name: 'car', bg: '#FFD60A' };
+    var raw = [
+      { time: '14:12:31', zone: 'Zone: driveway', dur: '1:15', labels: [car, person], color: '#FFD60A', label: 'car', boxX: '160px', boxW: '96px', progress: '36%' },
+      { time: '13:40:05', zone: 'Zone: street', dur: '0:22', labels: [person], color: '#FF9F43', label: 'person', boxX: '254px', boxW: '34px', progress: '58%' },
+      { time: '11:02:48', zone: 'Zone: driveway', dur: '0:41', labels: [person], color: '#FF9F43', label: 'person', boxX: '254px', boxW: '34px', progress: '20%' },
+      { time: '08:47:10', zone: 'Zone: street', dur: '0:55', labels: [car], color: '#FFD60A', label: 'car', boxX: '160px', boxW: '96px', progress: '72%' }
+    ];
+    var sel = this.state.sel;
+    var events = raw.map(function (e, i) {
+      return Object.assign({}, e, {
+        playing: i === sel,
+        border: i === sel ? accent : '#23272E',
+        pick: function () { self.setState({ sel: i }); }
+      });
+    });
+    var cur = raw[sel];
+    var player = isEvents
+      ? { stamp: 'Today · ' + cur.time, label: cur.label, color: cur.color, boxX: cur.boxX, boxW: cur.boxW, progress: cur.progress }
+      : { stamp: 'Today · 14:12:40', label: '', color: accent, boxX: '0px', boxW: '0px', progress: '59%' };
+
+    // Timeline: one row per minute, newest at the top, playhead at 14:12 (row 37).
+    var top = 14 * 60 + 49;
+    var segs = [
+      { from: 14 * 60 + 11, to: 14 * 60 + 13, color: '#FFD60A', tint: 'rgba(255,214,10,0.12)' },
+      { from: 13 * 60 + 39, to: 13 * 60 + 40, color: '#FF9F43', tint: 'rgba(255,159,67,0.14)' }
+    ];
+    var bursts = [[14 * 60 + 12, 9, 64], [13 * 60 + 40, 4, 52], [14 * 60 + 27, 6, 34], [14 * 60 + 41, 3, 22], [13 * 60 + 55, 5, 28]];
+    var rows = [];
+    for (var i = 0; i < 74; i++) {
+      var m = top - i;
+      var noise = Math.abs(Math.sin(m * 12.9898) * 43758.5453) % 1;
+      var w = 2 + noise * 8;
+      bursts.forEach(function (b) {
+        var d = Math.abs(m - b[0]);
+        if (d <= b[1]) w = Math.max(w, b[2] * (1 - d / (b[1] + 1)) * (0.7 + noise * 0.3));
+      });
+      var seg = segs.filter(function (s) { return m >= s.from && m <= s.to; })[0];
+      var edge = Math.min(i, 73 - i);
+      var hh = Math.floor(m / 60), mm = m % 60;
+      rows.push({
+        w: Math.round(w * 2) + 'px',
+        color: seg ? seg.color : '#E5B33E',
+        tint: seg ? seg.tint : 'transparent',
+        tick: mm % 15 === 0 ? '14px' : (mm % 5 === 0 ? '7px' : '0px'),
+        label: mm % 15 === 0 ? (hh + ':' + (mm < 10 ? '0' : '') + mm) : '',
+        op: edge < 8 ? (0.25 + edge * 0.09).toFixed(2) : '1'
+      });
+    }
+
+    return {
+      accent: accent,
+      isEvents: isEvents,
+      isTimeline: !isEvents,
+      tabs: {
+        eventsBg: isEvents ? '#3A3F47' : 'transparent',
+        eventsFg: isEvents ? '#F2F4F7' : '#C9CFD6',
+        timelineBg: isEvents ? 'transparent' : '#3A3F47',
+        timelineFg: isEvents ? '#C9CFD6' : '#F2F4F7'
+      },
+      showEvents: function () { self.setState({ tab: 'events' }); },
+      showTimeline: function () { self.setState({ tab: 'timeline' }); },
+      player: player,
+      events: events,
+      rows: rows
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0A0B0D; color: #F2F4F7; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+  <div style="padding: 60px 20px 10px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.5px">Review</h1>
+      <button style="height: 44px; border: none; background: transparent; color: {{accent}}; font: 500 15px Inter, sans-serif; padding: 0">Mark all reviewed</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 3px; border-radius: 10px; background: #1A1D22">
+      <button style="height: 34px; border: none; border-radius: 8px; background: #3A3F47; color: #F2F4F7; font: 600 14px Inter, sans-serif">Alerts · 5</button>
+      <button style="height: 34px; border: none; border-radius: 8px; background: transparent; color: #C9CFD6; font: 500 14px Inter, sans-serif">Detections · 7</button>
+      <button style="height: 34px; border: none; border-radius: 8px; background: transparent; color: #C9CFD6; font: 500 14px Inter, sans-serif">Motion</button>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; font: 500 13px Inter, sans-serif; display: flex; align-items: center; gap: 6px">All servers
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; font: 500 13px Inter, sans-serif; display: flex; align-items: center; gap: 6px">Cameras
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; font: 500 13px Inter, sans-serif; display: flex; align-items: center; gap: 6px">Labels
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid {{accent}}; background: #15171B; color: {{accent}}; font: 600 13px Inter, sans-serif">Unreviewed</button>
+    </div>
+  </div>
+
+  <div style="flex: 1; padding: 4px 16px 100px; display: flex; flex-direction: column; gap: 8px">
+    <span style="font-size: 12px; font-weight: 600; color: #9AA3AF; letter-spacing: 0.4px; padding: 6px 4px 0">TODAY</span>
+    <sc-for list="{{items}}" as="it" hint-placeholder-count="5">
+      <a href="Event.dc.html" style="display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 12px; background: #15171B; border: 1px solid #23272E">
+        <div style="position: relative; flex: 0 0 112px; height: 64px; border-radius: 8px; overflow: hidden; background: #1A1E24">
+          <svg width="112" height="64" viewBox="0 0 112 64" aria-hidden="true"><path d="M0 42 L112 37 L112 64 L0 64 Z" fill="#20252D"></path><path d="M10 42 V22 L28 12 L46 22 V40" fill="none" stroke="#2C333D" stroke-width="2"></path><circle cx="72" cy="26" r="5" fill="#39414D"></circle><path d="M64 48 Q65 33 72 31 Q79 33 80 48 Z" fill="#39414D"></path></svg>
+          <span style="position: absolute; bottom: 4px; right: 4px; padding: 1px 5px; border-radius: 4px; background: rgba(0,0,0,0.7); font-size: 10px; font-weight: 600">{{it.dur}}</span>
+        </div>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px">
+          <div style="display: flex; gap: 5px">
+            <sc-for list="{{it.labels}}" as="l" hint-placeholder-count="1">
+              <span style="padding: 2px 7px; border-radius: 5px; background: {{l.bg}}; color: #1A1206; font-size: 11px; font-weight: 700">{{l.name}}</span>
+            </sc-for>
+          </div>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0">
+            <span style="width: 18px; height: 18px; border-radius: 5px; background: {{it.tint}}; color: #0A0B0D; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0" aria-label="{{it.server}}">{{it.initial}}</span>
+            <span style="font-size: 15px; font-weight: 600">{{it.cam}}</span>
+          </span>
+          <span style="font-size: 12px; color: #9AA3AF">{{it.meta}}</span>
+        </div>
+        <sc-if value="{{it.unread}}" hint-placeholder-val="{{ true }}">
+          <span aria-label="Unreviewed" style="width: 10px; height: 10px; border-radius: 5px; background: {{accent}}; margin-right: 4px"></span>
+        </sc-if>
+      </a>
+    </sc-for>
+  </div>
+
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: rgba(16,18,21,0.96); border-top: 1px solid #23272E; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-top: 6px; box-sizing: border-box">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"></rect><rect x="13" y="3" width="8" height="8" rx="2"></rect><rect x="3" y="13" width="8" height="8" rx="2"></rect><rect x="13" y="13" width="8" height="8" rx="2"></rect></svg>
+      <span>Live</span>
+    </a>
+    <a href="Review.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: {{accent}}; font-size: 11px; font-weight: 600; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <span>Review</span>
+    </a>
+    <a href="HistoryOverview.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+      <span>History</span>
+    </a>
+    <a href="Servers.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5B9BFF","options":["#5B9BFF","#3DD6B5","#FFB547"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var person = { name: 'person', bg: '#FF9F43' };
+    var car = { name: 'car', bg: '#FFD60A' };
+    var dog = { name: 'dog', bg: '#64D2FF' };
+    var pkg = { name: 'package', bg: '#5B9BFF' };
+    return {
+      accent: this.props.accent ?? '#5B9BFF',
+      items: [
+        { cam: 'Front door', server: 'Home NVR', initial: 'H', tint: '#5B9BFF', meta: 'Home NVR · 14:31 · porch', dur: '0:42', labels: [person], unread: true },
+        { cam: 'Entrance', server: 'Office', initial: 'O', tint: '#3DD6B5', meta: 'Office · 14:20 · lobby', dur: '0:33', labels: [person], unread: true },
+        { cam: 'Driveway', server: 'Home NVR', initial: 'H', tint: '#5B9BFF', meta: 'Home NVR · 14:12 · driveway', dur: '1:15', labels: [car, person], unread: true },
+        { cam: 'Backyard', server: 'Home NVR', initial: 'H', tint: '#5B9BFF', meta: 'Home NVR · 13:40 · lawn', dur: '0:28', labels: [dog], unread: false },
+        { cam: 'Parking', server: 'Office', initial: 'O', tint: '#3DD6B5', meta: 'Office · 11:02 · lot', dur: '0:55', labels: [car], unread: false }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Camera live view</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0A0B0D; color: #F2F4F7; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <div style="padding: 52px 8px 8px; display: flex; align-items: center; justify-content: space-between">
+    <a href="Main.dc.html" aria-label="Back to Live" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: {{accent}}">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 2px">
+      <span style="font-size: 17px; font-weight: 600">Front door</span>
+      <span style="font-size: 12px; color: #9AA3AF">Home NVR · 2560 × 1440 · WebRTC</span>
+    </div>
+    <button aria-label="More options" style="width: 44px; height: 44px; border: none; background: transparent; color: #F2F4F7; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg>
+    </button>
+  </div>
+
+  <div style="position: relative; width: 390px; height: 219px; background: #1A1E24">
+    <svg width="390" height="219" viewBox="0 0 390 219" aria-hidden="true">
+      <rect width="390" height="219" fill="#1A1E24"></rect>
+      <path d="M0 140 L390 124 L390 219 L0 219 Z" fill="#20252D"></path>
+      <path d="M40 140 V70 L110 30 L180 70 V136" fill="none" stroke="#2C333D" stroke-width="3"></path>
+      <rect x="92" y="88" width="36" height="50" fill="none" stroke="#2C333D" stroke-width="3"></rect>
+      <path d="M250 219 L290 130 L320 130 L370 219" fill="#242A33"></path>
+      <circle cx="226" cy="98" r="11" fill="#39414D"></circle>
+      <path d="M210 160 Q212 116 226 112 Q240 116 242 160 Z" fill="#39414D"></path>
+    </svg>
+    <div style="position: absolute; left: 200px; top: 78px; width: 54px; height: 90px; border: 2px solid #FF9F43; border-radius: 4px"></div>
+    <div style="position: absolute; left: 200px; top: 58px; padding: 2px 6px; border-radius: 4px; background: #FF9F43; color: #1A1206; font-size: 11px; font-weight: 700">person 87%</div>
+    <div style="position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.6); font-size: 11px; font-weight: 600">
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: #FF453A"></span>
+      <span>REC</span>
+    </div>
+    <div style="position: absolute; top: 10px; right: 10px; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.6); font-size: 11px; font-weight: 600">14:32:07</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 12px 12px 4px">
+    <sc-for list="{{controls}}" as="c" hint-placeholder-count="5">
+      <button aria-label="{{c.label}}" style="display: flex; flex-direction: column; align-items: center; gap: 6px; border: none; background: transparent; color: #F2F4F7; font: 500 11px Inter, sans-serif; padding: 4px 0">
+        <span style="width: 48px; height: 48px; border-radius: 24px; background: #1A1D22; border: 1px solid #2A2E35; display: flex; align-items: center; justify-content: center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.d}}"></path></svg>
+        </span>
+        <span style="color: #C9CFD6">{{c.label}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <div style="padding: 14px 16px 0; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="margin: 0; font-size: 20px; font-weight: 700">Today</h2>
+      <a href="History.dc.html" style="font-size: 15px; color: {{accent}}; font-weight: 500; min-height: 44px; display: flex; align-items: center">Playback</a>
+    </div>
+    <div style="display: flex; gap: 10px; overflow: hidden">
+      <sc-for list="{{events}}" as="e" hint-placeholder-count="3">
+        <a href="History.dc.html" style="flex: 0 0 132px; display: flex; flex-direction: column; gap: 6px">
+          <div style="position: relative; height: 80px; border-radius: 10px; background: #1A1E24; border: 1px solid #23272E; overflow: hidden">
+            <svg width="132" height="80" viewBox="0 0 132 80" aria-hidden="true"><path d="M0 52 L132 46 L132 80 L0 80 Z" fill="#20252D"></path><circle cx="70" cy="34" r="6" fill="#39414D"></circle><path d="M60 60 Q61 42 70 40 Q79 42 80 60 Z" fill="#39414D"></path></svg>
+            <span style="position: absolute; bottom: 6px; left: 6px; padding: 2px 6px; border-radius: 5px; background: {{e.color}}; color: #1A1206; font-size: 10px; font-weight: 700">{{e.label}}</span>
+          </div>
+          <span style="font-size: 12px; color: #9AA3AF">{{e.time}}</span>
+        </a>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5B9BFF","options":["#5B9BFF","#3DD6B5","#FFB547"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      accent: this.props.accent ?? '#5B9BFF',
+      controls: [
+        { label: 'Audio', d: 'M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14' },
+        { label: 'Talk', d: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3' },
+        { label: 'Snapshot', d: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+        { label: 'PTZ', d: 'M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3' },
+        { label: 'Fullscreen', d: 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3' }
+      ],
+      events: [
+        { label: 'person', color: '#FF9F43', time: '14:31' },
+        { label: 'package', color: '#5B9BFF', time: '11:02' },
+        { label: 'person', color: '#FF9F43', time: '08:47' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>History overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0A0B0D; color: #F2F4F7; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+  <div style="padding: 60px 20px 10px; display: flex; align-items: center; justify-content: space-between">
+    <h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.5px">History</h1>
+    <button aria-label="Pick date" style="height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; font: 500 14px Inter, sans-serif; display: flex; align-items: center; gap: 6px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      Today
+    </button>
+  </div>
+
+  <div style="flex: 1; padding: 0 16px 96px; display: flex; flex-direction: column; gap: 6px">
+    <sc-for list="{{servers}}" as="s" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 10px">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 0 4px">
+          <span style="width: 20px; height: 20px; border-radius: 6px; background: {{s.tint}}; color: #0A0B0D; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">{{s.initial}}</span>
+          <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.4px; color: #C9CFD6">{{s.name}}</span>
+          <span style="font-size: 12px; color: #9AA3AF">{{s.meta}}</span>
+        </div>
+        <sc-for list="{{s.cams}}" as="c" hint-placeholder-count="3">
+          <a href="History.dc.html" style="display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #15171B; border: 1px solid #23272E">
+            <span style="display: flex; align-items: center; gap: 8px">
+              <span style="flex: 1; font-size: 15px; font-weight: 600">{{c.name}}</span>
+              <span style="font-size: 12px; color: #9AA3AF">{{c.count}}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7480" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+            </span>
+            <span style="display: flex; align-items: center; gap: 1px; height: 26px">
+              <sc-for list="{{c.bars}}" as="b" hint-placeholder-count="72">
+                <span style="flex: 1; height: {{b.h}}; border-radius: 1px; background: {{b.color}}"></span>
+              </sc-for>
+            </span>
+            <span style="display: flex; justify-content: space-between; font-size: 10px; color: #9AA3AF">
+              <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>Now</span>
+            </span>
+          </a>
+        </sc-for>
+        <sc-if value="{{s.offline}}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 12px; border-radius: 12px; border: 1px dashed #2A2E35; font-size: 13px; color: #9AA3AF">Offline since 2 days ago. Recordings are not available.</div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: rgba(16,18,21,0.96); border-top: 1px solid #23272E; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-top: 6px; box-sizing: border-box">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"></rect><rect x="13" y="3" width="8" height="8" rx="2"></rect><rect x="3" y="13" width="8" height="8" rx="2"></rect><rect x="13" y="13" width="8" height="8" rx="2"></rect></svg>
+      <span>Live</span>
+    </a>
+    <a href="Review.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <span>Review</span>
+    </a>
+    <a href="HistoryOverview.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: {{accent}}; font-size: 11px; font-weight: 600; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+      <span>History</span>
+    </a>
+    <a href="Servers.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; color: #9AA3AF; font-size: 11px; font-weight: 500; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5B9BFF","options":["#5B9BFF","#3DD6B5","#FFB547"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // 72 buckets of 20 minutes from 00:00 to now (about 14:20 shown filled, rest empty).
+    var strip = function (seed, events) {
+      var bars = [];
+      for (var i = 0; i < 72; i++) {
+        if (i > 43) { bars.push({ h: '2px', color: '#23272E' }); continue; }
+        var n = Math.abs(Math.sin((i + 1) * seed * 12.9898) * 43758.5453) % 1;
+        var day = i > 20 && i < 42 ? 1 : 0.35;
+        var h = 2 + n * 10 * day;
+        var color = '#E5B33E';
+        events.forEach(function (e) {
+          if (i === e[0]) { h = e[1]; color = e[2]; }
+        });
+        bars.push({ h: Math.round(h * 2) + 'px', color: color });
+      }
+      return bars;
+    };
+    var Y = '#FFD60A', O = '#FF9F43', B = '#64D2FF';
+    return {
+      accent: this.props.accent ?? '#5B9BFF',
+      servers: [
+        { name: 'HOME NVR', meta: '6 cameras', initial: 'H', tint: '#5B9BFF', offline: false, cams: [
+          { name: 'Front door', count: '8 events', bars: strip(1.3, [[26, 13, O], [33, 11, O], [43, 12, O]]) },
+          { name: 'Driveway', count: '4 events', bars: strip(2.1, [[26, 12, Y], [33, 10, O], [41, 13, O], [42, 13, Y]]) },
+          { name: 'Backyard', count: '1 event', bars: strip(3.7, [[41, 11, B]]) },
+          { name: 'Garage', count: '2 events', bars: strip(4.4, [[26, 12, O], [30, 9, Y]]) }
+        ] },
+        { name: 'OFFICE', meta: '4 cameras', initial: 'O', tint: '#3DD6B5', offline: false, cams: [
+          { name: 'Entrance', count: '12 events', bars: strip(5.9, [[25, 12, O], [27, 13, O], [37, 10, O], [43, 12, O]]) }
+        ] },
+        { name: 'CABIN', meta: 'Offline', initial: 'C', tint: '#FFB547', offline: true, cams: [] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

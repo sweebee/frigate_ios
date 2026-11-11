@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connect to Frigate</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+input::placeholder{color:#7C8591}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0A0B0D; color: #F2F4F7; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; padding: 52px 20px 34px; gap: 20px">
+  <a href="Servers.dc.html" style="height: 44px; display: flex; align-items: center; gap: 2px; color: {{accent}}; font-size: 17px; margin-left: -12px">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    <span>Servers</span>
+  </a>
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <h1 style="margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.4px">Add server</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 1.45; color: #9AA3AF">Add another Frigate server. Use the authenticated port (8971) when connecting from outside its network.</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <span style="font-size: 12px; font-weight: 600; color: #9AA3AF; letter-spacing: 0.4px">FOUND ON YOUR NETWORK</span>
+    <button style="display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; border: 1px solid {{accent}}; background: #15171B; color: #F2F4F7; text-align: left; font-family: Inter, sans-serif">
+      <span style="width: 8px; height: 8px; border-radius: 4px; background: #34C759"></span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 600">frigate.local</span>
+        <span style="font-size: 13px; color: #9AA3AF">192.168.1.20:8971 · v0.16</span>
+      </span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>
+    </button>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="name" style="font-size: 13px; font-weight: 600; color: #C9CFD6">Name</label>
+      <input id="name" value="Office" style="height: 48px; border-radius: 12px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; padding: 0 14px; font: 400 16px Inter, sans-serif; outline: none">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="url" style="font-size: 13px; font-weight: 600; color: #C9CFD6">Server URL</label>
+      <input id="url" value="https://frigate.local:8971" style="height: 48px; border-radius: 12px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; padding: 0 14px; font: 400 16px Inter, sans-serif; outline: none">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="user" style="font-size: 13px; font-weight: 600; color: #C9CFD6">Username</label>
+      <input id="user" value="admin" style="height: 48px; border-radius: 12px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; padding: 0 14px; font: 400 16px Inter, sans-serif; outline: none">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="pw" style="font-size: 13px; font-weight: 600; color: #C9CFD6">Password</label>
+      <input id="pw" type="password" value="password" style="height: 48px; border-radius: 12px; border: 1px solid #2A2E35; background: #15171B; color: #F2F4F7; padding: 0 14px; font: 400 16px Inter, sans-serif; outline: none">
+    </div>
+    <label style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px">
+      <span style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 500">Remote address</span>
+        <span style="font-size: 13px; color: #9AA3AF">Fallback when not on home Wi-Fi</span>
+      </span>
+      <span style="width: 51px; height: 31px; border-radius: 16px; background: #34C759; position: relative; flex-shrink: 0">
+        <span style="position: absolute; top: 2px; right: 2px; width: 27px; height: 27px; border-radius: 14px; background: #FFFFFF"></span>
+      </span>
+    </label>
+  </div>
+
+  <div style="flex: 1"></div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <a href="Servers.dc.html" style="height: 52px; border-radius: 14px; background: {{accent}}; color: #0A0B0D; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600">Test and save</a>
+    <span style="text-align: center; font-size: 13px; color: #9AA3AF">Credentials are stored in the iOS Keychain</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5B9BFF","options":["#5B9BFF","#3DD6B5","#FFB547"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#5B9BFF' };
+  }
+}
+</script>
+</body>
+</html>
