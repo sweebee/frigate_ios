@@ -100,6 +100,7 @@ struct LivePlayerView: UIViewRepresentable {
             "mse": client.liveSocketURL(stream: stream, mode: "mse").absoluteString,
             "webrtc": client.liveSocketURL(stream: stream, mode: "webrtc").absoluteString,
             "mjpeg": client.mjpegURL(camera: camera, height: 720).absoluteString,
+            "snapshot": client.latestImageURL(camera: camera, height: 720).absoluteString,
             "modes": modes,
             "muted": state.muted,
         ]
@@ -153,6 +154,7 @@ const P = __PARAMS__;
 const video = document.getElementById('v');
 video.muted = P.muted;
 let ws = null, pc = null, img = null, timer = null, stopped = false;
+let snapTimer = null, retryTimer = null, snapFails = 0;
 function post(o){ try { window.webkit.messageHandlers.player.postMessage(o); } catch(e){} }
 function setMuted(m){ video.muted = m; if (!m) video.play().catch(()=>{}); }
 function stopAll(){
@@ -161,7 +163,14 @@ function stopAll(){
   if (pc) { try { pc.close(); } catch(e){} pc = null; }
   if (timer) clearTimeout(timer);
   video.removeAttribute('src'); video.srcObject = null;
-  if (img) { img.src = ''; img.remove(); img = null; }
+  stopSnapshots();
+}
+// Stops the still-image fallback. Called once real video plays, so the last frame stays
+// visible while a retry connects.
+function stopSnapshots(){
+  if (snapTimer) { clearTimeout(snapTimer); snapTimer = null; }
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+  if (img) { img.remove(); img = null; }
 }
 function cleanupTransport(){
   if (ws) { ws.onclose = null; try { ws.close(); } catch(e){} ws = null; }
@@ -185,6 +194,7 @@ let playingNow = false;
 function markPlaying(mode){
   if (timer) { clearTimeout(timer); timer = null; }
   playingNow = true;
+  if (mode !== 'mjpeg') stopSnapshots();
   post({status:'Live', mode: mode, playing:true, width: video.videoWidth || (img ? img.naturalWidth : 0), height: video.videoHeight || (img ? img.naturalHeight : 0)});
 }
 video.addEventListener('playing', () => markPlaying(P.modes[idx]));
@@ -289,13 +299,39 @@ function startWebRTC(){
   ws.onerror = () => next('websocket error');
 }
 
+// Last resort: refresh a still image every second. A failed request keeps the previous
+// frame, so a flaky connection never shows a broken image.
 function startMJPEG(){
+  if (timer) { clearTimeout(timer); timer = null; }
+  if (img) {
+    // Still showing snapshots from before a retry: keep them and try video again later.
+    playingNow = true;
+    post({status: 'Live', mode: 'mjpeg', playing: true});
+    if (P.modes.length > 1) retryTimer = setTimeout(() => { if (!stopped) { idx = -1; playingNow = false; next(); } }, 30000);
+    return;
+  }
   img = document.createElement('img');
-  img.onload = () => markPlaying('mjpeg');
-  img.onerror = () => next('mjpeg failed');
-  img.src = P.mjpeg;
   document.body.appendChild(img);
   post({audio: false});
+  const tick = async () => {
+    if (stopped || !img) return;
+    try {
+      const r = await fetch(P.snapshot + (P.snapshot.includes('?') ? '&' : '?') + 't=' + Date.now(), {cache: 'no-store', credentials: 'include'});
+      if (!r.ok) throw new Error('http ' + r.status);
+      const url = URL.createObjectURL(await r.blob());
+      const old = img.src;
+      img.onload = () => { if (old.startsWith('blob:')) URL.revokeObjectURL(old); if (!playingNow) markPlaying('mjpeg'); };
+      img.src = url;
+      snapFails = 0;
+    } catch (e) {
+      snapFails++;
+      if (!playingNow && snapFails >= 5) { next('snapshots failed'); return; }
+    }
+    snapTimer = setTimeout(tick, 1000);
+  };
+  tick();
+  // Keep trying to get real video back.
+  if (P.modes.length > 1) retryTimer = setTimeout(() => { if (!stopped) { idx = -1; playingNow = false; next(); } }, 30000);
 }
 next();
 </script>
