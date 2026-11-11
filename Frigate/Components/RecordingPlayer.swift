@@ -22,13 +22,15 @@ final class RecordingPlayer {
     private var stallObserver: NSObjectProtocol?
     private(set) var url: URL?
     private(set) var pendingStart: Double?
+    /// Seeks still in flight; until they finish the player reports its old position.
+    private var seeksInFlight = 0
 
     init() {
         player.automaticallyWaitsToMinimizeStalling = true
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self] t in
             MainActor.assumeIsolated {
                 // While a new item is still moving to its start position it reports 0; ignore that.
-                guard let self, !self.isScrubbing, self.pendingStart == nil else { return }
+                guard let self, !self.isScrubbing, self.pendingStart == nil, self.seeksInFlight == 0 else { return }
                 self.currentTime = t.seconds.isFinite ? t.seconds : 0
                 if let d = self.player.currentItem?.duration.seconds, d.isFinite { self.duration = d }
             }
@@ -114,16 +116,20 @@ final class RecordingPlayer {
     func seek(to seconds: Double, precise: Bool = false) {
         let t = max(0, duration > 0 ? min(seconds, duration) : seconds)
         currentTime = t
+        seeksInFlight += 1
         let tol = precise ? CMTime.zero : CMTime(seconds: 0.5, preferredTimescale: 600)
         player.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: tol, toleranceAfter: tol) { [weak self] done in
-            // Report where the player actually landed; the periodic observer is silent while paused.
             Task { @MainActor in
-                guard let self, done, !self.isScrubbing else { return }
+                guard let self else { return }
+                self.seeksInFlight = max(0, self.seeksInFlight - 1)
+                // Report where the player landed once the last seek is done.
+                guard done, self.seeksInFlight == 0, !self.isScrubbing else { return }
                 let now = self.player.currentTime().seconds
                 if now.isFinite { self.currentTime = now }
             }
         }
     }
+
 
     func skip(_ delta: Double) { seek(to: currentTime + delta) }
 
