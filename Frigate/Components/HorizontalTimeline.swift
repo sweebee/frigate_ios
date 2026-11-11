@@ -11,7 +11,8 @@ struct HorizontalTimeline: View {
     let reviews: [ReviewItem]
     let map: RecordingMap
     let onScrub: (Double) -> Void
-    let onScrubEnd: (Double) -> Void
+    /// Release time plus a snap window in seconds (about 24 points at the current zoom).
+    let onScrubEnd: (Double, Double) -> Void
     /// Called on any touch so the surrounding overlay can stay visible.
     var onInteract: () -> Void = {}
 
@@ -38,7 +39,7 @@ struct HorizontalTimeline: View {
                 .onEnded { v in
                     let base = dragStartTime ?? wallTime
                     dragStartTime = nil
-                    onScrubEnd(clamp(base - Double(v.translation.width) * scale))
+                    onScrubEnd(clamp(base - Double(v.translation.width) * scale), scale * 24)
                 })
             .simultaneousGesture(MagnifyGesture()
                 .onChanged { v in
@@ -56,7 +57,7 @@ struct HorizontalTimeline: View {
             .onPreferenceChange(WidthKey.self) { width = $0 }
             .onTapGesture { p in
                 onInteract()
-                onScrubEnd(clamp(wallTime + Double(p.x - width / 2) * scale))
+                onScrubEnd(clamp(wallTime + Double(p.x - width / 2) * scale), scale * 24)
             }
     }
 

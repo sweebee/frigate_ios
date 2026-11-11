@@ -111,7 +111,8 @@ struct PlaybackView: View {
     private var playerWallTime: Double { chunkMap.isEmpty ? dayStart : chunkMap.wallTime(for: player.currentTime) }
 
     /// Ends a scrub: keep showing `t` until the player reports a position near it.
-    private func finishScrub(at t: Double) {
+    private func finishScrub(at raw: Double, snap: Double = 0) {
+        let t = snapToRecording(raw, within: snap)
         heldTime = t
         scrubTime = nil
         seek(toWall: t, autoplay: player.wantsToPlay)
@@ -183,7 +184,7 @@ struct PlaybackView: View {
                 PlaybackTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion, reviews: visibleReviews,
                                  map: map, isFollowing: scrubTime == nil,
                                  onScrub: { heldTime = nil; scrubTime = $0 },
-                                 onScrubEnd: { t in finishScrub(at: t) })
+                                 onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) })
             }
         }
         .screenBackground()
@@ -547,6 +548,19 @@ struct PlaybackView: View {
         return recorded > 0 ? FrigateFormat.duration(recorded) : FrigateFormat.reviewDuration(r)
     }
 
+    /// Released just beside a recording: move onto its nearest edge instead of showing a gap.
+    private func snapToRecording(_ t: Double, within window: Double) -> Double {
+        guard window > 0, !map.isEmpty, !map.hasRecording(at: t) else { return t }
+        var best: (distance: Double, time: Double)?
+        for s in map.spans {
+            for (edge, target) in [(s.wallStart, s.wallStart), (s.wallEnd, s.wallEnd - 1)] {
+                let d = abs(edge - t)
+                if d <= window, d < (best?.distance ?? .infinity) { best = (d, target) }
+            }
+        }
+        return best?.time ?? t
+    }
+
     /// Play/pause. On a gap, play continues from the next recording.
     private func togglePlay() {
         if let gap = gapTime {
@@ -605,7 +619,8 @@ struct PlaybackTimeline: View {
     let map: RecordingMap
     let isFollowing: Bool
     let onScrub: (Double) -> Void
-    let onScrubEnd: (Double) -> Void
+    /// Release time plus a snap window in seconds (about 24 points at the current zoom).
+    let onScrubEnd: (Double, Double) -> Void
 
     /// Seconds per row.
     @State private var zoomIndex = 2
@@ -631,7 +646,7 @@ struct PlaybackTimeline: View {
                         .onEnded { v in
                             let base = dragStartTime ?? wallTime
                             dragStartTime = nil
-                            onScrubEnd(clamp(base + Double(v.translation.height) * secondsPerPoint))
+                            onScrubEnd(clamp(base + Double(v.translation.height) * secondsPerPoint), secondsPerPoint * 24)
                         })
 
                 // Playhead
@@ -871,8 +886,8 @@ extension PlaybackView {
                 HorizontalTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion,
                                    reviews: visibleReviews, map: map,
                                    onScrub: { heldTime = nil; scrubTime = $0 },
-                                   onScrubEnd: { t in
-                                       finishScrub(at: t)
+                                   onScrubEnd: { t, snap in
+                                       finishScrub(at: t, snap: snap)
                                        keepOverlay()
                                    },
                                    onInteract: keepOverlay,
