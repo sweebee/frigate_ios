@@ -8,6 +8,8 @@ struct CameraView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var overlayVisible = true
     @State private var overlayToken = 0
+    /// A menu in the overlay is open; the overlay must not hide underneath it.
+    @State private var menuOpen = false
     @State private var player = LivePlayerState()
     @State private var reviews: [ReviewItem] = []
     @State private var loadingReviews = true
@@ -232,7 +234,7 @@ struct CameraView: View {
                             .font(.system(size: 13, weight: .semibold).monospacedDigit())
                             .padding(.horizontal, 10).padding(.vertical, 5)
                             .background(.black.opacity(0.55), in: Capsule())
-                        moreMenu
+                        moreMenu.simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                     }
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 8)
@@ -284,15 +286,21 @@ struct CameraView: View {
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .onChange(of: player.stream) { _, _ in menuOpen = false; keepOverlay() }
+        .onChange(of: player.preferred) { _, _ in menuOpen = false; keepOverlay() }
+        .onChange(of: player.reloadToken) { _, _ in menuOpen = false; keepOverlay() }
         .task(id: overlayToken) {
             // Hide the overlay after 4 seconds without touches.
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled, !showPTZ else { return }
+            // Keep the overlay while one of its menus is open; check again later.
+            if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
     }
 
     private func toggleOverlay() {
+        menuOpen = false
         withAnimation(.easeOut(duration: 0.2)) { overlayVisible.toggle() }
         overlayToken += 1
     }

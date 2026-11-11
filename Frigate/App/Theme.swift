@@ -263,3 +263,23 @@ struct ClockLabel: View {
         }
     }
 }
+
+/// Whether a context menu (SwiftUI `Menu`) is currently shown anywhere in the app.
+/// SwiftUI gives no callback for that; the presented menu lives in its own container view.
+enum MenuPresence {
+    @MainActor static var isShowing: Bool {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let ws = scene as? UIWindowScene else { continue }
+            for window in ws.windows where !window.isHidden {
+                if contains(window, depth: 0) { return true }
+            }
+        }
+        return false
+    }
+
+    @MainActor private static func contains(_ view: UIView, depth: Int) -> Bool {
+        if depth > 6 { return false }
+        if String(describing: type(of: view)).contains("ContextMenu") { return true }
+        return view.subviews.contains { contains($0, depth: depth + 1) }
+    }
+}

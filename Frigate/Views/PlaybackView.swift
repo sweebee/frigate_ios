@@ -62,6 +62,11 @@ struct PlaybackView: View {
     @State private var overlayVisible = true
     @State private var showEventsPanel = false
     @State private var overlayToken = 0
+    /// A menu in the overlay is open; the overlay must not hide underneath it.
+    @State private var menuOpen = false
+    /// Where the user scrubbed to, shown until the player has actually arrived there,
+    /// so the timeline does not jump back while a seek or hour reload is in progress.
+    @State private var heldTime: Double?
     @State private var timelineScale: Double = 2
     @State private var camera: String
     @State private var day: Date
@@ -100,7 +105,23 @@ struct PlaybackView: View {
     private var dayEnd: Double { min(Calendar.current.date(byAdding: .day, value: 1, to: day)!.timeIntervalSince1970, Date().timeIntervalSince1970) }
 
     /// Wall-clock time at the playhead.
-    private var wallTime: Double { scrubTime ?? (chunkMap.isEmpty ? dayStart : chunkMap.wallTime(for: player.currentTime)) }
+    private var wallTime: Double { scrubTime ?? heldTime ?? playerWallTime }
+    private var playerWallTime: Double { chunkMap.isEmpty ? dayStart : chunkMap.wallTime(for: player.currentTime) }
+
+    /// Ends a scrub: keep showing `t` until the player reports a position near it.
+    private func finishScrub(at t: Double) {
+        heldTime = t
+        scrubTime = nil
+        seek(toWall: t, autoplay: player.wantsToPlay)
+        Task {
+            for _ in 0..<40 {
+                try? await Task.sleep(for: .milliseconds(150))
+                if heldTime != t { return }
+                if abs(playerWallTime - t) < 1.5 { break }
+            }
+            if heldTime == t { heldTime = nil }
+        }
+    }
 
     /// Review items that pass the type, label and zone filters.
     private var visibleReviews: [ReviewItem] { reviews.filter(filter.matches) }
@@ -159,11 +180,8 @@ struct PlaybackView: View {
             case .timeline:
                 PlaybackTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion, reviews: visibleReviews,
                                  map: map, isFollowing: scrubTime == nil,
-                                 onScrub: { scrubTime = $0 },
-                                 onScrubEnd: { t in
-                                     scrubTime = nil
-                                     seek(toWall: t, autoplay: player.wantsToPlay)
-                                 })
+                                 onScrub: { heldTime = nil; scrubTime = $0 },
+                                 onScrubEnd: { t in finishScrub(at: t) })
             }
         }
         .screenBackground()
@@ -713,15 +731,21 @@ extension PlaybackView {
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .onChange(of: player.rate) { _, _ in menuOpen = false; keepOverlay() }
+        .onChange(of: camera) { _, _ in menuOpen = false; keepOverlay() }
+        .onChange(of: exporter.isWorking) { _, _ in menuOpen = false; keepOverlay() }
         .task(id: overlayToken) {
             // Auto-hide while playing.
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled, player.wantsToPlay, !showEventsPanel, scrubTime == nil else { return }
+            // Keep the overlay while one of its menus is open; check again later.
+            if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
     }
 
     private func toggleOverlay() {
+        menuOpen = false
         withAnimation(.easeOut(duration: 0.2)) {
             if showEventsPanel { showEventsPanel = false; return }
             overlayVisible.toggle()
@@ -740,6 +764,7 @@ extension PlaybackView {
                 }
                 .accessibilityLabel("Back")
                 Stable(key: [camera, conn?.server.name ?? ""] + (conn?.cameras.map(\.name) ?? [])) { cameraMenu }.stable()
+                    .simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                 Spacer()
                 Text("\(FrigateFormat.dayTitle(Date(timeIntervalSince1970: wallTime))) · \(FrigateFormat.time(Date(timeIntervalSince1970: wallTime), seconds: true))")
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())
@@ -771,7 +796,9 @@ extension PlaybackView {
                             keepOverlay()
                         }
                         saveMenu.scaleEffect(44 / 36)
+                            .simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                         speedMenu
+                            .simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                     }
                     .padding(.trailing, 12)
                 }
@@ -782,10 +809,9 @@ extension PlaybackView {
             ZStack(alignment: .top) {
                 HorizontalTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion,
                                    reviews: visibleReviews, map: map,
-                                   onScrub: { scrubTime = $0 },
+                                   onScrub: { heldTime = nil; scrubTime = $0 },
                                    onScrubEnd: { t in
-                                       scrubTime = nil
-                                       seek(toWall: t, autoplay: player.wantsToPlay)
+                                       finishScrub(at: t)
                                        keepOverlay()
                                    },
                                    onInteract: keepOverlay,
