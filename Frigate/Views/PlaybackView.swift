@@ -200,7 +200,7 @@ struct PlaybackView: View {
             case .timeline:
                 PlaybackTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion, reviews: visibleReviews,
                                  map: map, isFollowing: scrubTime == nil,
-                                 onScrub: { heldTime = nil; scrubTime = $0; preview.show($0) },
+                                 onScrub: { heldTime = nil; scrubTime = $0; preview.show($0 - annotationOffset) },
                                  onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) })
             }
         }
@@ -906,7 +906,7 @@ extension PlaybackView {
             ZStack(alignment: .top) {
                 HorizontalTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion,
                                    reviews: visibleReviews, map: map,
-                                   onScrub: { heldTime = nil; scrubTime = $0; preview.show($0) },
+                                   onScrub: { heldTime = nil; scrubTime = $0; preview.show($0 - annotationOffset) },
                                    onScrubEnd: { t, snap in
                                        finishScrub(at: t, snap: snap)
                                        keepOverlay()
