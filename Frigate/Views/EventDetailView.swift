@@ -23,8 +23,21 @@ struct EventDetailView: View {
 
     private var conn: ServerConnection? { model.connection(for: route.serverID) }
     private var client: FrigateClient? { conn?.client }
-    private var clipStart: Double { item.startTime - padding }
-    private var clipEnd: Double { min((item.endTime ?? Date().timeIntervalSince1970) + padding, Date().timeIntervalSince1970) }
+    /// When something was actually happening: the review item widened to how long its objects
+    /// were tracked (Frigate often closes the review item sooner). Odd event times are capped.
+    private var activityStart: Double {
+        let eventStart = events.map(\.startTime).min() ?? item.startTime
+        return max(min(item.startTime, eventStart), item.startTime - 30)
+    }
+    private var activityEnd: Double {
+        let now = Date().timeIntervalSince1970
+        let itemEnd = item.endTime ?? now
+        let eventEnd = events.map { $0.endTime ?? now }.filter { $0 > item.startTime }.max() ?? itemEnd
+        return min(max(itemEnd, eventEnd), itemEnd + 60, now)
+    }
+    /// Whole seconds, as the /vod endpoint uses, so the event range lines up with the video.
+    private var clipStart: Double { (activityStart - padding).rounded(.down) }
+    private var clipEnd: Double { min(activityEnd + padding, Date().timeIntervalSince1970) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -109,8 +122,8 @@ struct EventDetailView: View {
                 let w = geo.size.width
                 let total = max(player.duration, 0.1)
                 let progress = min(1, player.currentTime / total)
-                let evStart = min(1, padding / total)
-                let evEnd = max(evStart, min(1, (total - padding) / total))
+                let evStart = max(0, min(1, (activityStart - clipStart) / total))
+                let evEnd = max(evStart, min(1, (activityEnd - clipStart) / total))
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.controlBorder).frame(height: 4)
                     RoundedRectangle(cornerRadius: 3).fill(Theme.warning.opacity(0.28))
@@ -204,11 +217,7 @@ struct EventDetailView: View {
     }
 
     /// How long the objects were tracked; Frigate often closes the review item itself much sooner.
-    private var trackedDuration: TimeInterval {
-        let spans = events.map { ($0.startTime, $0.endTime ?? Date().timeIntervalSince1970) }
-        guard let start = spans.map(\.0).min(), let end = spans.map(\.1).max() else { return item.duration }
-        return max(item.duration, end - start)
-    }
+    private var trackedDuration: TimeInterval { max(0, activityEnd - activityStart) }
 
     private func tile(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -303,11 +312,12 @@ struct EventDetailView: View {
 
     private func load() async {
         guard let client else { return }
+        // Fetch the tracked objects first: they decide which part of the recording to load.
+        let ids = item.data.detections ?? []
+        events = (try? await client.events(ids: ids)) ?? []
         if player.url == nil {
             player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd))
         }
-        let ids = item.data.detections ?? []
-        events = (try? await client.events(ids: ids)) ?? []
         var entries: [TimelineEntry] = []
         await withTaskGroup(of: [TimelineEntry].self) { group in
             for id in ids.prefix(10) {
