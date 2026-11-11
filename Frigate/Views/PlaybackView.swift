@@ -164,6 +164,11 @@ struct PlaybackView: View {
             RecordingCalendarSheet(day: $day, sources: client.map { [(client: $0, cameras: Optional([camera]))] } ?? [])
         }
         .task(id: "\(camera)|\(day.timeIntervalSince1970)") { await load() }
+        .onChange(of: player.wantsToPlay) { _, playing in
+            // Paused: bring the controls back so it is clear the video is not stuck.
+            if !playing { withAnimation(.easeOut(duration: 0.2)) { overlayVisible = true } }
+            overlayToken += 1
+        }
         .onDisappear { player.stop() }
         .onChange(of: player.finishedCount) { _, _ in
             // Continue with the next hour that has recordings.
@@ -347,7 +352,7 @@ struct PlaybackView: View {
         .overlay(alignment: .topLeading) {
             if !map.isEmpty {
                 HStack(spacing: 6) {
-                    Text("\(FrigateFormat.dayTitle(Date(timeIntervalSince1970: wallTime))) · \(FrigateFormat.time(Date(timeIntervalSince1970: wallTime), seconds: true))")
+                    timeLabel
                         .font(.system(size: 12, weight: .semibold).monospacedDigit())
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
@@ -519,6 +524,16 @@ struct PlaybackView: View {
     }
 
     /// Seeks to a wall-clock time, loading the hour of recordings that contains it.
+    /// Date and time at the playhead, with a pause icon while playback is paused.
+    private var timeLabel: some View {
+        HStack(spacing: 5) {
+            if !player.wantsToPlay && !map.isEmpty {
+                Image(systemName: "pause.fill").font(.system(size: 10, weight: .bold))
+            }
+            Text("\(FrigateFormat.dayTitle(Date(timeIntervalSince1970: wallTime))) · \(FrigateFormat.time(Date(timeIntervalSince1970: wallTime), seconds: true))")
+        }
+    }
+
     /// Shown instead of the video when the playhead is on a moment without recordings.
     private var gapPlaceholder: some View {
         ZStack {
@@ -841,7 +856,7 @@ extension PlaybackView {
                 Stable(key: [camera, conn?.server.name ?? ""] + (conn?.cameras.map(\.name) ?? [])) { cameraMenu }.stable()
                     .simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                 Spacer()
-                Text("\(FrigateFormat.dayTitle(Date(timeIntervalSince1970: wallTime))) · \(FrigateFormat.time(Date(timeIntervalSince1970: wallTime), seconds: true))")
+                timeLabel
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .background(.black.opacity(0.55), in: Capsule())
