@@ -67,6 +67,8 @@ struct PlaybackView: View {
     /// Where the user scrubbed to, shown until the player has actually arrived there,
     /// so the timeline does not jump back while a seek or hour reload is in progress.
     @State private var heldTime: Double?
+    /// The playhead is on a moment without recordings: the video shows a placeholder.
+    @State private var gapTime: Double?
     @State private var timelineScale: Double = 2
     @State private var camera: String
     @State private var day: Date
@@ -105,7 +107,7 @@ struct PlaybackView: View {
     private var dayEnd: Double { min(Calendar.current.date(byAdding: .day, value: 1, to: day)!.timeIntervalSince1970, Date().timeIntervalSince1970) }
 
     /// Wall-clock time at the playhead.
-    private var wallTime: Double { scrubTime ?? heldTime ?? playerWallTime }
+    private var wallTime: Double { scrubTime ?? gapTime ?? heldTime ?? playerWallTime }
     private var playerWallTime: Double { chunkMap.isEmpty ? dayStart : chunkMap.wallTime(for: player.currentTime) }
 
     /// Ends a scrub: keep showing `t` until the player reports a position near it.
@@ -156,7 +158,7 @@ struct PlaybackView: View {
             // Continue with the next hour that has recordings.
             guard let chunkStart else { return }
             let next = chunkStart + chunkLength
-            if next < dayEnd { seek(toWall: next, autoplay: true) }
+            if next < dayEnd { seek(toWall: next, autoplay: true, skipGap: true) }
         }
     }
 
@@ -306,6 +308,7 @@ struct PlaybackView: View {
         ZStack {
             PlayerLayerView(player: player.player)
                 .zoomable()
+                .overlay { if gapTime != nil { gapPlaceholder } }
             if loading {
                 ProgressView().tint(.white)
             } else if map.isEmpty {
@@ -344,7 +347,7 @@ struct PlaybackView: View {
             if !map.isEmpty {
                 HStack(spacing: 10) {
                     OverlayButton(systemImage: "gobackward.10", label: "Back 10 seconds") { player.skip(-10) }
-                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", label: player.wantsToPlay ? "Pause" : "Play") { player.toggle() }
+                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", label: player.wantsToPlay ? "Pause" : "Play") { togglePlay() }
                     OverlayButton(systemImage: "goforward.10", label: "Forward 10 seconds") { player.skip(10) }
                     Menu {
                         ForEach([Float(0.5), 1, 2, 4, 8], id: \.self) { r in
@@ -510,11 +513,48 @@ struct PlaybackView: View {
     }
 
     /// Seeks to a wall-clock time, loading the hour of recordings that contains it.
-    private func seek(toWall t: Double, autoplay: Bool) {
+    /// Shown instead of the video when the playhead is on a moment without recordings.
+    private var gapPlaceholder: some View {
+        ZStack {
+            Color.black
+            VStack(spacing: 8) {
+                Image(systemName: "video.slash").font(.system(size: 26))
+                Text("No recording at this time").font(.system(size: 14, weight: .medium))
+                if map.spans.contains(where: { $0.wallStart > (gapTime ?? 0) }) {
+                    Text("Press play to continue at the next recording").font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+            .foregroundStyle(.white.opacity(0.85))
+            .multilineTextAlignment(.center)
+            .padding()
+        }
+    }
+
+    /// Play/pause. On a gap, play continues from the next recording.
+    private func togglePlay() {
+        if let gap = gapTime {
+            if let next = map.spans.first(where: { $0.wallStart > gap }) { seek(toWall: next.wallStart, autoplay: true, skipGap: true) }
+            return
+        }
+        player.toggle()
+    }
+
+    private func seek(toWall t: Double, autoplay: Bool, skipGap: Bool = false) {
         guard let client, !map.isEmpty else { return }
-        // Skip gaps: move to the next moment with a recording.
         var target = t
-        if !map.hasRecording(at: target), let next = map.spans.first(where: { $0.wallStart > target }) { target = next.wallStart }
+        if !map.hasRecording(at: target) {
+            if skipGap, let next = map.spans.first(where: { $0.wallStart > target }) {
+                target = next.wallStart
+            } else {
+                // Nothing recorded here: show that instead of jumping elsewhere.
+                player.pause()
+                gapTime = t
+                heldTime = nil
+                return
+            }
+        }
+        gapTime = nil
         // A segment belongs to the hour it starts in.
         let segStart = segments.last(where: { $0.startTime <= target })?.startTime ?? target
         var hour = dayStart + ((max(segStart, dayStart) - dayStart) / chunkLength).rounded(.down) * chunkLength
@@ -692,6 +732,7 @@ extension PlaybackView {
             Color.black.ignoresSafeArea()
             PlayerLayerView(player: player.player)
                 .zoomable()
+                .overlay { if gapTime != nil { gapPlaceholder } }
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
             if loading {
@@ -785,7 +826,7 @@ extension PlaybackView {
                 HStack(spacing: 18) {
                     OverlayButton(systemImage: "gobackward.10", size: 50, label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
                     OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", size: 60,
-                                  label: player.wantsToPlay ? "Pause" : "Play") { player.toggle(); keepOverlay() }
+                                  label: player.wantsToPlay ? "Pause" : "Play") { togglePlay(); keepOverlay() }
                     OverlayButton(systemImage: "goforward.10", size: 50, label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
                 }
                 HStack {

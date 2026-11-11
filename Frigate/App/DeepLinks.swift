@@ -5,7 +5,7 @@ import SwiftUI
 ///   frigate://add?url=http://host:8971&name=Home      add a server (asks nothing, tests on connect)
 ///   frigate://live | review | history | settings      switch tab
 ///   frigate://camera/<camera>[?server=<name>]         open a camera's live view
-///   frigate://playback/<camera>[?server=<name>]       open playback for today
+///   frigate://playback/<camera>[?day=yyyy-MM-dd&view=timeline]  open playback
 ///   frigate://event/<review id>[?server=<name>]       open a review item
 extension AppModel {
     func handle(_ url: URL) async {
@@ -41,7 +41,10 @@ extension AppModel {
             guard let conn, let arg else { return }
             tab = .history
             historyPath = NavigationPath()
-            historyPath.append(PlaybackRoute(serverID: conn.server.id, camera: arg, day: Calendar.current.startOfDay(for: Date()), reviewID: q("review"), showTimeline: q("view") == "timeline"))
+            let f = DateFormatter()
+            f.dateFormat = "yyyy-MM-dd"
+            let day = q("day").flatMap { f.date(from: $0) } ?? Date()
+            historyPath.append(PlaybackRoute(serverID: conn.server.id, camera: arg, day: Calendar.current.startOfDay(for: day), reviewID: q("review"), showTimeline: q("view") == "timeline"))
         case "event":
             guard let conn, let arg, let client = conn.client else { return }
             var item: ReviewItem

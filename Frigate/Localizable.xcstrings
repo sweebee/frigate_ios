@@ -1334,6 +1334,16 @@
         }
       }
     },
+    "No recording at this time": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen opname op dit moment"
+          }
+        }
+      }
+    },
     "No recordings for %@": {
       "localizations": {
         "nl": {
@@ -1619,6 +1629,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Video voorbereiden…"
+          }
+        }
+      }
+    },
+    "Press play to continue at the next recording": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druk op afspelen om verder te gaan bij de volgende opname"
           }
         }
       }
