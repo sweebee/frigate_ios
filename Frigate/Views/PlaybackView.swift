@@ -416,13 +416,13 @@ struct PlaybackView: View {
         loading = false
         guard let last = map.spans.last else { return }
 
-        // Start at the requested review item, else at the latest event, else near the end.
+        // Start playing right away: at the requested review item, else the latest event, else near the end.
         if let id = pendingReviewID, let item = reviews.first(where: { $0.id == id }) {
             seek(toWall: item.startTime - 3, autoplay: true)
         } else if let latest = reviews.first {
-            seek(toWall: latest.startTime - 3, autoplay: false)
+            seek(toWall: latest.startTime - 3, autoplay: true)
         } else {
-            seek(toWall: max(last.wallStart, last.wallEnd - 60), autoplay: false)
+            seek(toWall: max(last.wallStart, last.wallEnd - 60), autoplay: true)
         }
     }
 
