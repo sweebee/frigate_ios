@@ -3,6 +3,28 @@
 Native SwiftUI client for [Frigate NVR](https://frigate.video), built from the mockups in `design/`.
 Requires iOS 17 and Xcode 26 or newer. No third-party dependencies.
 
+> **This app is fully vibe coded.** Every line of code, the Xcode project, the TestFlight setup and
+> this README were written by an AI coding agent (Claude Code) from the design mockups and plain-language
+> feedback, then tested in the iOS Simulator against a real Frigate 0.18 server. No code was written by hand.
+> Expect rough edges, and review the code before trusting it with anything important.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/1-live.png" width="200"><br><sub>Live</sub></td>
+    <td align="center"><img src="docs/screenshots/2-camera.png" width="200"><br><sub>Camera</sub></td>
+    <td align="center"><img src="docs/screenshots/3-review.png" width="200"><br><sub>Review</sub></td>
+    <td align="center"><img src="docs/screenshots/4-event.png" width="200"><br><sub>Event</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/5-history.png" width="200"><br><sub>History</sub></td>
+    <td align="center"><img src="docs/screenshots/6-playback.png" width="200"><br><sub>Playback</sub></td>
+    <td align="center"><img src="docs/screenshots/7-timeline.png" width="200"><br><sub>Timeline</sub></td>
+    <td align="center"><img src="docs/screenshots/8-settings.png" width="200"><br><sub>Servers</sub></td>
+  </tr>
+</table>
+
 ## Run
 
 ```bash
@@ -21,8 +43,9 @@ Review and History tabs can show one server or all of them.
 | Camera | Live stream through go2rtc (MSE over websocket, WebRTC and MJPEG as fallbacks), audio, snapshot, PTZ (ONVIF cameras), fullscreen, today's events |
 | Review | Alerts, detections and motion across servers; filter by server, camera, label and unreviewed; mark reviewed |
 | Event | Clip playback with the event range highlighted, 1x/2x/4x, score, zones, object lifecycle, download/share, delete |
-| History | Activity per camera for any day (motion plus events), opens playback |
-| Playback | Recordings per camera and day, event list or scrubbable vertical timeline with zoom |
+| History | Activity per camera for any day (motion plus events), calendar that marks days with recordings |
+| Playback | Recordings per camera and day, event list or scrubbable vertical timeline with zoom, filters by type, label and zone, save an event or a span around the playhead to Photos |
+| Everywhere | Pinch to zoom on live and recorded video, swipe back, lighter streams on mobile data |
 | Settings | Servers (add, edit, remove), combined review |
 
 Credentials are stored in the Keychain. When a username is set the app logs in through

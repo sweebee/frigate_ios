@@ -49,10 +49,12 @@ struct ActivityStrip: View {
         return (0..<buckets).map { i in
             let bucketStart = start.addingTimeInterval(Double(i) * size)
             if bucketStart > now { return Bar(height: 2, color: Theme.cardBorder) }
-            if let label = labels[i] {
-                return Bar(height: severities[i] == .alert ? height : height * 0.8, color: Theme.labelColor(label))
-            }
             let norm = levels[i] / maxLevel
+            if let label = labels[i] {
+                // Height follows motion like the other bars; events keep a minimum so they stay visible.
+                let minimum = height * (severities[i] == .alert ? 0.5 : 0.35)
+                return Bar(height: max(minimum, CGFloat(norm) * height), color: Theme.labelColor(label))
+            }
             return Bar(height: max(2, CGFloat(norm) * height * 0.75), color: levels[i] > 0 ? Theme.motion : Theme.cardBorder)
         }
     }

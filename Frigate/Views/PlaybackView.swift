@@ -69,6 +69,8 @@ struct PlaybackView: View {
     @State private var pendingReviewID: String?
     /// Wall-clock time shown on the timeline while dragging.
     @State private var scrubTime: Double?
+    @State private var exporter = ClipExporter()
+    @State private var share: ShareItem?
 
     init(route: PlaybackRoute) {
         self.route = route
@@ -120,6 +122,8 @@ struct PlaybackView: View {
         }
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
+        .overlay(alignment: .top) { ExportToast(state: exporter.state) }
+        .sheet(item: $share) { ShareSheet(items: $0.items) }
         .sheet(isPresented: $showDatePicker) {
             RecordingCalendarSheet(day: $day, sources: client.map { [(client: $0, cameras: Optional([camera]))] } ?? [])
         }
@@ -134,6 +138,69 @@ struct PlaybackView: View {
     }
 
     private let chunkLength: Double = 3600
+
+    // MARK: Saving clips
+
+    /// Save button on the video: the event that is playing, or a span around the playhead.
+    private var saveMenu: some View {
+        Menu {
+            if let r = currentReview {
+                Section("\(r.labels.first.map(FrigateFormat.labelName)?.capitalizedFirst ?? "Event") at \(FrigateFormat.time(r.start, seconds: true))") {
+                    Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
+                        Label("Save event to Photos", systemImage: "square.and.arrow.down")
+                    }
+                    Button { shareClip(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
+                        Label("Share event", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+            Section("From the playhead") {
+                ForEach([30.0, 60, 300], id: \.self) { secs in
+                    Button { save(wallTime - secs / 2, wallTime + secs / 2) } label: {
+                        Label("Save \(secs < 60 ? "\(Int(secs)) seconds" : "\(Int(secs / 60)) minute\(secs == 60 ? "" : "s")")",
+                              systemImage: "film")
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: exporter.isWorking ? "hourglass" : "square.and.arrow.down")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(.black.opacity(0.6), in: Circle())
+        }
+        .disabled(exporter.isWorking)
+        .accessibilityLabel("Save video")
+    }
+
+    /// Clamps a range to the loaded day and to what has been recorded.
+    private func clampRange(_ start: Double, _ end: Double) -> (Double, Double) {
+        let s = max(start, dayStart), e = min(end, dayEnd, Date().timeIntervalSince1970)
+        return (s, max(e, s + 1))
+    }
+
+    private func save(_ start: Double, _ end: Double) {
+        guard let client else { return }
+        let (s, e) = clampRange(start, end)
+        Task { await exporter.saveToPhotos(client: client, camera: camera, start: s, end: e) }
+    }
+
+    private func shareClip(_ start: Double, _ end: Double) {
+        guard let client else { return }
+        let (s, e) = clampRange(start, end)
+        Task {
+            exporter.state = .working("Preparing video…")
+            do {
+                let file = try await exporter.download(client: client, camera: camera, start: s, end: e)
+                exporter.state = .idle
+                share = ShareItem(items: [file])
+            } catch {
+                exporter.state = .failed(error.localizedDescription)
+                try? await Task.sleep(for: .seconds(2.5))
+                exporter.state = .idle
+            }
+        }
+    }
 
     // MARK: Header
 
@@ -210,6 +277,9 @@ struct PlaybackView: View {
                 }
                 .padding(10)
             }
+        }
+        .overlay(alignment: .topTrailing) {
+            if !map.isEmpty { saveMenu.padding(10) }
         }
         .overlay(alignment: .bottom) {
             if !map.isEmpty {
@@ -305,6 +375,14 @@ struct PlaybackView: View {
                         }
                         .buttonStyle(.plain)
                         .id(r.id)
+                        .contextMenu {
+                            Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
+                                Label("Save video to Photos", systemImage: "square.and.arrow.down")
+                            }
+                            Button { shareClip(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
+                                Label("Share video", systemImage: "square.and.arrow.up")
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -486,16 +564,17 @@ struct PlaybackTimeline: View {
             var row = ctx
             row.opacity = opacity
 
-            // Event tint
+            // Bar width follows the motion in this row; events add their label color and a tint.
+            let level = motion.filter { $0.startTime >= rowStart - 15 && $0.startTime < rowEnd }.map { $0.motion ?? 0 }.max() ?? 0
+            let motionWidth = CGFloat(level / maxMotion) * barAreaWidth * 0.9
             if let r = reviews.first(where: { rowEnd > $0.startTime && rowStart < ($0.endTime ?? dayEnd) }) {
                 let color = Theme.labelColor(r.labels.first ?? "")
                 row.fill(Path(CGRect(x: gutter, y: rowY, width: barAreaWidth, height: rowHeight)), with: .color(color.opacity(0.14)))
-                let w = max(barAreaWidth * 0.55, 8)
+                let w = max(motionWidth, 14)
                 row.fill(Path(roundedRect: CGRect(x: gutter + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
                          with: .color(color))
             } else if map.hasRecording(at: (rowStart + rowEnd) / 2) {
-                let level = motion.filter { $0.startTime >= rowStart - 15 && $0.startTime < rowEnd }.map { $0.motion ?? 0 }.max() ?? 0
-                let w = max(4, CGFloat(level / maxMotion) * barAreaWidth * 0.9)
+                let w = max(4, motionWidth)
                 row.fill(Path(roundedRect: CGRect(x: gutter + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
                          with: .color(level > 0 ? Theme.motion : Theme.controlBorder))
             }
