@@ -16,6 +16,8 @@ final class LivePlayerState {
     var stream: String = ""
     /// Bumped to force a reload.
     var reloadToken = 0
+    /// While true no stream runs (screen hidden or app in the background).
+    var suspended = false
 
     fileprivate weak var webView: WKWebView?
 
@@ -67,7 +69,7 @@ struct LivePlayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ web: WKWebView, context: Context) {
-        let key = "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)"
+        let key = "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)|\(state.suspended)"
         if context.coordinator.loadedKey != key { load(web, coordinator: context.coordinator) }
     }
 
@@ -78,7 +80,14 @@ struct LivePlayerView: UIViewRepresentable {
     }
 
     private func load(_ web: WKWebView, coordinator: Coordinator) {
-        coordinator.loadedKey = "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)"
+        coordinator.loadedKey = "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)|\(state.suspended)"
+        if state.suspended {
+            // Close the stream; iOS does not resume a paused web video reliably.
+            web.evaluateJavaScript("stopAll()")
+            web.loadHTMLString("", baseURL: nil)
+            state.playing = false
+            return
+        }
         let stream = state.stream.isEmpty ? camera : state.stream
         let modes: [String]
         switch state.preferred {
@@ -179,6 +188,19 @@ function markPlaying(mode){
   post({status:'Live', mode: mode, playing:true, width: video.videoWidth || (img ? img.naturalWidth : 0), height: video.videoHeight || (img ? img.naturalHeight : 0)});
 }
 video.addEventListener('playing', () => markPlaying(P.modes[idx]));
+// Watchdog: if the picture stops advancing while we think it plays, reconnect.
+let lastTime = -1, stuckFor = 0;
+setInterval(() => {
+  if (stopped || !playingNow || img) return;
+  if (video.paused && !video.ended) { video.play().catch(()=>{}); }
+  if (video.currentTime === lastTime) { stuckFor += 2; } else { stuckFor = 0; lastTime = video.currentTime; }
+  if (stuckFor >= 6) {
+    stuckFor = 0; lastTime = -1; playingNow = false;
+    post({status: 'Reconnecting', playing: false});
+    idx--; next('stalled');
+  }
+}, 2000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && playingNow) video.play().catch(()=>{}); });
 video.addEventListener('resize', () => post({width: video.videoWidth, height: video.videoHeight}));
 
 const CODECS = ['avc1.640029','avc1.64002A','avc1.640033','hvc1.1.6.L153.B0','mp4a.40.2','mp4a.40.5','flac','opus'];

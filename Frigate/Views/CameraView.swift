@@ -4,6 +4,7 @@ struct CameraView: View {
     let route: CameraRoute
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var player = LivePlayerState()
     @State private var reviews: [ReviewItem] = []
     @State private var loadingReviews = true
@@ -49,7 +50,13 @@ struct CameraView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
         .task { await loadReviews() }
+        .onDisappear { player.suspended = true }
+        .onChange(of: scenePhase) { _, phase in
+            // Stop in the background, start fresh when the app is back.
+            player.suspended = phase != .active
+        }
         .onAppear {
+            player.suspended = false
             if player.stream.isEmpty {
                 // On mobile data start with the lighter sub stream when the camera has one.
                 let streams = camera?.streams ?? []
@@ -278,6 +285,7 @@ struct FullscreenLiveView: View {
     let client: FrigateClient
     let camera: CameraConfig
     @State private var state = LivePlayerState()
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
 
     init(client: FrigateClient, camera: CameraConfig, stream: String, muted: Bool) {
@@ -295,6 +303,7 @@ struct FullscreenLiveView: View {
             LivePlayerView(client: client, camera: camera.name, state: state)
                 .zoomable()
                 .ignoresSafeArea()
+                .onChange(of: scenePhase) { _, phase in state.suspended = phase != .active }
             if !state.playing {
                 VStack(spacing: 8) {
                     ProgressView().tint(.white)
