@@ -4,7 +4,14 @@ struct LiveView: View {
     @Environment(AppModel.self) private var model
     @State private var group: String? = nil
 
-    private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// Two columns on iPhone; on iPad and Mac as many as fit at a comfortable size.
+    private var columns: [GridItem] {
+        sizeClass == .regular
+            ? [GridItem(.adaptive(minimum: 250, maximum: 480), spacing: 12)]
+            : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+    }
 
     var body: some View {
         @Bindable var model = model
