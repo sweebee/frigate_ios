@@ -87,6 +87,8 @@ struct PlaybackView: View {
     }
 
     private var conn: ServerConnection? { model.connection(for: route.serverID) }
+    /// Frigate's detect.annotation_offset for this camera, in seconds.
+    private var annotationOffset: Double { conn?.config?.cameras[camera]?.annotationOffset ?? 0 }
     private var client: FrigateClient? { conn?.client }
     private var dayStart: Double { day.timeIntervalSince1970 }
     private var dayEnd: Double { min(Calendar.current.date(byAdding: .day, value: 1, to: day)!.timeIntervalSince1970, Date().timeIntervalSince1970) }
@@ -370,7 +372,7 @@ struct PlaybackView: View {
                     }
                     ForEach(shown) { r in
                         let playing = currentReview?.id == r.id
-                        Button { seek(toWall: r.startTime - 3, autoplay: true) } label: {
+                        Button { seek(toWall: r.startTime - 3 + annotationOffset, autoplay: true) } label: {
                             HStack(spacing: 12) {
                                 RemoteImage(url: client?.thumbnailURL(for: r), session: client?.session ?? .shared)
                                     .frame(width: 96, height: 54)
@@ -442,9 +444,9 @@ struct PlaybackView: View {
 
         // Start playing right away: at the requested review item, else the latest event, else near the end.
         if let id = pendingReviewID, let item = reviews.first(where: { $0.id == id }) {
-            seek(toWall: item.startTime - 3, autoplay: true)
+            seek(toWall: item.startTime - 3 + annotationOffset, autoplay: true)
         } else if let latest = reviews.first {
-            seek(toWall: latest.startTime - 3, autoplay: true)
+            seek(toWall: latest.startTime - 3 + annotationOffset, autoplay: true)
         } else {
             seek(toWall: max(last.wallStart, last.wallEnd - 60), autoplay: true)
         }

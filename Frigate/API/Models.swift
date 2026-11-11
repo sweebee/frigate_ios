@@ -46,7 +46,15 @@ struct CameraConfig: Decodable {
     var zones: [String: AnyJSON]?
     var onvif: Onvif?
 
-    struct Detect: Decodable { var enabled: Bool?; var width: Int?; var height: Int? }
+    struct Detect: Decodable {
+        var enabled: Bool?; var width: Int?; var height: Int?
+        /// Milliseconds between detection timestamps and the recording (Frigate's detect.annotation_offset).
+        var annotationOffset: Double?
+        enum CodingKeys: String, CodingKey {
+            case enabled, width, height
+            case annotationOffset = "annotation_offset"
+        }
+    }
     struct Toggle: Decodable { var enabled: Bool? }
     struct Live: Decodable { var streams: [String: String]? }
     struct UI: Decodable { var order: Int?; var dashboard: Bool? }
@@ -63,6 +71,8 @@ struct CameraConfig: Decodable {
         return Double(w) / Double(h)
     }
     var hasOnvif: Bool { !(onvif?.host ?? "").isEmpty }
+    /// Seconds to add to detection times to find them in the recording.
+    var annotationOffset: Double { (detect?.annotationOffset ?? 0) / 1000 }
 
     /// go2rtc stream names, main stream first.
     var streams: [(title: String, name: String)] {

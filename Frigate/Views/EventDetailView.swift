@@ -25,15 +25,18 @@ struct EventDetailView: View {
     private var client: FrigateClient? { conn?.client }
     /// When something was actually happening: the review item widened to how long its objects
     /// were tracked (Frigate often closes the review item sooner). Odd event times are capped.
+    /// Frigate's annotation offset for this camera, so detections line up with the recording.
+    private var offset: Double { conn?.config?.cameras[item.camera]?.annotationOffset ?? 0 }
+
     private var activityStart: Double {
         let eventStart = events.map(\.startTime).min() ?? item.startTime
-        return max(min(item.startTime, eventStart), item.startTime - 30)
+        return max(min(item.startTime, eventStart), item.startTime - 30) + offset
     }
     private var activityEnd: Double {
         let now = Date().timeIntervalSince1970
         let itemEnd = item.endTime ?? now
         let eventEnd = events.map { $0.endTime ?? now }.filter { $0 > item.startTime }.max() ?? itemEnd
-        return min(max(itemEnd, eventEnd), itemEnd + 60, now)
+        return min(max(itemEnd, eventEnd), itemEnd + 60, now) + offset
     }
     /// Whole seconds, as the /vod endpoint uses, so the event range lines up with the video.
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
@@ -238,7 +241,7 @@ struct EventDetailView: View {
                     .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 6)
                 ForEach(Array(timeline.enumerated()), id: \.offset) { _, entry in
                     Button {
-                        player.seek(to: entry.timestamp - clipStart, precise: true)
+                        player.seek(to: entry.timestamp + offset - clipStart, precise: true)
                     } label: {
                         HStack(spacing: 12) {
                             Circle().fill(dotColor(entry)).frame(width: 8, height: 8)
