@@ -5,6 +5,9 @@ struct CameraView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @State private var overlayVisible = true
+    @State private var overlayToken = 0
     @State private var player = LivePlayerState()
     @State private var reviews: [ReviewItem] = []
     @State private var loadingReviews = true
@@ -19,35 +22,21 @@ struct CameraView: View {
     private var conn: ServerConnection? { model.connection(for: route.serverID) }
     private var camera: CameraConfig? { conn?.config?.cameras[route.camera] }
 
+    /// iPhone held sideways: full-screen live video with an overlay that hides itself.
+    private var isLandscape: Bool { verticalSizeClass == .compact }
+
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            if let conn, let client = conn.client, let camera {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        playerView(client: client, camera: camera)
-                        controls(client: client, camera: camera)
-                        today(conn: conn)
-                    }
-                    .padding(.bottom, 24)
-                }
-                .fullScreenCover(isPresented: $fullscreen) {
-                    FullscreenLiveView(client: client, camera: camera, stream: player.stream, muted: player.muted)
-                }
-                .sheet(isPresented: $showPTZ) {
-                    PTZSheet(client: client, camera: camera.name)
-                        .presentationDetents([.height(320)])
-                }
+        Group {
+            if isLandscape, let conn, let client = conn.client, let camera {
+                landscapeBody(conn: conn, client: client, camera: camera)
             } else {
-                Spacer()
-                EmptyStateView(systemImage: "video.slash", title: L("Camera unavailable"), message: L("The server is offline or the camera was removed."))
-                Spacer()
+                portraitBody
             }
         }
-        .screenBackground()
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .sheet(isPresented: $showPTZ) {
+            if let client = conn?.client { PTZSheet(client: client, camera: route.camera).presentationDetents([.height(320)]) }
+        }
         .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
@@ -69,6 +58,32 @@ struct CameraView: View {
         }
     }
 
+    private var portraitBody: some View {
+        VStack(spacing: 0) {
+            header
+            if let conn, let client = conn.client, let camera {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        playerView(client: client, camera: camera)
+                        controls(client: client, camera: camera)
+                        today(conn: conn)
+                    }
+                    .padding(.bottom, 24)
+                }
+                .fullScreenCover(isPresented: $fullscreen) {
+                    FullscreenLiveView(client: client, camera: camera, stream: player.stream, muted: player.muted)
+                }
+            } else {
+                Spacer()
+                EmptyStateView(systemImage: "video.slash", title: L("Camera unavailable"), message: L("The server is offline or the camera was removed."))
+                Spacer()
+            }
+        }
+        .screenBackground()
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+    }
+
     // MARK: Header
 
     private var header: some View {
@@ -88,6 +103,13 @@ struct CameraView: View {
                     .lineLimit(1)
             }
             Spacer()
+            moreMenu
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
+    }
+
+    private var moreMenu: some View {
             Menu {
                 if let camera, camera.streams.count > 1 {
                     Picker("Stream", selection: $player.stream) {
@@ -107,9 +129,6 @@ struct CameraView: View {
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("More options")
-        }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
     }
 
     private var subtitle: String {
@@ -128,6 +147,28 @@ struct CameraView: View {
             Color.black
             LivePlayerView(client: client, camera: camera.name, state: player)
                 .zoomable()
+            streamStatus
+        }
+        .aspectRatio(player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .overlay(alignment: .topLeading) { recBadge.padding(10) }
+        .overlay(alignment: .topTrailing) {
+            ClockLabel()
+                .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                .padding(10)
+        }
+        .overlay(alignment: .bottomLeading) {
+            let objects = conn?.activeObjects[camera.name] ?? []
+            if !objects.isEmpty {
+                HStack(spacing: 4) { ForEach(objects, id: \.self) { LabelTag(label: $0) } }.padding(10)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var streamStatus: some View {
             if !player.playing {
                 VStack(spacing: 8) {
                     if player.status.hasPrefix("Stream unavailable") {
@@ -143,10 +184,10 @@ struct CameraView: View {
                 .foregroundStyle(.white)
                 .padding()
             }
-        }
-        .aspectRatio(player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio, contentMode: .fit)
-        .frame(maxWidth: .infinity)
-        .overlay(alignment: .topLeading) {
+    }
+
+    @ViewBuilder
+    private var recBadge: some View {
             if let recordingNow {
                 HStack(spacing: 5) {
                     if recordingNow {
@@ -161,23 +202,102 @@ struct CameraView: View {
                 .foregroundStyle(recordingNow ? Theme.text : Theme.onLabel)
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(recordingNow ? Color.black.opacity(0.6) : Theme.warning, in: RoundedRectangle(cornerRadius: 6))
-                .padding(10)
+            }
+    }
+
+    // MARK: Landscape
+
+    private func landscapeBody(conn: ServerConnection, client: FrigateClient, camera: CameraConfig) -> some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            LivePlayerView(client: client, camera: camera.name, state: player)
+                .zoomable()
+                .ignoresSafeArea()
+                .onTapGesture { toggleOverlay() }
+            streamStatus
+            if overlayVisible {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Back")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(camera.displayName).font(.system(size: 17, weight: .semibold))
+                            Text(subtitle).font(.system(size: 12)).foregroundStyle(Theme.textSecondary).lineLimit(1)
+                        }
+                        Spacer()
+                        recBadge
+                        ClockLabel()
+                            .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(.black.opacity(0.55), in: Capsule())
+                        moreMenu
+                    }
+                    .foregroundStyle(Theme.text)
+                    .padding(.horizontal, 8)
+                    .background(Color.black.opacity(0.55).ignoresSafeArea(edges: [.top, .horizontal]))
+
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 12) {
+                            OverlayButton(systemImage: player.muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                                          label: player.muted ? "Unmute" : "Mute") {
+                                player.setMuted(!player.muted); keepOverlay()
+                            }
+                            OverlayButton(systemImage: "camera.fill", label: "Snapshot") {
+                                Task { await snapshot(client: client, camera: camera) }; keepOverlay()
+                            }
+                            if camera.hasOnvif {
+                                OverlayButton(systemImage: "arrow.up.and.down.and.arrow.left.and.right", label: "PTZ") { showPTZ = true }
+                            }
+                        }
+                        .padding(.trailing, 12)
+                    }
+                    .frame(maxHeight: .infinity)
+
+                    HStack(spacing: 8) {
+                        let objects = conn.activeObjects[camera.name] ?? []
+                        ForEach(objects, id: \.self) { LabelTag(label: $0) }
+                        Spacer()
+                        Button {
+                            model.tab = .history
+                            model.historyPath = NavigationPath()
+                            model.historyPath.append(PlaybackRoute(serverID: route.serverID, camera: route.camera,
+                                                                   day: Calendar.current.startOfDay(for: Date())))
+                        } label: {
+                            Label("Playback", systemImage: "clock.arrow.circlepath")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Theme.accent)
+                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .background(.black.opacity(0.55), in: Capsule())
+                                .overlay(Capsule().stroke(Theme.accent, lineWidth: 1))
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 10)
+                }
+                .transition(.opacity)
             }
         }
-        .overlay(alignment: .topTrailing) {
-            ClockLabel()
-                .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
-                .padding(10)
-        }
-        .overlay(alignment: .bottomLeading) {
-            let objects = conn?.activeObjects[camera.name] ?? []
-            if !objects.isEmpty {
-                HStack(spacing: 4) { ForEach(objects, id: \.self) { LabelTag(label: $0) } }.padding(10)
-            }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
+        .task(id: overlayToken) {
+            // Hide the overlay after 4 seconds without touches.
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled, !showPTZ else { return }
+            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
     }
+
+    private func toggleOverlay() {
+        withAnimation(.easeOut(duration: 0.2)) { overlayVisible.toggle() }
+        overlayToken += 1
+    }
+
+    private func keepOverlay() { overlayToken += 1 }
 
     // MARK: Controls
 
