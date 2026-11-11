@@ -167,7 +167,6 @@ struct PlaybackView: View {
         VStack(spacing: 0) {
             header
             videoPlayer
-            progressBar
             SegmentedBar(options: [Tab.events, .timeline], selection: $tab) { $0 == .events ? L("Events") : L("Timeline") }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -397,18 +396,6 @@ struct PlaybackView: View {
 
     private func rateTitle(_ r: Float) -> String { r == 0.5 ? "½x" : "\(Int(r))x" }
 
-    private var progressBar: some View {
-        GeometryReader { geo in
-            let total = max(dayEnd - dayStart, 1)
-            let p = (wallTime - dayStart) / total
-            ZStack(alignment: .leading) {
-                Rectangle().fill(Theme.controlBorder)
-                Rectangle().fill(Theme.accent).frame(width: geo.size.width * max(0, min(1, p)))
-            }
-        }
-        .frame(height: 3)
-    }
-
     // MARK: Events
 
     private var eventsList: some View {
@@ -544,6 +531,8 @@ struct PlaybackView: View {
     private func recordedDurationText(_ r: ReviewItem) -> String {
         let s = r.startTime + annotationOffset, e = (r.endTime ?? Date().timeIntervalSince1970) + annotationOffset
         let recorded = map.spans.reduce(0.0) { $0 + max(0, min($1.wallEnd, e) - max($1.wallStart, s)) }
+        // Very short items (start equals end) cover no span; check the moment itself.
+        if recorded <= 0 && map.hasRecording(at: s) { return FrigateFormat.duration(r.duration) }
         if recorded <= 0 && !map.isEmpty { return L("No video") }
         return recorded > 0 ? FrigateFormat.duration(recorded) : FrigateFormat.reviewDuration(r)
     }
