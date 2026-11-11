@@ -81,8 +81,7 @@ struct RecordingCalendarSheet: View {
             }
             .background(Theme.background)
         }
-        // Partial-height sheets float above the bottom edge on iOS 26+; a full sheet sits flush.
-        .presentationDetents([.large])
+        .presentationDetents([.height(520), .large])
         .presentationBackground(Theme.background)
         .task {
             month = calendar.date(from: calendar.dateComponents([.year, .month], from: day)) ?? day
