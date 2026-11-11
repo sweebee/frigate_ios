@@ -828,7 +828,7 @@ extension PlaybackView {
     private var landscapeEventsPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                SectionLabel(text: L("\(FrigateFormat.dayTitle(day)) · \(visibleReviews.count) events"))
+                SectionLabel(text: L("\(visibleReviews.count) events")).lineLimit(1)
                 Button { withAnimation(.easeOut(duration: 0.2)) { showEventsPanel = false } } label: {
                     Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32)
                 }
@@ -845,16 +845,13 @@ extension PlaybackView {
                             } label: {
                                 HStack(spacing: 10) {
                                     RemoteImage(url: client?.thumbnailURL(for: r), session: client?.session ?? .shared)
-                                        .frame(width: 72, height: 42)
+                                        .frame(width: 64, height: 36)
                                         .clipShape(RoundedRectangle(cornerRadius: 6))
                                     VStack(alignment: .leading, spacing: 3) {
-                                        HStack(spacing: 4) { ForEach(r.labels.prefix(2), id: \.self) { LabelTag(label: $0) } }
+                                        HStack(spacing: 4) { ForEach(r.labels.prefix(1), id: \.self) { LabelTag(label: $0) } }
                                         Text(FrigateFormat.time(r.start, seconds: true)).font(.system(size: 13, weight: .semibold))
                                     }
                                     Spacer(minLength: 0)
-                                    if playing {
-                                        Text("Playing").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.accent)
-                                    }
                                 }
                                 .padding(6)
                                 .card(border: playing ? Theme.accent : Theme.cardBorder, radius: 10)
@@ -870,7 +867,7 @@ extension PlaybackView {
         }
         .foregroundStyle(Theme.text)
         .padding(12)
-        .frame(width: 310)
+        .frame(width: 236)
         .frame(maxHeight: .infinity)
         .background(Theme.card.opacity(0.97).ignoresSafeArea())
     }
