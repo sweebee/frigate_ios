@@ -188,6 +188,13 @@ struct PlaybackView: View {
         }
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: overlayToken) {
+            // Hide the video controls after 4 seconds of playback without touches.
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled, player.wantsToPlay, scrubTime == nil else { return }
+            if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
+            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
+        }
     }
 
     private let chunkLength: Double = 3600
@@ -309,6 +316,7 @@ struct PlaybackView: View {
             PlayerLayerView(player: player.player)
                 .zoomable()
                 .overlay { if gapTime != nil { gapPlaceholder } }
+                .onTapGesture { toggleOverlay() }
             if loading {
                 ProgressView().tint(.white)
             } else if map.isEmpty {
@@ -341,14 +349,14 @@ struct PlaybackView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !map.isEmpty { saveMenu.padding(10) }
+            if !map.isEmpty && overlayVisible { saveMenu.padding(10).transition(.opacity) }
         }
         .overlay(alignment: .bottom) {
-            if !map.isEmpty {
+            if !map.isEmpty && overlayVisible {
                 HStack(spacing: 10) {
-                    OverlayButton(systemImage: "gobackward.10", label: "Back 10 seconds") { player.skip(-10) }
-                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", label: player.wantsToPlay ? "Pause" : "Play") { togglePlay() }
-                    OverlayButton(systemImage: "goforward.10", label: "Forward 10 seconds") { player.skip(10) }
+                    OverlayButton(systemImage: "gobackward.10", label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
+                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", label: player.wantsToPlay ? "Pause" : "Play") { togglePlay(); keepOverlay() }
+                    OverlayButton(systemImage: "goforward.10", label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
                     Menu {
                         ForEach([Float(0.5), 1, 2, 4, 8], id: \.self) { r in
                             Button { player.setRate(r) } label: {
