@@ -56,7 +56,7 @@ final class RecordingPlayer {
             let ready = item.status == .readyToPlay
             Task { @MainActor in
                 guard let self else { return }
-                if failed { self.error = message ?? "Playback failed" }
+                if failed { self.error = message ?? L("Playback failed") }
                 if ready {
                     let d = item.duration.seconds
                     if d.isFinite { self.duration = d }
@@ -143,7 +143,7 @@ struct PlayerLayerView: UIViewRepresentable {
 struct OverlayButton: View {
     let systemImage: String
     var size: CGFloat = 44
-    var label: String
+    var label: LocalizedStringKey
     let action: () -> Void
 
     var body: some View {

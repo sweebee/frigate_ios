@@ -45,7 +45,7 @@ Review and History tabs can show one server or all of them.
 | Event | Clip playback with the event range highlighted, 1x/2x/4x, score, zones, object lifecycle, download/share, delete |
 | History | Activity per camera for any day (motion plus events), calendar that marks days with recordings |
 | Playback | Recordings per camera and day, event list or scrubbable vertical timeline with zoom, filters by type, label and zone, save an event or a span around the playhead to Photos |
-| Everywhere | Pinch to zoom on live and recorded video, swipe back, lighter streams on mobile data |
+| Everywhere | Pinch to zoom on live and recorded video, swipe back, lighter streams on mobile data, English and Dutch (follows the iPhone language) |
 | Settings | Servers (add, edit, remove), combined review |
 
 Credentials are stored in the Keychain. When a username is set the app logs in through

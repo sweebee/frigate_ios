@@ -1,0 +1,54 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frigate"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frigate"
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frigate looks for NVR servers on your local network and connects to them."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frigate zoekt NVR-servers op je lokale netwerk en maakt er verbinding mee."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save camera snapshots and video clips to your photo library."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaar momentopnames en videoclips van je camera's in je fotobibliotheek."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

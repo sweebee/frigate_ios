@@ -1,0 +1,2384 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "": {
+      "shouldTranslate": false
+    },
+    "%@ (external)": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (extern)"
+          }
+        }
+      }
+    },
+    "%@ at %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ om %2$@"
+          }
+        }
+      }
+    },
+    "%@ became active": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ werd actief"
+          }
+        }
+      }
+    },
+    "%@ became stationary": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ staat stil"
+          }
+        }
+      }
+    },
+    "%@ detected": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gedetecteerd"
+          }
+        }
+      }
+    },
+    "%@ entered %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ging %2$@ binnen"
+          }
+        }
+      }
+    },
+    "%@ entered a zone": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ging een zone binnen"
+          }
+        }
+      }
+    },
+    "%@ heard": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gehoord"
+          }
+        }
+      }
+    },
+    "%@ is offline": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is offline"
+          }
+        }
+      }
+    },
+    "%@ left the frame": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ verdween uit beeld"
+          }
+        }
+      }
+    },
+    "%@ recognized as %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ herkend als %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@": {
+      "shouldTranslate": false
+    },
+    "%@ · %lld events": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg event"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg events"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gebeurtenis"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gebeurtenissen"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%@ · %lld of %lld events": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld of %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 3,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg event"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg events"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld van %#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 3,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gebeurtenis"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gebeurtenissen"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%@, %@ to %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@ tot %3$@"
+          }
+        }
+      }
+    },
+    "%@, %@, in progress": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@, bezig"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "shouldTranslate": false
+    },
+    "%lld alerts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg alert"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg alerts"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg melding"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg meldingen"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cameras": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg camera"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg cameras"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg camera"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg camera's"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld days ago": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg day ago"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg days ago"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg dag geleden"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg dagen geleden"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld detections": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg detection"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg detections"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg detectie"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg detecties"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld events": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg event"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg events"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gebeurtenis"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gebeurtenissen"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld h ago": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld u geleden"
+          }
+        }
+      }
+    },
+    "%lld min ago": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min geleden"
+          }
+        }
+      }
+    },
+    "%lldx": {
+      "shouldTranslate": false
+    },
+    "00:00": {
+      "shouldTranslate": false
+    },
+    "06:00": {
+      "shouldTranslate": false
+    },
+    "12 h ago": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12 u geleden"
+          }
+        }
+      }
+    },
+    "12:00": {
+      "shouldTranslate": false
+    },
+    "18:00": {
+      "shouldTranslate": false
+    },
+    "24 h ago": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 u geleden"
+          }
+        }
+      }
+    },
+    "Active server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actieve server"
+          }
+        }
+      }
+    },
+    "Add another Frigate server. Use the authenticated port (8971) when connecting from outside its network.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voeg nog een Frigate-server toe. Gebruik de beveiligde poort (8971) als je van buiten het netwerk verbindt."
+          }
+        }
+      }
+    },
+    "Add server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server toevoegen"
+          }
+        }
+      }
+    },
+    "Alert": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melding"
+          }
+        }
+      }
+    },
+    "Alerts": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meldingen"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle"
+          }
+        }
+      }
+    },
+    "All cameras": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle camera's"
+          }
+        }
+      }
+    },
+    "All caught up": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles bekeken"
+          }
+        }
+      }
+    },
+    "All labels": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle labels"
+          }
+        }
+      }
+    },
+    "All servers": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle servers"
+          }
+        }
+      }
+    },
+    "All types": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle typen"
+          }
+        }
+      }
+    },
+    "All zones": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle zones"
+          }
+        }
+      }
+    },
+    "Allow Frigate to add photos in Settings to save clips.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sta Frigate in Instellingen toe om foto's toe te voegen om clips op te slaan."
+          }
+        }
+      }
+    },
+    "Audio": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geluid"
+          }
+        }
+      }
+    },
+    "Automatic": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terug"
+          }
+        }
+      }
+    },
+    "Back 10 seconds": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 seconden terug"
+          }
+        }
+      }
+    },
+    "Camera unavailable": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera niet beschikbaar"
+          }
+        }
+      }
+    },
+    "Cameras": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera's"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuleer"
+          }
+        }
+      }
+    },
+    "Change how the app connects to this server. Use the authenticated port (8971) when connecting from outside its network.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig hoe de app met deze server verbindt. Gebruik de beveiligde poort (8971) als je van buiten het netwerk verbindt."
+          }
+        }
+      }
+    },
+    "Clear filters": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters wissen"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sluit"
+          }
+        }
+      }
+    },
+    "Combined review": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gecombineerd beoordelen"
+          }
+        }
+      }
+    },
+    "Connect to Frigate": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbind met Frigate"
+          }
+        }
+      }
+    },
+    "Connecting…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinden…"
+          }
+        }
+      }
+    },
+    "Could not load review": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon meldingen niet laden"
+          }
+        }
+      }
+    },
+    "Could not reach the server.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon de server niet bereiken."
+          }
+        }
+      }
+    },
+    "Credentials are stored in the iOS Keychain": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inloggegevens worden bewaard in de iOS-sleutelhanger"
+          }
+        }
+      }
+    },
+    "DURATION": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DUUR"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijder"
+          }
+        }
+      }
+    },
+    "Delete this review item and its recordings?": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit item en de opnames verwijderen?"
+          }
+        }
+      }
+    },
+    "Detect off": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detectie uit"
+          }
+        }
+      }
+    },
+    "Detection": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detectie"
+          }
+        }
+      }
+    },
+    "Detections": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detecties"
+          }
+        }
+      }
+    },
+    "Download": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download"
+          }
+        }
+      }
+    },
+    "Edit %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzig %@"
+          }
+        }
+      }
+    },
+    "Edit server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server wijzigen"
+          }
+        }
+      }
+    },
+    "Enter the address of your Frigate NVR. Use the authenticated port (8971) when connecting from outside its network.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vul het adres van je Frigate NVR in. Gebruik de beveiligde poort (8971) als je van buiten het netwerk verbindt."
+          }
+        }
+      }
+    },
+    "Event": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebeurtenis"
+          }
+        }
+      }
+    },
+    "Events": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebeurtenissen"
+          }
+        }
+      }
+    },
+    "FACE": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GEZICHT"
+          }
+        }
+      }
+    },
+    "FOUND ON YOUR NETWORK": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GEVONDEN OP JE NETWERK"
+          }
+        }
+      }
+    },
+    "Fallback when not on home Wi-Fi": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als je niet op je thuisnetwerk zit"
+          }
+        }
+      }
+    },
+    "Forward 10 seconds": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 seconden vooruit"
+          }
+        }
+      }
+    },
+    "Frigate for iOS · connects directly to your Frigate NVR servers.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frigate voor iOS · verbindt rechtstreeks met je eigen Frigate NVR-servers."
+          }
+        }
+      }
+    },
+    "From the playhead": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vanaf de afspeelpositie"
+          }
+        }
+      }
+    },
+    "Fullscreen": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volledig scherm"
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geschiedenis"
+          }
+        }
+      }
+    },
+    "Home NVR": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thuis"
+          }
+        }
+      }
+    },
+    "Just now": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zojuist"
+          }
+        }
+      }
+    },
+    "LIVE": {
+      "shouldTranslate": false
+    },
+    "Labels": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Labels"
+          }
+        }
+      }
+    },
+    "Last 24 hours": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laatste 24 uur"
+          }
+        }
+      }
+    },
+    "Live": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
+    "Load more": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meer laden"
+          }
+        }
+      }
+    },
+    "Local": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokaal"
+          }
+        }
+      }
+    },
+    "Login failed. Check the username and password.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inloggen mislukt. Controleer gebruikersnaam en wachtwoord."
+          }
+        }
+      }
+    },
+    "Looking for Frigate servers…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoeken naar Frigate-servers…"
+          }
+        }
+      }
+    },
+    "MJPEG": {
+      "shouldTranslate": false
+    },
+    "MSE": {
+      "shouldTranslate": false
+    },
+    "Mark all reviewed": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles beoordeeld"
+          }
+        }
+      }
+    },
+    "Mark reviewed": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markeer als beoordeeld"
+          }
+        }
+      }
+    },
+    "More options": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meer opties"
+          }
+        }
+      }
+    },
+    "Motion": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beweging"
+          }
+        }
+      }
+    },
+    "Mute": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geluid uit"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naam"
+          }
+        }
+      }
+    },
+    "Next month": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volgende maand"
+          }
+        }
+      }
+    },
+    "No activity today": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vandaag geen activiteit"
+          }
+        }
+      }
+    },
+    "No cameras": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen camera's"
+          }
+        }
+      }
+    },
+    "No events match the filters.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen gebeurtenissen die aan de filters voldoen."
+          }
+        }
+      }
+    },
+    "No events on this day.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen gebeurtenissen op deze dag."
+          }
+        }
+      }
+    },
+    "No new servers found. Enter the address below.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen nieuwe servers gevonden. Vul hieronder het adres in."
+          }
+        }
+      }
+    },
+    "No recordings for %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen opnames voor %@"
+          }
+        }
+      }
+    },
+    "No servers online": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen servers online"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen"
+          }
+        }
+      }
+    },
+    "Not reachable": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet bereikbaar"
+          }
+        }
+      }
+    },
+    "Nothing here": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niets gevonden"
+          }
+        }
+      }
+    },
+    "Now": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nu"
+          }
+        }
+      }
+    },
+    "OBJECT LIFECYCLE": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VERLOOP VAN HET OBJECT"
+          }
+        }
+      }
+    },
+    "OFFLINE": {
+      "shouldTranslate": false
+    },
+    "OK": {
+      "shouldTranslate": false
+    },
+    "Off": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uit"
+          }
+        }
+      }
+    },
+    "Offline": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline"
+          }
+        }
+      }
+    },
+    "Offline since %@. Recordings are not available.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline sinds %@. Opnames zijn niet beschikbaar."
+          }
+        }
+      }
+    },
+    "Offline · last seen %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline · laatst gezien %@"
+          }
+        }
+      }
+    },
+    "Offline. Recordings are not available.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline. Opnames zijn niet beschikbaar."
+          }
+        }
+      }
+    },
+    "On": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aan"
+          }
+        }
+      }
+    },
+    "Optional": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optioneel"
+          }
+        }
+      }
+    },
+    "PLATE": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KENTEKEN"
+          }
+        }
+      }
+    },
+    "PTZ": {
+      "shouldTranslate": false
+    },
+    "Pan, tilt and zoom": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Draaien, kantelen en zoomen"
+          }
+        }
+      }
+    },
+    "Password": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wachtwoord"
+          }
+        }
+      }
+    },
+    "Pause": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pauze"
+          }
+        }
+      }
+    },
+    "Pick a day": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kies een dag"
+          }
+        }
+      }
+    },
+    "Pick date": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kies datum"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspelen"
+          }
+        }
+      }
+    },
+    "Playback": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terugkijken"
+          }
+        }
+      }
+    },
+    "Playback failed": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspelen mislukt"
+          }
+        }
+      }
+    },
+    "Playback speed": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afspeelsnelheid"
+          }
+        }
+      }
+    },
+    "Playing": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speelt af"
+          }
+        }
+      }
+    },
+    "Preparing video…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video voorbereiden…"
+          }
+        }
+      }
+    },
+    "Previous month": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorige maand"
+          }
+        }
+      }
+    },
+    "REC": {
+      "shouldTranslate": false
+    },
+    "Reconnecting…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opnieuw verbinden…"
+          }
+        }
+      }
+    },
+    "Recordings": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opnames"
+          }
+        }
+      }
+    },
+    "Reload stream": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stream herladen"
+          }
+        }
+      }
+    },
+    "Remote": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extern"
+          }
+        }
+      }
+    },
+    "Remote URL": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Externe URL"
+          }
+        }
+      }
+    },
+    "Remote address": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extern adres"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijder"
+          }
+        }
+      }
+    },
+    "Remove %@?": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ verwijderen?"
+          }
+        }
+      }
+    },
+    "Remove server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server verwijderen"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opnieuw"
+          }
+        }
+      }
+    },
+    "Review": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beoordelen"
+          }
+        }
+      }
+    },
+    "Review items appear when a server is reachable.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meldingen verschijnen zodra een server bereikbaar is."
+          }
+        }
+      }
+    },
+    "Reviewed": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beoordeeld"
+          }
+        }
+      }
+    },
+    "SCORE": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SCORE"
+          }
+        }
+      }
+    },
+    "SUB LABEL": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SUBLABEL"
+          }
+        }
+      }
+    },
+    "Save %lld minutes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "Save %arg minute"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "Save %arg minutes"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minuut opslaan"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg minuten opslaan"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Save %lld seconds": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld seconden opslaan"
+          }
+        }
+      }
+    },
+    "Save event to Photos": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebeurtenis bewaren in Foto's"
+          }
+        }
+      }
+    },
+    "Save video": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video bewaren"
+          }
+        }
+      }
+    },
+    "Save video to Photos": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video bewaren in Foto's"
+          }
+        }
+      }
+    },
+    "Saved to Photos": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaard in Foto's"
+          }
+        }
+      }
+    },
+    "Saving %@ clip…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clip van %@ bewaren…"
+          }
+        }
+      }
+    },
+    "Scan again": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opnieuw zoeken"
+          }
+        }
+      }
+    },
+    "Server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server"
+          }
+        }
+      }
+    },
+    "Server URL": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server-URL"
+          }
+        }
+      }
+    },
+    "Server returned %lld%@.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server antwoordde met %lld%@."
+          }
+        }
+      }
+    },
+    "Servers": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Servers"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instellingen"
+          }
+        }
+      }
+    },
+    "Share clip": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deel clip"
+          }
+        }
+      }
+    },
+    "Share event": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deel gebeurtenis"
+          }
+        }
+      }
+    },
+    "Share video": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deel video"
+          }
+        }
+      }
+    },
+    "Show": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon"
+          }
+        }
+      }
+    },
+    "Show alerts from all servers in Review": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon meldingen van alle servers bij Beoordelen"
+          }
+        }
+      }
+    },
+    "Snapshot": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto"
+          }
+        }
+      }
+    },
+    "Something went wrong": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er ging iets mis"
+          }
+        }
+      }
+    },
+    "Stream": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stream"
+          }
+        }
+      }
+    },
+    "Stream unavailable": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stream niet beschikbaar"
+          }
+        }
+      }
+    },
+    "Switch server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wissel van server"
+          }
+        }
+      }
+    },
+    "Talk": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Praten"
+          }
+        }
+      }
+    },
+    "Test and save": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test en bewaar"
+          }
+        }
+      }
+    },
+    "Testing…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testen…"
+          }
+        }
+      }
+    },
+    "The server address is not a valid URL.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het serveradres is geen geldige URL."
+          }
+        }
+      }
+    },
+    "The server is offline or the camera was removed.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De server is offline of de camera is verwijderd."
+          }
+        }
+      }
+    },
+    "There are no unreviewed alerts.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er zijn geen onbeoordeelde meldingen."
+          }
+        }
+      }
+    },
+    "There are no unreviewed detections.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er zijn geen onbeoordeelde detecties."
+          }
+        }
+      }
+    },
+    "This address did not respond like a Frigate server.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit adres reageerde niet als een Frigate-server."
+          }
+        }
+      }
+    },
+    "This group has no cameras on %@.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze groep heeft geen camera's op %@."
+          }
+        }
+      }
+    },
+    "Timeline": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tijdlijn"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vandaag"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probeer opnieuw"
+          }
+        }
+      }
+    },
+    "Type": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type"
+          }
+        }
+      }
+    },
+    "Unknown": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onbekend"
+          }
+        }
+      }
+    },
+    "Unmute": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geluid aan"
+          }
+        }
+      }
+    },
+    "Unreviewed": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet beoordeeld"
+          }
+        }
+      }
+    },
+    "Unreviewed alerts": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onbeoordeelde meldingen"
+          }
+        }
+      }
+    },
+    "Username": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruikersnaam"
+          }
+        }
+      }
+    },
+    "WebRTC": {
+      "shouldTranslate": false
+    },
+    "Yesterday": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gisteren"
+          }
+        }
+      }
+    },
+    "Your servers": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je servers"
+          }
+        }
+      }
+    },
+    "ZONES": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZONES"
+          }
+        }
+      }
+    },
+    "Zone: %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zone: %@"
+          }
+        }
+      }
+    },
+    "Zones": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zones"
+          }
+        }
+      }
+    },
+    "Zoom in": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inzoomen"
+          }
+        }
+      }
+    },
+    "Zoom out": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uitzoomen"
+          }
+        }
+      }
+    },
+    "from %lld online servers": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "from %arg online server"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "from %arg online servers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "van %arg online server"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "van %arg online servers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "no recordings": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "geen opnames"
+          }
+        }
+      }
+    },
+    "recordings": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "opnames"
+          }
+        }
+      }
+    },
+    "server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "server"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

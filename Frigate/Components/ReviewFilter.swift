@@ -41,30 +41,30 @@ struct ReviewFilterBar: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 Menu {
-                    option("All types", filter.severity == nil) { filter.severity = nil }
-                    option("Alerts", filter.severity == .alert) { filter.severity = .alert }
-                    option("Detections", filter.severity == .detection) { filter.severity = .detection }
+                    option(L("All types"), filter.severity == nil) { filter.severity = nil }
+                    option(L("Alerts"), filter.severity == .alert) { filter.severity = .alert }
+                    option(L("Detections"), filter.severity == .detection) { filter.severity = .detection }
                 } label: {
-                    Chip(title: filter.severity == nil ? "Type" : (filter.severity == .alert ? "Alerts" : "Detections"),
+                    Chip(title: filter.severity == nil ? L("Type") : (filter.severity == .alert ? L("Alerts") : L("Detections")),
                          outlined: filter.severity != nil, trailingChevron: true)
                 }
                 Menu {
-                    option("All labels", filter.labels.isEmpty) { filter.labels = [] }
+                    option(L("All labels"), filter.labels.isEmpty) { filter.labels = [] }
                     ForEach(labelOptions, id: \.self) { l in
                         option(FrigateFormat.labelName(l).capitalizedFirst, filter.labels.contains(l)) { toggle(&filter.labels, l) }
                     }
                 } label: {
-                    Chip(title: filter.labels.isEmpty ? "Labels" : filter.labels.map(FrigateFormat.labelName).sorted().joined(separator: ", "),
+                    Chip(title: filter.labels.isEmpty ? L("Labels") : filter.labels.map(FrigateFormat.labelName).sorted().joined(separator: ", "),
                          outlined: !filter.labels.isEmpty, trailingChevron: true)
                 }
                 .disabled(labelOptions.isEmpty)
                 Menu {
-                    option("All zones", filter.zones.isEmpty) { filter.zones = [] }
+                    option(L("All zones"), filter.zones.isEmpty) { filter.zones = [] }
                     ForEach(zoneOptions, id: \.self) { z in
                         option(FrigateFormat.prettyName(z), filter.zones.contains(z)) { toggle(&filter.zones, z) }
                     }
                 } label: {
-                    Chip(title: filter.zones.isEmpty ? "Zones" : filter.zones.map(FrigateFormat.prettyName).sorted().joined(separator: ", "),
+                    Chip(title: filter.zones.isEmpty ? L("Zones") : filter.zones.map(FrigateFormat.prettyName).sorted().joined(separator: ", "),
                          outlined: !filter.zones.isEmpty, trailingChevron: true)
                 }
                 .disabled(zoneOptions.isEmpty)

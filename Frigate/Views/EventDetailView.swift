@@ -160,7 +160,7 @@ struct EventDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 ForEach(item.labels, id: \.self) { LabelTag(label: $0, size: 12) }
-                Text(item.severity == .alert ? "Alert" : "Detection")
+                Text(item.severity == .alert ? L("Alert") : L("Detection"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
                     .padding(.horizontal, 8).padding(.vertical, 3)
@@ -178,8 +178,8 @@ struct EventDetailView: View {
     private var timeRange: String {
         let day = FrigateFormat.dayTitle(item.start)
         let s = FrigateFormat.time(item.start, seconds: true)
-        guard let end = item.end else { return "\(day), \(s), in progress" }
-        return "\(day), \(s) to \(FrigateFormat.time(end, seconds: true))"
+        guard let end = item.end else { return L("\(day), \(s), in progress") }
+        return L("\(day), \(s) to \(FrigateFormat.time(end, seconds: true))")
     }
 
     private var tiles: some View {
@@ -189,14 +189,14 @@ struct EventDetailView: View {
         let third: (String, String) = {
             if let s = subLabels.first {
                 let isPlate = item.labels.contains { $0 == "car" || $0 == "license_plate" } && !item.labels.contains("person")
-                return (isPlate ? "PLATE" : (item.labels.contains("person") ? "FACE" : "SUB LABEL"), s)
+                return (isPlate ? L("PLATE") : (item.labels.contains("person") ? L("FACE") : L("SUB LABEL")), s)
             }
-            if item.labels.contains("person") { return ("FACE", "Unknown") }
-            return ("DURATION", FrigateFormat.duration(item.duration))
+            if item.labels.contains("person") { return (L("FACE"), L("Unknown")) }
+            return (L("DURATION"), FrigateFormat.duration(item.duration))
         }()
         return HStack(spacing: 8) {
-            tile("SCORE", score.map { "\(Int(($0 * 100).rounded()))%" } ?? "–")
-            tile("ZONES", zones.isEmpty ? "None" : zones.joined(separator: ", "))
+            tile(L("SCORE"), score.map { "\(Int(($0 * 100).rounded()))%" } ?? "–")
+            tile(L("ZONES"), zones.isEmpty ? L("None") : zones.joined(separator: ", "))
             tile(third.0, third.1)
         }
         .padding(.horizontal, 16)

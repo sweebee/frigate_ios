@@ -52,7 +52,7 @@ struct LiveView: View {
                 }
                 .accessibilityLabel("Unreviewed alerts")
             }
-            LargeTitle(text: "Live")
+            LargeTitle(text: L("Live"))
         }
         .padding(.top, 8)
     }
@@ -69,7 +69,7 @@ struct LiveView: View {
     private var groupChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Button { group = nil } label: { Chip(title: "All", selected: group == nil) }
+                Button { group = nil } label: { Chip(title: L("All"), selected: group == nil) }
                 ForEach(groupNames, id: \.self) { name in
                     Button { group = name } label: { Chip(title: FrigateFormat.prettyName(name), selected: group == name) }
                 }
@@ -126,7 +126,7 @@ struct LiveView: View {
         default:
             let cams = cameras(for: conn)
             if cams.isEmpty {
-                EmptyStateView(systemImage: "video.slash", title: "No cameras", message: group == nil ? nil : "This group has no cameras on \(conn.server.name).")
+                EmptyStateView(systemImage: "video.slash", title: L("No cameras"), message: group == nil ? nil : L("This group has no cameras on \(conn.server.name)."))
             } else {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(cams, id: \.name) { cam in
@@ -198,9 +198,9 @@ struct CameraTile: View {
     }
 
     private func meta(online: Bool) -> String {
-        if !online { return "Offline" }
-        if !conn.isDetectEnabled(camera) { return "Detect off" }
-        if !(conn.activeObjects[camera.name] ?? []).isEmpty { return "Now" }
+        if !online { return L("Offline") }
+        if !conn.isDetectEnabled(camera) { return L("Detect off") }
+        if !(conn.activeObjects[camera.name] ?? []).isEmpty { return L("Now") }
         if let last = conn.lastActivity[camera.name] { return FrigateFormat.relative(last) }
         return ""
     }

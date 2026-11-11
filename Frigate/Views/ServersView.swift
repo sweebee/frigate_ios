@@ -10,7 +10,7 @@ struct ServersView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        LargeTitle(text: "Servers")
+                        LargeTitle(text: L("Servers"))
                         Spacer()
                         Button { model.showAddServer = true } label: {
                             Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
@@ -23,7 +23,7 @@ struct ServersView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 4)
 
-                    SectionLabel(text: "Show")
+                    SectionLabel(text: L("Show"))
                     Button {
                         model.scope = .all
                         model.tab = .live
@@ -48,13 +48,13 @@ struct ServersView: View {
                     }
                     .buttonStyle(.plain)
 
-                    SectionLabel(text: "Your servers").padding(.top, 10)
+                    SectionLabel(text: L("Your servers")).padding(.top, 10)
                     ForEach(model.orderedConnections) { conn in
                         serverRow(conn)
                     }
 
                     VStack(spacing: 0) {
-                        ToggleRow(title: "Combined review", subtitle: "Show alerts from all servers in Review",
+                        ToggleRow(title: L("Combined review"), subtitle: L("Show alerts from all servers in Review"),
                                   isOn: model.combinedReview) { model.setCombinedReview($0) }
                             .padding(.horizontal, 14)
                             .frame(minHeight: 60)
@@ -82,7 +82,7 @@ struct ServersView: View {
     private var allSummary: String {
         let online = model.onlineConnections
         let cams = online.reduce(0) { $0 + $1.cameras.count }
-        return "\(cams) camera\(cams == 1 ? "" : "s") from \(online.count) online server\(online.count == 1 ? "" : "s")"
+        return L("\(cams) cameras") + " " + L("from \(online.count) online servers")
     }
 
     private func serverRow(_ conn: ServerConnection) -> some View {

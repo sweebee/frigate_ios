@@ -53,14 +53,14 @@ final class ServerConnection: Identifiable {
     /// "6 cameras · v0.18 · Local" or "Offline · last seen 2 days ago".
     var metaLine: String {
         switch status {
-        case .connecting: return "Connecting…"
+        case .connecting: return L("Connecting…")
         case .offline:
-            if let lastSeen { return "Offline · last seen \(FrigateFormat.relative(lastSeen).lowercased())" }
-            return "Offline"
+            if let lastSeen { return L("Offline · last seen \(FrigateFormat.relative(lastSeen).lowercased())") }
+            return L("Offline")
         case .online:
-            var parts = ["\(cameras.count) camera\(cameras.count == 1 ? "" : "s")"]
+            var parts = [L("\(cameras.count) cameras")]
             if let version { parts.append(FrigateFormat.shortVersion(version)) }
-            parts.append(usingRemote ? "Remote" : "Local")
+            parts.append(usingRemote ? L("Remote") : L("Local"))
             return parts.joined(separator: " · ")
         }
     }
@@ -122,7 +122,7 @@ final class ServerConnection: Identifiable {
             // Lost the server; try to reconnect next time.
             if (try? await client.version(timeout: 4)) == nil {
                 if Task.isCancelled { return }
-                status = .offline("Not reachable")
+                status = .offline(L("Not reachable"))
                 return
             }
         }
@@ -211,8 +211,8 @@ final class AppModel {
 
     var scopeTitle: String {
         switch scope {
-        case .all: return "All servers"
-        case .server(let id): return connections[id]?.server.name ?? "Server"
+        case .all: return L("All servers")
+        case .server(let id): return connections[id]?.server.name ?? L("Server")
         }
     }
 

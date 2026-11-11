@@ -23,11 +23,11 @@ final class ClipExporter {
     }
 
     func saveToPhotos(client: FrigateClient, camera: String, start: Double, end: Double) async {
-        state = .working("Saving \(FrigateFormat.duration(end - start)) clip…")
+        state = .working(L("Saving \(FrigateFormat.duration(end - start)) clip…"))
         do {
             let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
             guard status == .authorized || status == .limited else {
-                state = .failed("Allow Frigate to add photos in Settings to save clips.")
+                state = .failed(L("Allow Frigate to add photos in Settings to save clips."))
                 return
             }
             let file = try await download(client: client, camera: camera, start: start, end: end)
@@ -35,7 +35,7 @@ final class ClipExporter {
                 PHAssetCreationRequest.creationRequestForAssetFromVideo(atFileURL: file)
             }
             try? FileManager.default.removeItem(at: file)
-            state = .done("Saved to Photos")
+            state = .done(L("Saved to Photos"))
         } catch {
             state = .failed(error.localizedDescription)
         }

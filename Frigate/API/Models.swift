@@ -281,18 +281,18 @@ struct TimelineEntry: Decodable, Hashable {
     var description: String {
         let label = FrigateFormat.labelName(data?.label ?? "object").capitalizedFirst
         switch classType {
-        case "visible": return "\(label) detected"
+        case "visible": return L("\(label) detected")
         case "entered_zone":
             let z = (data?.zones ?? []).map(FrigateFormat.prettyName).joined(separator: ", ")
-            return z.isEmpty ? "\(label) entered a zone" : "\(label) entered \(z)"
-        case "active": return "\(label) became active"
-        case "stationary": return "\(label) became stationary"
+            return z.isEmpty ? L("\(label) entered a zone") : L("\(label) entered \(z)")
+        case "active": return L("\(label) became active")
+        case "stationary": return L("\(label) became stationary")
         case "attribute":
             let a = data?.attribute.map(FrigateFormat.labelName) ?? "attribute"
-            return "\(label) recognized as \(a)"
-        case "gone": return "\(label) left the frame"
-        case "heard": return "\(label) heard"
-        case "external": return "\(label) (external)"
+            return L("\(label) recognized as \(a)")
+        case "gone": return L("\(label) left the frame")
+        case "heard": return L("\(label) heard")
+        case "external": return L("\(label) (external)")
         default: return "\(label): \(classType.replacingOccurrences(of: "_", with: " "))"
         }
     }
@@ -319,8 +319,10 @@ enum FrigateFormat {
         return s.capitalizedFirst
     }
 
+    /// Frigate object label in the user's language (table Labels.xcstrings), e.g. person -> persoon.
     static func labelName(_ raw: String) -> String {
-        raw.replacingOccurrences(of: "_", with: " ")
+        let pretty = raw.replacingOccurrences(of: "_", with: " ")
+        return Bundle.main.localizedString(forKey: raw, value: pretty, table: "Labels")
     }
 
     static func time(_ date: Date, seconds: Bool = false) -> String {
@@ -337,8 +339,8 @@ enum FrigateFormat {
 
     static func dayTitle(_ date: Date) -> String {
         let cal = Calendar.current
-        if cal.isDateInToday(date) { return "Today" }
-        if cal.isDateInYesterday(date) { return "Yesterday" }
+        if cal.isDateInToday(date) { return L("Today") }
+        if cal.isDateInYesterday(date) { return L("Yesterday") }
         let f = DateFormatter()
         f.setLocalizedDateFormatFromTemplate("EEEdMMM")
         return f.string(from: date)
@@ -346,11 +348,11 @@ enum FrigateFormat {
 
     static func relative(_ date: Date, now: Date = Date()) -> String {
         let d = now.timeIntervalSince(date)
-        if d < 60 { return "Just now" }
-        if d < 3600 { return "\(Int(d / 60)) min ago" }
-        if d < 86400 { return "\(Int(d / 3600)) h ago" }
+        if d < 60 { return L("Just now") }
+        if d < 3600 { return L("\(Int(d / 60)) min ago") }
+        if d < 86400 { return L("\(Int(d / 3600)) h ago") }
         let days = Int(d / 86400)
-        return days == 1 ? "1 day ago" : "\(days) days ago"
+        return L("\(days) days ago")
     }
 
     /// "0.18.2-cfa08c5" -> "v0.18"

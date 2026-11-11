@@ -38,7 +38,7 @@ struct CameraView: View {
                 }
             } else {
                 Spacer()
-                EmptyStateView(systemImage: "video.slash", title: "Camera unavailable", message: "The server is offline or the camera was removed.")
+                EmptyStateView(systemImage: "video.slash", title: L("Camera unavailable"), message: L("The server is offline or the camera was removed."))
                 Spacer()
             }
         }
@@ -132,7 +132,7 @@ struct CameraView: View {
                     } else {
                         ProgressView().tint(.white)
                     }
-                    Text(player.status).font(.system(size: 13)).multilineTextAlignment(.center)
+                    Text(player.statusText).font(.system(size: 13)).multilineTextAlignment(.center)
                     if player.status.hasPrefix("Stream unavailable") {
                         Button("Retry") { player.reloadToken += 1 }.font(.system(size: 14, weight: .semibold))
                     }
@@ -192,7 +192,7 @@ struct CameraView: View {
         .padding(.bottom, 4)
     }
 
-    private func controlButton(_ icon: String, _ label: String, active: Bool = false, enabled: Bool = true,
+    private func controlButton(_ icon: String, _ label: LocalizedStringKey, active: Bool = false, enabled: Bool = true,
                                busy: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 6) {
@@ -206,6 +206,7 @@ struct CameraView: View {
                 }
                 .frame(width: 48, height: 48)
                 Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
             .opacity(enabled ? 1 : 0.35)
@@ -304,7 +305,7 @@ struct FullscreenLiveView: View {
             if !state.playing {
                 VStack(spacing: 8) {
                     ProgressView().tint(.white)
-                    Text(state.status).font(.system(size: 13)).foregroundStyle(.white)
+                    Text(state.statusText).font(.system(size: 13)).foregroundStyle(.white)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

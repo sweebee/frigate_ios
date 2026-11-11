@@ -32,11 +32,11 @@ struct ConnectView: View {
                 if existing == nil { discovered }
 
                 VStack(alignment: .leading, spacing: 14) {
-                    field("Name", text: $name, placeholder: "Home NVR", field: .name)
+                    field("Name", text: $name, placeholder: L("Home NVR"), field: .name)
                     field("Server URL", text: $url, placeholder: "http://192.168.1.20:8971", field: .url, keyboard: .URL)
-                    field("Username", text: $username, placeholder: "Optional", field: .user)
-                    field("Password", text: $password, placeholder: "Optional", field: .password, secure: true)
-                    ToggleRow(title: "Remote address", subtitle: "Fallback when not on home Wi-Fi", isOn: useRemote) { on in
+                    field("Username", text: $username, placeholder: L("Optional"), field: .user)
+                    field("Password", text: $password, placeholder: L("Optional"), field: .password, secure: true)
+                    ToggleRow(title: L("Remote address"), subtitle: L("Fallback when not on home Wi-Fi"), isOn: useRemote) { on in
                         withAnimation { useRemote = on }
                     }
                     if useRemote {
@@ -54,7 +54,7 @@ struct ConnectView: View {
                     Button { Task { await testAndSave() } } label: {
                         HStack(spacing: 8) {
                             if testing { ProgressView().tint(Theme.onColor) }
-                            Text(testing ? "Testing…" : "Test and save")
+                            Text(testing ? L("Testing…") : L("Test and save"))
                         }
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Theme.onColor)
@@ -84,7 +84,7 @@ struct ConnectView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
         }
-        .confirmationDialog("Remove \(existing?.name ?? "server")?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .confirmationDialog("Remove \(existing?.name ?? L("server"))?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
                 if let existing { model.delete(existing) }
                 dismiss()
@@ -95,14 +95,14 @@ struct ConnectView: View {
     }
 
     private var title: String {
-        if isOnboarding { return "Connect to Frigate" }
-        return existing == nil ? "Add server" : "Edit server"
+        if isOnboarding { return L("Connect to Frigate") }
+        return existing == nil ? L("Add server") : L("Edit server")
     }
 
     private var intro: String {
-        if isOnboarding { return "Enter the address of your Frigate NVR. Use the authenticated port (8971) when connecting from outside its network." }
-        if existing != nil { return "Change how the app connects to this server. Use the authenticated port (8971) when connecting from outside its network." }
-        return "Add another Frigate server. Use the authenticated port (8971) when connecting from outside its network."
+        if isOnboarding { return L("Enter the address of your Frigate NVR. Use the authenticated port (8971) when connecting from outside its network.") }
+        if existing != nil { return L("Change how the app connects to this server. Use the authenticated port (8971) when connecting from outside its network.") }
+        return L("Add another Frigate server. Use the authenticated port (8971) when connecting from outside its network.")
     }
 
     private var canSave: Bool { ServerConfig.normalizedURL(url) != nil }
@@ -122,7 +122,7 @@ struct ConnectView: View {
             let known = Set(model.servers.compactMap { ServerConfig.normalizedURL($0.url)?.host })
             let found = scanner.found.filter { !known.contains($0.url.host ?? "") }
             if found.isEmpty {
-                Text(scanner.scanning ? "Looking for Frigate servers…" : "No new servers found. Enter the address below.")
+                Text(scanner.scanning ? L("Looking for Frigate servers…") : L("No new servers found. Enter the address below."))
                     .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                     .padding(.vertical, 6)
             }
@@ -153,7 +153,7 @@ struct ConnectView: View {
         }
     }
 
-    private func field(_ label: String, text: Binding<String>, placeholder: String, field: Field,
+    private func field(_ label: LocalizedStringKey, text: Binding<String>, placeholder: String, field: Field,
                        keyboard: UIKeyboardType = .default, secure: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textTertiary)
@@ -215,7 +215,7 @@ struct ConnectView: View {
             }
         }
         guard reached else {
-            error = (lastError as? LocalizedError)?.errorDescription ?? lastError?.localizedDescription ?? "Could not reach the server."
+            error = (lastError as? LocalizedError)?.errorDescription ?? lastError?.localizedDescription ?? L("Could not reach the server.")
             return
         }
         model.save(server, password: password.isEmpty ? nil : password)

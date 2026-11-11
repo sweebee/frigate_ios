@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// Localized text from the string catalog. Interpolated values become format arguments,
+/// so "\(n) cameras" can have plural forms per language.
+func L(_ key: String.LocalizationValue) -> String { String(localized: key) }
+
 extension Color {
     init(hex: UInt32, alpha: Double = 1) {
         self.init(.sRGB,
@@ -232,6 +236,6 @@ struct ToggleRow: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isToggle)
-        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityValue(isOn ? L("On") : L("Off"))
     }
 }

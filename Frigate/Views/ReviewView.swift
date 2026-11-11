@@ -70,7 +70,7 @@ struct ReviewView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                LargeTitle(text: "Review")
+                LargeTitle(text: L("Review"))
                 Spacer()
                 if kind != .motion {
                     Button("Mark all reviewed") { Task { await markAllReviewed() } }
@@ -80,9 +80,9 @@ struct ReviewView: View {
             }
             SegmentedBar(options: [Kind.alert, .detection, .motion], selection: $kind) { k in
                 switch k {
-                case .alert: return countTitle("Alerts", connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedAlerts ?? 0) })
-                case .detection: return countTitle("Detections", connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedDetections ?? 0) })
-                case .motion: return "Motion"
+                case .alert: return countTitle(L("Alerts"), connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedAlerts ?? 0) })
+                case .detection: return countTitle(L("Detections"), connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedDetections ?? 0) })
+                case .motion: return L("Motion")
                 }
             }
             filters
@@ -120,52 +120,52 @@ struct ReviewView: View {
             HStack(spacing: 8) {
                 if model.combinedReview && model.orderedConnections.count > 1 {
                     Menu {
-                        Button { serverFilter = nil } label: { checkLabel("All servers", serverFilter == nil) }
+                        Button { serverFilter = nil } label: { checkLabel(L("All servers"), serverFilter == nil) }
                         ForEach(model.orderedConnections) { c in
                             Button { serverFilter = c.server.id } label: { checkLabel(c.server.name, serverFilter == c.server.id) }
                         }
                     } label: {
-                        Chip(title: serverFilter.flatMap { model.connection(for: $0)?.server.name } ?? "All servers", trailingChevron: true)
+                        Chip(title: serverFilter.flatMap { model.connection(for: $0)?.server.name } ?? L("All servers"), trailingChevron: true)
                     }
                 }
                 Menu {
-                    Button { cameraFilter = [] } label: { checkLabel("All cameras", cameraFilter.isEmpty) }
+                    Button { cameraFilter = [] } label: { checkLabel(L("All cameras"), cameraFilter.isEmpty) }
                     ForEach(availableCameras, id: \.camera.name) { pair in
                         Button {
                             if cameraFilter.contains(pair.camera.name) { cameraFilter.remove(pair.camera.name) } else { cameraFilter.insert(pair.camera.name) }
                         } label: { checkLabel(pair.camera.displayName, cameraFilter.contains(pair.camera.name)) }
                     }
                 } label: {
-                    Chip(title: cameraFilter.isEmpty ? "Cameras" : "\(cameraFilter.count) camera\(cameraFilter.count == 1 ? "" : "s")",
+                    Chip(title: cameraFilter.isEmpty ? L("Cameras") : L("\(cameraFilter.count) cameras"),
                          outlined: !cameraFilter.isEmpty, trailingChevron: true)
                 }
                 if kind != .motion {
                     Menu {
-                        Button { labelFilter = [] } label: { checkLabel("All labels", labelFilter.isEmpty) }
+                        Button { labelFilter = [] } label: { checkLabel(L("All labels"), labelFilter.isEmpty) }
                         ForEach(availableLabels, id: \.self) { l in
                             Button {
                                 if labelFilter.contains(l) { labelFilter.remove(l) } else { labelFilter.insert(l) }
                             } label: { checkLabel(FrigateFormat.labelName(l).capitalizedFirst, labelFilter.contains(l)) }
                         }
                     } label: {
-                        Chip(title: labelFilter.isEmpty ? "Labels" : labelFilter.map(FrigateFormat.labelName).sorted().joined(separator: ", "),
+                        Chip(title: labelFilter.isEmpty ? L("Labels") : labelFilter.map(FrigateFormat.labelName).sorted().joined(separator: ", "),
                              outlined: !labelFilter.isEmpty, trailingChevron: true)
                     }
                     if !availableZones.isEmpty {
                         Menu {
-                            Button { zoneFilter = [] } label: { checkLabel("All zones", zoneFilter.isEmpty) }
+                            Button { zoneFilter = [] } label: { checkLabel(L("All zones"), zoneFilter.isEmpty) }
                             ForEach(availableZones, id: \.self) { z in
                                 Button {
                                     if zoneFilter.contains(z) { zoneFilter.remove(z) } else { zoneFilter.insert(z) }
                                 } label: { checkLabel(FrigateFormat.prettyName(z), zoneFilter.contains(z)) }
                             }
                         } label: {
-                            Chip(title: zoneFilter.isEmpty ? "Zones" : zoneFilter.map(FrigateFormat.prettyName).sorted().joined(separator: ", "),
+                            Chip(title: zoneFilter.isEmpty ? L("Zones") : zoneFilter.map(FrigateFormat.prettyName).sorted().joined(separator: ", "),
                                  outlined: !zoneFilter.isEmpty, trailingChevron: true)
                         }
                     }
                     Button { unreviewedOnly.toggle() } label: {
-                        Chip(title: "Unreviewed", outlined: unreviewedOnly)
+                        Chip(title: L("Unreviewed"), outlined: unreviewedOnly)
                     }
                     .buttonStyle(.plain)
                 }
@@ -183,14 +183,14 @@ struct ReviewView: View {
     @ViewBuilder
     private var list: some View {
         if model.reviewConnections.allSatisfy({ !$0.isOnline }) && !model.reviewConnections.isEmpty {
-            EmptyStateView(systemImage: "wifi.slash", title: "No servers online", message: "Review items appear when a server is reachable.")
+            EmptyStateView(systemImage: "wifi.slash", title: L("No servers online"), message: L("Review items appear when a server is reachable."))
         } else if loading && entries.isEmpty {
             ProgressView().frame(maxWidth: .infinity, minHeight: 200)
         } else if let loadError, entries.isEmpty {
-            EmptyStateView(systemImage: "exclamationmark.triangle", title: "Could not load review", message: loadError)
+            EmptyStateView(systemImage: "exclamationmark.triangle", title: L("Could not load review"), message: loadError)
         } else if entries.isEmpty {
-            EmptyStateView(systemImage: "checkmark.circle", title: unreviewedOnly ? "All caught up" : "Nothing here",
-                           message: unreviewedOnly ? "There are no unreviewed \(kind == .alert ? "alerts" : "detections")." : nil)
+            EmptyStateView(systemImage: "checkmark.circle", title: unreviewedOnly ? L("All caught up") : L("Nothing here"),
+                           message: unreviewedOnly ? (kind == .alert ? L("There are no unreviewed alerts.") : L("There are no unreviewed detections.")) : nil)
         } else {
             ForEach(groupedByDay, id: \.day) { group in
                 SectionLabel(text: FrigateFormat.dayTitle(group.day)).padding(.top, 6)
@@ -364,7 +364,7 @@ struct MotionOverview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(text: "Last 24 hours").padding(.top, 6)
+            SectionLabel(text: L("Last 24 hours")).padding(.top, 6)
             if loading && activity.isEmpty {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 160)
             }

@@ -71,7 +71,7 @@ struct HistoryOverviewView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        LargeTitle(text: "History")
+                        LargeTitle(text: L("History"))
                         Spacer()
                         Button { showDatePicker = true } label: {
                             Chip(title: FrigateFormat.dayTitle(day), systemImage: "calendar")
@@ -121,7 +121,7 @@ struct ServerHistorySection: View {
                 ServerBadge(initial: conn.server.initial, tint: conn.server.tint, size: 20)
                 Text(conn.server.name.uppercased()).font(.system(size: 13, weight: .bold)).kerning(0.4)
                     .foregroundStyle(Theme.textTertiary)
-                Text(conn.isOnline ? "\(conn.cameras.count) cameras" : "Offline")
+                Text(conn.isOnline ? L("\(conn.cameras.count) cameras") : L("Offline"))
                     .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                 if loading { ProgressView().scaleEffect(0.7) }
             }
@@ -147,9 +147,9 @@ struct ServerHistorySection: View {
     }
 
     private var offlineText: String {
-        if case .connecting = conn.status { return "Connecting…" }
-        if let seen = conn.lastSeen { return "Offline since \(FrigateFormat.relative(seen).lowercased()). Recordings are not available." }
-        return "Offline. Recordings are not available."
+        if case .connecting = conn.status { return L("Connecting…") }
+        if let seen = conn.lastSeen { return L("Offline since \(FrigateFormat.relative(seen).lowercased()). Recordings are not available.") }
+        return L("Offline. Recordings are not available.")
     }
 
     private func cameraCard(_ cam: CameraConfig) -> some View {
@@ -158,13 +158,13 @@ struct ServerHistorySection: View {
             HStack(spacing: 8) {
                 Text(cam.displayName).font(.system(size: 15, weight: .semibold))
                 Spacer()
-                Text(items.count == 1 ? "1 event" : "\(items.count) events")
+                Text(L("\(items.count) events"))
                     .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
             }
             ActivityStrip(start: day, end: dayEnd, buckets: 72, motion: motion[cam.name] ?? [], reviews: items)
             HStack {
                 Text("00:00"); Spacer(); Text("06:00"); Spacer(); Text("12:00"); Spacer(); Text("18:00"); Spacer()
-                Text(Calendar.current.isDateInToday(day) ? "Now" : "24:00")
+                Text(Calendar.current.isDateInToday(day) ? L("Now") : "24:00")
             }
             .font(.system(size: 10)).foregroundStyle(Theme.textSecondary)
         }

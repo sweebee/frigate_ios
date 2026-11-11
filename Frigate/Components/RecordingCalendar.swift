@@ -182,9 +182,9 @@ struct RecordingCalendarSheet: View {
 
     private func accessibility(_ date: Date, hasRecordings: Bool, alerts: Int, detections: Int) -> String {
         var parts = [date.formatted(date: .complete, time: .omitted)]
-        parts.append(hasRecordings ? "recordings" : "no recordings")
-        if alerts > 0 { parts.append("\(alerts) alerts") }
-        if detections > 0 { parts.append("\(detections) detections") }
+        parts.append(hasRecordings ? L("recordings") : L("no recordings"))
+        if alerts > 0 { parts.append(L("\(alerts) alerts")) }
+        if detections > 0 { parts.append(L("\(detections) detections")) }
         return parts.joined(separator: ", ")
     }
 

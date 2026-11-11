@@ -19,6 +19,18 @@ final class LivePlayerState {
 
     fileprivate weak var webView: WKWebView?
 
+    /// `status` as shown to the user; the web page reports it in English.
+    var statusText: String {
+        let unavailable = "Stream unavailable"
+        if status.hasPrefix(unavailable) { return L("Stream unavailable") + status.dropFirst(unavailable.count) }
+        switch status {
+        case "Connecting": return L("Connecting…")
+        case "Reconnecting": return L("Reconnecting…")
+        case "Live": return L("Live")
+        default: return status
+        }
+    }
+
     func setMuted(_ value: Bool) {
         muted = value
         webView?.evaluateJavaScript("setMuted(\(value ? "true" : "false"))")

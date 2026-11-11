@@ -101,7 +101,7 @@ struct PlaybackView: View {
             header
             videoPlayer
             progressBar
-            SegmentedBar(options: [Tab.events, .timeline], selection: $tab) { $0 == .events ? "Events" : "Timeline" }
+            SegmentedBar(options: [Tab.events, .timeline], selection: $tab) { $0 == .events ? L("Events") : L("Timeline") }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
@@ -145,7 +145,7 @@ struct PlaybackView: View {
     private var saveMenu: some View {
         Menu {
             if let r = currentReview {
-                Section("\(r.labels.first.map(FrigateFormat.labelName)?.capitalizedFirst ?? "Event") at \(FrigateFormat.time(r.start, seconds: true))") {
+                Section("\(r.labels.first.map(FrigateFormat.labelName)?.capitalizedFirst ?? L("Event")) at \(FrigateFormat.time(r.start, seconds: true))") {
                     Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                         Label("Save event to Photos", systemImage: "square.and.arrow.down")
                     }
@@ -157,7 +157,7 @@ struct PlaybackView: View {
             Section("From the playhead") {
                 ForEach([30.0, 60, 300], id: \.self) { secs in
                     Button { save(wallTime - secs / 2, wallTime + secs / 2) } label: {
-                        Label("Save \(secs < 60 ? "\(Int(secs)) seconds" : "\(Int(secs / 60)) minute\(secs == 60 ? "" : "s")")",
+                        Label(secs < 60 ? L("Save \(Int(secs)) seconds") : L("Save \(Int(secs / 60)) minutes"),
                               systemImage: "film")
                     }
                 }
@@ -189,7 +189,7 @@ struct PlaybackView: View {
         guard let client else { return }
         let (s, e) = clampRange(start, end)
         Task {
-            exporter.state = .working("Preparing video…")
+            exporter.state = .working(L("Preparing video…"))
             do {
                 let file = try await exporter.download(client: client, camera: camera, start: s, end: e)
                 exporter.state = .idle
@@ -328,8 +328,9 @@ struct PlaybackView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     let shown = visibleReviews
-                    SectionLabel(text: "\(FrigateFormat.dayTitle(day)) · \(shown.count) event\(shown.count == 1 ? "" : "s")"
-                                 + (filter.isActive ? " of \(reviews.count)" : ""))
+                    SectionLabel(text: filter.isActive
+                                 ? L("\(FrigateFormat.dayTitle(day)) · \(shown.count) of \(reviews.count) events")
+                                 : L("\(FrigateFormat.dayTitle(day)) · \(shown.count) events"))
                         .padding(.top, 2)
                     if loading && reviews.isEmpty {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 120)
@@ -361,7 +362,7 @@ struct PlaybackView: View {
                                     HStack(spacing: 5) { ForEach(r.labels.prefix(3), id: \.self) { LabelTag(label: $0) } }
                                     Text(FrigateFormat.time(r.start, seconds: true)).font(.system(size: 14, weight: .semibold))
                                     let zones = (r.data.zones ?? []).map(FrigateFormat.prettyName)
-                                    Text(zones.isEmpty ? (r.severity == .alert ? "Alert" : "Detection") : "Zone: \(zones.joined(separator: ", "))")
+                                    Text(zones.isEmpty ? (r.severity == .alert ? L("Alert") : L("Detection")) : L("Zone: \(zones.joined(separator: ", "))"))
                                         .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                                 }
                                 Spacer(minLength: 0)
@@ -527,7 +528,7 @@ struct PlaybackTimeline: View {
 
     private func clamp(_ t: Double) -> Double { min(max(t, dayStart), dayEnd) }
 
-    private func zoomButton(_ icon: String, _ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func zoomButton(_ icon: String, _ label: LocalizedStringKey, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon).font(.system(size: 17))
                 .foregroundStyle(Theme.text)

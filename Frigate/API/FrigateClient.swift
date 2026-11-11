@@ -8,10 +8,10 @@ enum FrigateError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return "The server address is not a valid URL."
-        case .http(let code, let detail): return "Server returned \(code)\(detail.map { ": \($0)" } ?? "")."
-        case .unauthorized: return "Login failed. Check the username and password."
-        case .notFrigate: return "This address did not respond like a Frigate server."
+        case .invalidURL: return L("The server address is not a valid URL.")
+        case .http(let code, let detail): return L("Server returned \(code)\(detail.map { ": \($0)" } ?? "").")
+        case .unauthorized: return L("Login failed. Check the username and password.")
+        case .notFrigate: return L("This address did not respond like a Frigate server.")
         }
     }
 }
