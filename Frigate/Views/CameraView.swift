@@ -44,7 +44,6 @@ struct CameraView: View {
         }
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
         .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
