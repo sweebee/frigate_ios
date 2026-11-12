@@ -97,12 +97,15 @@ struct PlaybackView: View {
     /// Low-resolution preview shown while dragging a timeline.
     @State private var preview = PreviewScrubber()
     @State private var share: ShareItem?
+    /// Moment to start at once the recordings are loaded (only on the first load).
+    @State private var pendingStartTime: Double?
 
     init(route: PlaybackRoute) {
         self.route = route
         _camera = State(initialValue: route.camera)
         _day = State(initialValue: route.day)
         _pendingReviewID = State(initialValue: route.reviewID)
+        _pendingStartTime = State(initialValue: route.startTime)
         _tab = State(initialValue: route.showTimeline ? .timeline : .events)
     }
 
@@ -518,7 +521,10 @@ struct PlaybackView: View {
         guard let last = map.spans.last else { return }
 
         // Start playing right away: at the requested review item, else the latest event, else near the end.
-        if let id = pendingReviewID, let item = reviews.first(where: { $0.id == id }) {
+        if let t = pendingStartTime, t >= start, t < end {
+            pendingStartTime = nil
+            seek(toWall: t - 3 + annotationOffset, autoplay: true, skipGap: true)
+        } else if let id = pendingReviewID, let item = reviews.first(where: { $0.id == id }) {
             seek(toWall: item.startTime - 3 + annotationOffset, autoplay: true)
         } else if let latest = reviews.first(where: { map.hasRecording(at: $0.startTime + annotationOffset + 1) }) {
             seek(toWall: latest.startTime - 3 + annotationOffset, autoplay: true)

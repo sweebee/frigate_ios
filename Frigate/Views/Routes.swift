@@ -27,6 +27,8 @@ struct PlaybackRoute: Hashable {
     var reviewID: String? = nil
     /// Open on the timeline instead of the event list.
     var showTimeline = false
+    /// Wall-clock moment to start at, e.g. a tracked object without a review item.
+    var startTime: Double? = nil
 }
 
 /// Registers all detail destinations on a navigation stack.

@@ -184,7 +184,8 @@ struct ObjectDetailView: View {
         } else {
             let start = Date(timeIntervalSince1970: event.startTime)
             model.explorePath.append(PlaybackRoute(serverID: route.serverID, camera: event.camera,
-                                                   day: Calendar.current.startOfDay(for: start), showTimeline: true))
+                                                   day: Calendar.current.startOfDay(for: start), showTimeline: true,
+                                                   startTime: event.startTime))
         }
     }
 
