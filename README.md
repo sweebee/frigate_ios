@@ -41,8 +41,8 @@ open Frigate.xcodeproj
 ```
 
 Pick an iPhone simulator and run. On first launch the app scans the local network for Frigate
-servers (ports 8971 and 5000) and lets you add one. Several servers can be added; the Live,
-Review and Explore tabs can show one server or all of them.
+servers (ports 8971 and 5000) and lets you add one. Several servers can be added; in Settings
+you choose whether the tabs show one server or all of them.
 
 ## Features
 

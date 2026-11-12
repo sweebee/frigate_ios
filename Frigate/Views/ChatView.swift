@@ -143,7 +143,6 @@ struct ChatView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack { ServerSwitcher(); Spacer() }.frame(minHeight: 44)
             HStack(spacing: 10) {
                 LargeTitle(text: L("Chat"))
                 Spacer()

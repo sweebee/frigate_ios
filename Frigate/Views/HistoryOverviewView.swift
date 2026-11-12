@@ -86,10 +86,6 @@ struct HistoryOverviewView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 4)
 
-                    if model.orderedConnections.count > 1 {
-                        HStack { ServerSwitcher(); Spacer() }.padding(.bottom, 4)
-                    }
-
                     ForEach(model.scopedConnections) { conn in
                         ServerHistorySection(conn: conn, day: day)
                     }

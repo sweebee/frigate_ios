@@ -40,14 +40,7 @@ struct LiveView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                ServerSwitcher()
-                Spacer()
-            }
-            .frame(minHeight: 44)
-            LargeTitle(text: L("Live"))
-        }
+        LargeTitle(text: L("Live"))
         .padding(.top, 8)
     }
 

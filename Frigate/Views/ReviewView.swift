@@ -64,8 +64,6 @@ struct ReviewView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Same place as on the other tabs: server switcher above the title.
-            HStack { ServerSwitcher(); Spacer() }.frame(minHeight: 44)
             HStack {
                 LargeTitle(text: L("Review"))
                 Spacer()

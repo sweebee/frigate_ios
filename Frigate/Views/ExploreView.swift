@@ -74,8 +74,6 @@ struct ExploreView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Same place as on Live: server switcher above the title.
-            HStack { ServerSwitcher(); Spacer() }.frame(minHeight: 44).padding(.horizontal, 16)
             LargeTitle(text: L("Explore")).padding(.horizontal, 16)
             filters
         }
