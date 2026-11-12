@@ -184,11 +184,11 @@ struct CameraTile: View {
                 }
             }
             .overlay(alignment: .topTrailing) {
-                if activity?.motion == true { MotionDot().padding(9) }
+                if activity?.motion == true { MotionDot().padding(8) }
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12)
-                .stroke(tracking ? Theme.recording : Theme.cardBorder, lineWidth: tracking ? 2.5 : 1))
+                .stroke(tracking ? Theme.recording : Theme.cardBorder, lineWidth: tracking ? 1.5 : 1))
             .animation(.easeOut(duration: 0.2), value: tracking)
 
             HStack(alignment: .firstTextBaseline) {
@@ -245,8 +245,8 @@ struct MotionDot: View {
     var body: some View {
         Circle()
             .fill(Theme.recording)
-            .frame(width: 8, height: 8)
-            .shadow(color: Theme.recording.opacity(0.8), radius: 3)
+            .frame(width: 6, height: 6)
+            .shadow(color: Theme.recording.opacity(0.8), radius: 2)
             .opacity(dim ? 0.35 : 1)
             .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: dim)
             .onAppear { dim = true }
