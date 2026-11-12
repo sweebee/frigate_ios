@@ -57,6 +57,13 @@ struct ReviewView: View {
                 // Pick up items marked or deleted in the detail view.
                 if !entries.isEmpty { Task { await reload(silent: true) } }
             }
+            // Keep up with reviews done elsewhere while this tab is open.
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(30))
+                    if !Task.isCancelled && model.tab == .review { await reload(silent: true) }
+                }
+            }
         }
     }
 
@@ -258,6 +265,10 @@ struct ReviewView: View {
     private func reload(silent: Bool = false) async {
         if !silent { loading = true }
         loadError = nil
+        // The counts on the segments and the tab badge come from each server's summary;
+        // refresh it too, so items reviewed elsewhere (e.g. in Frigate's web UI) drop out.
+        let counts = Task { await model.refreshAll() }
+        defer { _ = counts }
         do {
             var result = try await fetch(before: nil)
             // Frigate's list can lag a moment behind items just marked reviewed.
