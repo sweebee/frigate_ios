@@ -2,7 +2,13 @@ import SwiftUI
 
 struct ServersView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openURL) private var openURL
+    @State private var webInterface: WebTarget?
+
+    struct WebTarget: Identifiable {
+        let url: URL
+        let title: String
+        var id: String { url.absoluteString }
+    }
     @State private var editing: ServerConfig?
 
     var body: some View {
@@ -88,6 +94,7 @@ struct ServersView: View {
             .refreshable { await model.refreshAll() }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
+            .fullScreenCover(item: $webInterface) { WebInterfaceView(url: $0.url, title: $0.title) }
             .sheet(item: $editing) { server in
                 NavigationStack { ConnectView(existing: server) }
             }
@@ -133,11 +140,11 @@ struct ServersView: View {
             .buttonStyle(.plain)
             // Frigate's own web interface, at the address the app uses right now (local or remote).
             if let web = conn.client?.baseURL ?? ServerConfig.normalizedURL(conn.server.url) {
-                Button { openURL(web) } label: {
+                Button { webInterface = WebTarget(url: web, title: conn.server.name) } label: {
                     Image(systemName: "safari").font(.system(size: 20)).foregroundStyle(Theme.textSecondary)
                         .frame(width: 40, height: 44)
                 }
-                .accessibilityLabel(L("Open \(conn.server.name) in the browser"))
+                .accessibilityLabel(L("Open the web interface of \(conn.server.name)"))
             }
             Button { editing = conn.server } label: {
                 Image(systemName: "info.circle").font(.system(size: 20)).foregroundStyle(Theme.textSecondary)

@@ -1840,12 +1840,22 @@
         }
       }
     },
-    "Open %@ in the browser": {
+    "Open in Safari": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open %@ in de browser"
+            "value": "Open in Safari"
+          }
+        }
+      }
+    },
+    "Open the web interface of %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open de webinterface van %@"
           }
         }
       }
