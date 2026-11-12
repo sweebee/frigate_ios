@@ -87,6 +87,7 @@ struct ServersView: View {
                         .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 20)
+                    versionLine
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -99,6 +100,26 @@ struct ServersView: View {
                 NavigationStack { ConnectView(existing: server) }
             }
         }
+    }
+
+    /// "Version 1.0 (202611121554) · fe23b90"; the commit links to it on GitHub.
+    private var versionLine: some View {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info["CFBundleVersion"] as? String ?? "?"
+        let commit = (info["GitCommit"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        return HStack(spacing: 4) {
+            Text(L("Version \(version) (\(build))"))
+            if let commit {
+                Text("·")
+                Link(commit, destination: URL(string: "https://github.com/sweebee/tender-for-frigate/commit/\(commit)")!)
+                    .font(.system(size: 12).monospaced())
+            }
+        }
+        .font(.system(size: 12))
+        .foregroundStyle(Theme.textSecondary)
+        .frame(maxWidth: .infinity)
+        .textSelection(.enabled)
     }
 
     private var allSummary: String {

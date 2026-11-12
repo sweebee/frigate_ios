@@ -2826,6 +2826,16 @@
         }
       }
     },
+    "Version %@ (%@)": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versie %1$@ (%2$@)"
+          }
+        }
+      }
+    },
     "Watch video": {
       "localizations": {
         "nl": {
