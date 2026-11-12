@@ -105,7 +105,11 @@ struct ObjectDetailView: View {
         return HStack(spacing: 8) {
             tile(L("SCORE"), event.bestScore.map { "\(Int(($0 * 100).rounded()))%" } ?? "–")
             tile(L("ZONES"), zones.isEmpty ? L("None") : zones.joined(separator: ", "))
-            tile(L("DURATION"), duration.map { $0 > 3600 ? L("> 1 h") : FrigateFormat.shortDuration($0) } ?? "LIVE")
+            if let plate = event.recognizedPlate {
+                tile(L("PLATE"), plate)
+            } else {
+                tile(L("DURATION"), duration.map { $0 > 3600 ? L("> 1 h") : FrigateFormat.shortDuration($0) } ?? "LIVE")
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 16)

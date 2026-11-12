@@ -216,7 +216,12 @@ struct EventDetailView: View {
         let score = events.compactMap(\.bestScore).max()
         let zones = (item.data.zones ?? []).map(FrigateFormat.prettyName)
         let subLabels = (item.data.subLabels ?? []) + events.compactMap { $0.subLabel?.name }.filter { !$0.isEmpty }
+        let plates = events.compactMap(\.recognizedPlate)
         let third: (String, String) = {
+            if !plates.isEmpty {
+                var seen = Set<String>()
+                return (L("PLATE"), plates.filter { seen.insert($0).inserted }.joined(separator: ", "))
+            }
             if !subLabels.isEmpty {
                 var seen = Set<String>()
                 return (L("SUB LABEL"), subLabels.filter { seen.insert($0).inserted }.joined(separator: ", "))

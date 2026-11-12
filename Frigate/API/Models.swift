@@ -248,9 +248,12 @@ struct FrigateEvent: Decodable, Identifiable, Hashable {
         var score: Double?
         var topScore: Double?
         var box: [Double]?
+        /// Plate read by Frigate's license plate recognition.
+        var recognizedLicensePlate: String?
         enum CodingKeys: String, CodingKey {
             case score, box
             case topScore = "top_score"
+            case recognizedLicensePlate = "recognized_license_plate"
         }
     }
 
@@ -276,6 +279,7 @@ struct FrigateEvent: Decodable, Identifiable, Hashable {
     }
 
     var bestScore: Double? { data?.topScore ?? topScore ?? data?.score }
+    var recognizedPlate: String? { data?.recognizedLicensePlate.flatMap { $0.isEmpty ? nil : $0 } }
 }
 
 /// An item of /api/events/explore: an event plus how many objects its label has in total.
