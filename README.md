@@ -1,3 +1,5 @@
+<img src="docs/icon.png" width="96" align="right" alt="Tender icon">
+
 # Tender for Frigate
 
 Native iOS client for [Frigate NVR](https://frigate.video), built from the mockups in `design/`.
@@ -30,6 +32,8 @@ https://testflight.apple.com/join/s6KEWhy1
   </tr>
 </table>
 
+<p align="center"><img src="docs/screenshots/9-landscape.png" width="820"><br><sub>Landscape playback: tap to hide the overlay, drag the timeline with a live preview</sub></p>
+
 ## Run
 
 ```bash
@@ -49,9 +53,10 @@ Review and History tabs can show one server or all of them.
 | Review | Alerts, detections and motion across servers; filter by server, camera, label and unreviewed; mark reviewed |
 | Event | Clip playback with the event range highlighted, 1x/2x/4x, score, zones, object lifecycle, download/share, delete |
 | History | Activity per camera for any day (motion plus events), calendar that marks days with recordings |
-| Playback | Recordings per camera and day, event list or scrubbable vertical timeline with zoom, filters by type, label and zone, save an event or a span around the playhead to Photos |
+| Playback | Recordings per camera and day, event list or scrubbable timeline with zoom and a live preview while dragging (like Frigate's web UI), filters by type, label and zone, gaps shown as "no recording", save an event or a span around the playhead to Photos |
+| Landscape | Full-screen live view and playback with an overlay that hides on tap, horizontal timeline and an events panel |
 | Everywhere | Pinch to zoom on live and recorded video, swipe back, lighter streams on mobile data, English and Dutch (follows the iPhone language) |
-| Settings | Servers (add, edit, remove), combined review |
+| Settings | Servers (add, edit, remove), optional live video in the camera overview |
 
 Credentials are stored in the Keychain. When a username is set the app logs in through
 `/api/login`; unauthenticated ports work without one. An optional remote address is used when
