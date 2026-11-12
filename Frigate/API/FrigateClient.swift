@@ -185,6 +185,35 @@ final class FrigateClient: @unchecked Sendable {
         }
     }
 
+    /// The latest tracked objects per label, with each label's total count (Explore page).
+    func exploreEvents(limit: Int = 10) async throws -> [ExploreEvent] {
+        try await get([ExploreEvent].self, "api/events/explore", query: ["limit": String(limit)])
+    }
+
+    enum EventSort: String { case newest = "date_desc", oldest = "date_asc", score = "score_desc" }
+
+    /// Tracked objects matching the filters, as Frigate's Explore search does.
+    func searchEvents(cameras: [String]? = nil, labels: [String]? = nil, zones: [String]? = nil, subLabels: [String]? = nil,
+                      after: Date? = nil, before: Date? = nil, sort: EventSort = .newest, limit: Int = 50) async throws -> [FrigateEvent] {
+        var q: [String: String?] = ["limit": String(limit), "sort": sort.rawValue, "include_thumbnails": "0"]
+        let cameras = ScreenshotMode.scope(cameras)
+        if let cameras, !cameras.isEmpty { q["cameras"] = cameras.joined(separator: ",") }
+        if let labels, !labels.isEmpty { q["labels"] = labels.joined(separator: ",") }
+        if let zones, !zones.isEmpty { q["zones"] = zones.joined(separator: ",") }
+        if let subLabels, !subLabels.isEmpty { q["sub_labels"] = subLabels.joined(separator: ",") }
+        if let after { q["after"] = String(after.timeIntervalSince1970) }
+        if let before { q["before"] = String(before.timeIntervalSince1970) }
+        return try await get([FrigateEvent].self, "api/events", query: q)
+    }
+
+    func trackedLabels() async throws -> [String] { try await get([String].self, "api/labels") }
+    func subLabels() async throws -> [String] { try await get([String].self, "api/sub_labels") }
+
+    /// The review item an object belongs to, for playing its video.
+    func review(forEvent id: String) async throws -> ReviewItem {
+        try await get(ReviewItem.self, "api/review/event/\(id)")
+    }
+
     func activeEvents() async throws -> [FrigateEvent] {
         try await get([FrigateEvent].self, "api/events", query: ["in_progress": "1", "limit": "100"])
     }
@@ -209,6 +238,11 @@ final class FrigateClient: @unchecked Sendable {
     func mjpegURL(camera: String, height: Int = 720) -> URL {
         url("api/\(camera)", query: ["h": String(height)])
     }
+
+    func thumbnailURL(for event: FrigateEvent) -> URL { url("api/events/\(event.id)/thumbnail.webp") }
+
+    /// Snapshot of an object with its bounding box drawn in.
+    func snapshotURL(for event: FrigateEvent) -> URL { url("api/events/\(event.id)/snapshot.jpg", query: ["bbox": "1"]) }
 
     func thumbnailURL(for review: ReviewItem) -> URL? {
         review.thumbnailPath.map { url($0) }

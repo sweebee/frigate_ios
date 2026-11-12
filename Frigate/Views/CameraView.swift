@@ -263,9 +263,9 @@ struct CameraView: View {
                         ForEach(objects, id: \.self) { LabelTag(label: $0) }
                         Spacer()
                         Button {
-                            model.tab = .history
-                            model.historyPath = NavigationPath()
-                            model.historyPath.append(PlaybackRoute(serverID: route.serverID, camera: route.camera,
+                            model.tab = .explore
+                            model.explorePath = NavigationPath()
+                            model.explorePath.append(PlaybackRoute(serverID: route.serverID, camera: route.camera,
                                                                    day: Calendar.current.startOfDay(for: Date())))
                         } label: {
                             Label("Playback", systemImage: "clock.arrow.circlepath")

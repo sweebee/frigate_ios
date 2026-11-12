@@ -51,9 +51,9 @@ struct RootView: View {
                         .tabItem { Label("Review", systemImage: "eye") }
                         .tag(AppModel.Tab.review)
                         .badge(model.unreviewedAlerts)
-                    HistoryOverviewView()
-                        .tabItem { Label("History", systemImage: "clock") }
-                        .tag(AppModel.Tab.history)
+                    ExploreView()
+                        .tabItem { Label("Explore", systemImage: "magnifyingglass") }
+                        .tag(AppModel.Tab.explore)
                     ServersView()
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(AppModel.Tab.settings)

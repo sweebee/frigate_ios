@@ -42,7 +42,7 @@ open Frigate.xcodeproj
 
 Pick an iPhone simulator and run. On first launch the app scans the local network for Frigate
 servers (ports 8971 and 5000) and lets you add one. Several servers can be added; the Live,
-Review and History tabs can show one server or all of them.
+Review and Explore tabs can show one server or all of them.
 
 ## Features
 
@@ -52,7 +52,7 @@ Review and History tabs can show one server or all of them.
 | Camera | Live stream through go2rtc (MSE over websocket, WebRTC and MJPEG as fallbacks), audio, snapshot, PTZ (ONVIF cameras), fullscreen, today's events |
 | Review | Alerts, detections and motion across servers; filter by server, camera, label and unreviewed; mark reviewed |
 | Event | Clip playback with the event range highlighted, 1x/2x/4x, score, zones, object lifecycle, download/share, delete |
-| History | Activity per camera for any day (motion plus events), calendar that marks days with recordings |
+| Explore | Tracked objects per label (like Frigate's Explore page), a grid when you pick a label, filters by camera, label, zone, sub label and date, sorting by time or score, object details with snapshot and lifecycle |
 | Playback | Recordings per camera and day, event list or scrubbable timeline with zoom and a live preview while dragging (like Frigate's web UI), filters by type, label and zone, gaps shown as "no recording", save an event or a span around the playhead to Photos |
 | Landscape | Full-screen live view and playback with an overlay that hides on tap, horizontal timeline and an events panel |
 | Everywhere | Pinch to zoom on live and recorded video, swipe back, lighter streams on mobile data, English and Dutch (follows the iPhone language) |
@@ -79,7 +79,7 @@ Useful for testing and shortcuts:
 
 ```
 frigate://add?url=http://192.168.1.21:8971&name=Home
-frigate://live | review | history | settings
+frigate://live | review | explore | history | settings
 frigate://review?view=motion
 frigate://camera/<camera>[?server=<name>]
 frigate://playback/<camera>[?review=<id>&view=timeline]

@@ -147,7 +147,7 @@ final class ServerConnection: Identifiable {
 
 @Observable @MainActor
 final class AppModel {
-    enum Tab: Hashable { case live, review, history, settings }
+    enum Tab: Hashable { case live, review, explore, settings }
     enum Scope: Hashable, Codable {
         case all
         case server(UUID)
@@ -159,7 +159,7 @@ final class AppModel {
     var tab: Tab = .live
     var livePath = NavigationPath()
     var reviewPath = NavigationPath()
-    var historyPath = NavigationPath()
+    var explorePath = NavigationPath()
     /// Set by deep links to switch the Review segment (alert, detection, motion).
     var reviewKindRequest: String?
     /// Play the low-resolution live stream in the camera overview instead of snapshots.

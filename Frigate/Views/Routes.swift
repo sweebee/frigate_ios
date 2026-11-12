@@ -10,6 +10,15 @@ struct EventRoute: Hashable {
     let review: ReviewItem
 }
 
+/// A tracked object from Explore.
+struct ObjectRoute: Hashable {
+    let serverID: UUID
+    let event: FrigateEvent
+}
+
+/// The per-camera recordings overview (formerly the History tab).
+struct HistoryRoute: Hashable {}
+
 struct PlaybackRoute: Hashable {
     let serverID: UUID
     let camera: String
@@ -27,6 +36,8 @@ struct AppDestinations: ViewModifier {
             .navigationDestination(for: CameraRoute.self) { CameraView(route: $0).id($0) }
             .navigationDestination(for: EventRoute.self) { EventDetailView(route: $0).id($0) }
             .navigationDestination(for: PlaybackRoute.self) { PlaybackView(route: $0).id($0) }
+            .navigationDestination(for: ObjectRoute.self) { ObjectDetailView(route: $0).id($0) }
+            .navigationDestination(for: HistoryRoute.self) { _ in HistoryOverviewView() }
     }
 }
 
@@ -39,7 +50,7 @@ extension View {
     }
 }
 
-/// Server picker pill used in the Live and History headers.
+/// Server picker pill used in the Live and Explore headers.
 struct ServerSwitcher: View {
     @Environment(AppModel.self) private var model
 

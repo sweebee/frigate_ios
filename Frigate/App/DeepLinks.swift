@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Handles `frigate://` links:
 ///   frigate://add?url=http://host:8971&name=Home      add a server (asks nothing, tests on connect)
-///   frigate://live | review | history | settings      switch tab
+///   frigate://live | review | explore | history | settings      switch tab (history: recordings overview)
 ///   frigate://camera/<camera>[?server=<name>]         open a camera's live view
 ///   frigate://playback/<camera>[?day=yyyy-MM-dd&view=timeline]  open playback
 ///   frigate://event/<review id>[?server=<name>]       open a review item
@@ -30,7 +30,8 @@ extension AppModel {
             tab = .review
             reviewPath = NavigationPath()
             if let v = q("view") { reviewKindRequest = v }
-        case "history": tab = .history; historyPath = NavigationPath()
+        case "explore": tab = .explore; explorePath = NavigationPath()
+        case "history": tab = .explore; explorePath = NavigationPath(); explorePath.append(HistoryRoute())
         case "settings": tab = .settings
         case "camera":
             guard let conn, let arg else { return }
@@ -39,12 +40,12 @@ extension AppModel {
             livePath.append(CameraRoute(serverID: conn.server.id, camera: arg))
         case "playback":
             guard let conn, let arg else { return }
-            tab = .history
-            historyPath = NavigationPath()
+            tab = .explore
+            explorePath = NavigationPath()
             let f = DateFormatter()
             f.dateFormat = "yyyy-MM-dd"
             let day = q("day").flatMap { f.date(from: $0) } ?? Date()
-            historyPath.append(PlaybackRoute(serverID: conn.server.id, camera: arg, day: Calendar.current.startOfDay(for: day), reviewID: q("review"), showTimeline: q("view") == "timeline"))
+            explorePath.append(PlaybackRoute(serverID: conn.server.id, camera: arg, day: Calendar.current.startOfDay(for: day), reviewID: q("review"), showTimeline: q("view") == "timeline"))
         case "event":
             guard let conn, let arg, let client = conn.client else { return }
             var item: ReviewItem

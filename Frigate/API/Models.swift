@@ -264,6 +264,17 @@ struct FrigateEvent: Decodable, Identifiable, Hashable {
     var bestScore: Double? { data?.topScore ?? topScore ?? data?.score }
 }
 
+/// An item of /api/events/explore: an event plus how many objects its label has in total.
+struct ExploreEvent: Decodable {
+    var event: FrigateEvent
+    var eventCount: Int?
+    private enum Keys: String, CodingKey { case eventCount = "event_count" }
+    init(from decoder: Decoder) throws {
+        event = try FrigateEvent(from: decoder)
+        eventCount = try decoder.container(keyedBy: Keys.self).decodeIfPresent(Int.self, forKey: .eventCount)
+    }
+}
+
 struct TimelineEntry: Decodable, Hashable {
     var timestamp: Double
     var camera: String

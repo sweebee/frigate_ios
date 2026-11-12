@@ -62,16 +62,20 @@ struct ActivityStrip: View {
 
 struct HistoryOverviewView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
     @State private var day = Calendar.current.startOfDay(for: Date())
     @State private var showDatePicker = false
 
     var body: some View {
-        @Bindable var model = model
-        NavigationStack(path: $model.historyPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        LargeTitle(text: L("History"))
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
+                                .frame(width: 32, height: 44, alignment: .leading)
+                        }
+                        .accessibilityLabel("Back")
+                        Text("Recordings").font(.system(size: 28, weight: .bold)).kerning(-0.4)
                         Spacer()
                         Button { showDatePicker = true } label: {
                             Chip(title: FrigateFormat.dayTitle(day), systemImage: "calendar")
@@ -96,13 +100,11 @@ struct HistoryOverviewView: View {
             .refreshable { await model.refreshAll() }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
-            .appDestinations()
             .sheet(isPresented: $showDatePicker) {
                 RecordingCalendarSheet(day: $day, sources: model.scopedConnections.compactMap { c in
                     c.client.map { (client: $0, cameras: Optional<[String]>.none) }
                 })
             }
-        }
     }
 }
 

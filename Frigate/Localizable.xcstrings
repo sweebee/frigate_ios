@@ -590,6 +590,66 @@
         }
       }
     },
+    "%lld tracked objects": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg tracked object"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg tracked objects"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@n@"
+          },
+          "substitutions": {
+            "n": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gevolgd object"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg gevolgde objecten"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lldx": {
       "shouldTranslate": false
     },
@@ -715,6 +775,16 @@
         }
       }
     },
+    "All dates": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle datums"
+          }
+        }
+      }
+    },
     "All labels": {
       "localizations": {
         "nl": {
@@ -731,6 +801,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alle servers"
+          }
+        }
+      }
+    },
+    "All sub labels": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle sublabels"
           }
         }
       }
@@ -895,6 +975,16 @@
         }
       }
     },
+    "Could not load objects": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon objecten niet laden"
+          }
+        }
+      }
+    },
     "Could not load review": {
       "localizations": {
         "nl": {
@@ -931,6 +1021,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "DUUR"
+          }
+        }
+      }
+    },
+    "Date": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datum"
           }
         }
       }
@@ -981,6 +1081,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Detecties"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klaar"
           }
         }
       }
@@ -1045,6 +1155,16 @@
         }
       }
     },
+    "Explore": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verkennen"
+          }
+        }
+      }
+    },
     "FACE": {
       "localizations": {
         "nl": {
@@ -1101,6 +1221,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volledig scherm"
+          }
+        }
+      }
+    },
+    "Highest score": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoogste score"
           }
         }
       }
@@ -1284,6 +1414,16 @@
         }
       }
     },
+    "Newest first": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieuwste eerst"
+          }
+        }
+      }
+    },
     "Next month": {
       "localizations": {
         "nl": {
@@ -1384,6 +1524,16 @@
         }
       }
     },
+    "No tracked objects match these filters.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen gevolgde objecten gevonden met deze filters."
+          }
+        }
+      }
+    },
     "No video": {
       "localizations": {
         "nl": {
@@ -1420,6 +1570,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen opname"
+          }
+        }
+      }
+    },
+    "Nothing found": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niets gevonden"
           }
         }
       }
@@ -1510,6 +1670,16 @@
         }
       }
     },
+    "Oldest first": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oudste eerst"
+          }
+        }
+      }
+    },
     "On": {
       "localizations": {
         "nl": {
@@ -1589,6 +1759,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kies datum"
+          }
+        }
+      }
+    },
+    "Pick date…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kies datum…"
           }
         }
       }
@@ -2036,6 +2216,16 @@
         }
       }
     },
+    "Share snapshot": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Momentopname delen"
+          }
+        }
+      }
+    },
     "Share video": {
       "localizations": {
         "nl": {
@@ -2092,6 +2282,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stream niet beschikbaar"
+          }
+        }
+      }
+    },
+    "Sub labels": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sublabels"
           }
         }
       }
@@ -2226,6 +2426,16 @@
         }
       }
     },
+    "Tracked objects appear when a server is reachable.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gevolgde objecten verschijnen zodra een server bereikbaar is."
+          }
+        }
+      }
+    },
     "Try again": {
       "localizations": {
         "nl": {
@@ -2292,6 +2502,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gebruikersnaam"
+          }
+        }
+      }
+    },
+    "Watch video": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video bekijken"
           }
         }
       }
