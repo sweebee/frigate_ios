@@ -101,3 +101,14 @@ scripts/testflight.sh
 Archives with a timestamp build number, signs with the "Frigate App Store" profile and uploads.
 App Store Connect: "Tender for Frigate" (bundle ID `nl.wiebenieuwenhuis.frigate`, team EBTM3728EJ);
 the internal group "Intern" gets every build automatically.
+
+## License
+
+Copyright (C) 2026 Wiebe Nieuwenhuis
+
+Tender is free software: you can redistribute it and/or modify it under the terms of the
+[GNU General Public License v3.0](LICENSE) as published by the Free Software Foundation.
+It is distributed in the hope that it will be useful, but without any warranty.
+
+Frigate is a trademark of Frigate, Inc. Tender is an independent project and is not
+affiliated with or endorsed by Frigate.
