@@ -216,11 +216,10 @@ struct EventDetailView: View {
         let zones = (item.data.zones ?? []).map(FrigateFormat.prettyName)
         let subLabels = (item.data.subLabels ?? []) + events.compactMap { $0.subLabel?.name }.filter { !$0.isEmpty }
         let third: (String, String) = {
-            if let s = subLabels.first {
-                let isPlate = item.labels.contains { $0 == "car" || $0 == "license_plate" } && !item.labels.contains("person")
-                return (isPlate ? L("PLATE") : (item.labels.contains("person") ? L("FACE") : L("SUB LABEL")), s)
+            if !subLabels.isEmpty {
+                var seen = Set<String>()
+                return (L("SUB LABEL"), subLabels.filter { seen.insert($0).inserted }.joined(separator: ", "))
             }
-            if item.labels.contains("person") { return (L("FACE"), L("Unknown")) }
             return (L("DURATION"), item.duration > 3600 ? L("> 1 h") : FrigateFormat.shortDuration(trackedDuration))
         }()
         return HStack(spacing: 8) {
@@ -328,6 +327,10 @@ struct EventDetailView: View {
 
     private func load() async {
         guard let client else { return }
+        // Read the reviewed flag fresh: the screen that opened this item may hold an old copy.
+        Task {
+            if let fresh = try? await client.review(id: item.id), fresh.hasBeenReviewed { item.hasBeenReviewed = true }
+        }
         // Fetch the tracked objects first: they decide which part of the recording to load.
         let ids = item.data.detections ?? []
         events = (try? await client.events(ids: ids)) ?? []
