@@ -48,7 +48,7 @@ you choose whether the tabs show one server or all of them.
 
 | Screen | What it does |
 | --- | --- |
-| Live | Camera grid with refreshing snapshots, live objects and last activity; red outline while an object moves and a dot for motion (like Frigate's web UI); camera groups from the Frigate config |
+| Live | Camera grid with refreshing snapshots, live objects and last activity; red outline while an object moves and a dot for motion, automatic live view on activity, recent alerts as looping clips at the top (like Frigate's web UI); one or two columns; camera groups from the Frigate config |
 | Camera | Live stream through go2rtc (MSE over websocket, WebRTC and MJPEG as fallbacks), audio, snapshot, PTZ (ONVIF cameras), fullscreen, today's events |
 | Review | Alerts, detections and motion across servers; filter by server, camera, label and unreviewed; mark reviewed |
 | Event | Clip playback with the event range highlighted, 1x/2x/4x, score, zones, object lifecycle, download/share, delete |

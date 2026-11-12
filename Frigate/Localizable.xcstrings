@@ -1903,6 +1903,16 @@
         }
       }
     },
+    "Play alerts": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meldingen afspelen"
+          }
+        }
+      }
+    },
     "Playback": {
       "localizations": {
         "nl": {
@@ -1939,6 +1949,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speelt af"
+          }
+        }
+      }
+    },
+    "Plays recent alerts at the top of Live as short looping clips. Turn off to show a still image.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speelt recente meldingen bovenaan Live af als korte lusvideo's. Zet uit om alleen een stilstaand beeld te tonen."
           }
         }
       }

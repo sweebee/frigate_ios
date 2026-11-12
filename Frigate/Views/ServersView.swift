@@ -74,6 +74,13 @@ struct ServersView: View {
                                 .padding(.vertical, 8)
                                 .frame(minHeight: 60)
                         }
+                        Rectangle().fill(Theme.cardBorder).frame(height: 1)
+                        ToggleRow(title: L("Play alerts"),
+                                  subtitle: L("Plays recent alerts at the top of Live as short looping clips. Turn off to show a still image."),
+                                  isOn: model.playAlertPreviews) { model.playAlertPreviews = $0 }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .frame(minHeight: 60)
                     }
                     .card()
                     .padding(.top, 10)

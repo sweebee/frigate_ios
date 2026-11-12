@@ -236,6 +236,10 @@ final class AppModel {
     var autoLive: Bool = UserDefaults.standard.object(forKey: "autoLive") as? Bool ?? true {
         didSet { UserDefaults.standard.set(autoLive, forKey: "autoLive") }
     }
+    /// Play recent alerts on Live as short looping clips instead of still images.
+    var playAlertPreviews: Bool = UserDefaults.standard.object(forKey: "playAlertPreviews") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(playAlertPreviews, forKey: "playAlertPreviews") }
+    }
     /// Whether the overview should show live video right now.
     var showsLiveGrid: Bool { liveGrid && (liveGridOnCellular || !NetworkStatus.shared.isExpensive) }
     /// Set to open the add-server sheet.
