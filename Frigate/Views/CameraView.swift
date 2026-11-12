@@ -525,29 +525,61 @@ struct PTZSheet: View {
     let client: FrigateClient
     let camera: String
     @State private var socket: URLSessionWebSocketTask?
+    /// What the camera supports, from /api/<camera>/ptz/info; nil until loaded or when unknown.
+    @State private var info: PTZInfo?
+
+    struct PTZInfo: Decodable {
+        var features: [String]?
+        var presets: [String]?
+    }
+
+    // Unknown capabilities: show everything, as before.
+    private var canMove: Bool { info?.features.map { $0.contains("pt") } ?? true }
+    private var canZoom: Bool { info?.features.map { $0.contains("zoom") } ?? true }
+    private var presets: [String] { info?.presets ?? [] }
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Pan, tilt and zoom").font(.headline).padding(.top, 20)
+            Text(canMove ? "Pan, tilt and zoom" : "Zoom").font(.headline).padding(.top, 20)
             HStack(spacing: 36) {
-                VStack(spacing: 8) {
-                    pad("chevron.up", "MOVE_UP")
-                    HStack(spacing: 8) {
-                        pad("chevron.left", "MOVE_LEFT")
-                        Color.clear.frame(width: 56, height: 56)
-                        pad("chevron.right", "MOVE_RIGHT")
+                if canMove {
+                    VStack(spacing: 8) {
+                        pad("chevron.up", "MOVE_UP")
+                        HStack(spacing: 8) {
+                            pad("chevron.left", "MOVE_LEFT")
+                            Color.clear.frame(width: 56, height: 56)
+                            pad("chevron.right", "MOVE_RIGHT")
+                        }
+                        pad("chevron.down", "MOVE_DOWN")
                     }
-                    pad("chevron.down", "MOVE_DOWN")
                 }
-                VStack(spacing: 8) {
-                    pad("plus.magnifyingglass", "ZOOM_IN")
-                    pad("minus.magnifyingglass", "ZOOM_OUT")
+                if canZoom {
+                    VStack(spacing: 8) {
+                        pad("plus.magnifyingglass", "ZOOM_IN")
+                        pad("minus.magnifyingglass", "ZOOM_OUT")
+                    }
+                }
+            }
+            if !presets.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(presets, id: \.self) { preset in
+                            Button { send("preset_\(preset)") } label: {
+                                Chip(title: preset.capitalizedFirst, systemImage: "scope")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
                 }
             }
             Spacer()
         }
         .frame(maxWidth: .infinity)
         .background(Theme.card)
+        .task {
+            if let i = try? await client.get(PTZInfo.self, "api/\(camera)/ptz/info"), i.features != nil { info = i }
+        }
         .onAppear {
             var comps = URLComponents(url: client.url("ws"), resolvingAgainstBaseURL: false)!
             comps.scheme = client.baseURL.scheme == "https" ? "wss" : "ws"

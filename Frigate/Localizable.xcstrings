@@ -2899,6 +2899,16 @@
         }
       }
     },
+    "Zoom": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        }
+      }
+    },
     "Zoom in": {
       "localizations": {
         "nl": {
