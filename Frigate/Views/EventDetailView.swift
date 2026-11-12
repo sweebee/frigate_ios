@@ -24,6 +24,7 @@ struct EventDetailView: View {
     }
 
     private var conn: ServerConnection? { model.connection(for: route.serverID) }
+    private var isReviewed: Bool { item.hasBeenReviewed || model.reviewedIDs.contains(item.id) }
     private var client: FrigateClient? { conn?.client }
     /// When something was actually happening: the review item widened to how long its objects
     /// were tracked (Frigate often closes the review item sooner). Odd event times are capped.
@@ -292,15 +293,15 @@ struct EventDetailView: View {
         HStack(spacing: 8) {
             Button { Task { await markReviewed() } } label: {
                 HStack(spacing: 6) {
-                    if item.hasBeenReviewed { Image(systemName: "checkmark") }
+                    if isReviewed { Image(systemName: "checkmark") }
                     Text("Reviewed")
                 }
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(item.hasBeenReviewed ? Theme.textSecondary : Theme.onColor)
+                    .foregroundStyle(isReviewed ? Theme.textSecondary : Theme.onColor)
                     .frame(maxWidth: .infinity).frame(height: 50)
-                    .background(item.hasBeenReviewed ? Theme.card : Theme.accent, in: RoundedRectangle(cornerRadius: 12))
+                    .background(isReviewed ? Theme.card : Theme.accent, in: RoundedRectangle(cornerRadius: 12))
             }
-            .disabled(item.hasBeenReviewed)
+            .disabled(isReviewed)
             Button { Task { await download() } } label: {
                 Group { if downloading { ProgressView() } else { Text("Download") } }
                     .font(.system(size: 15, weight: .semibold))
@@ -358,6 +359,7 @@ struct EventDetailView: View {
         do {
             try await client.markViewed([item.id])
             item.hasBeenReviewed = true
+            model.reviewedIDs.insert(item.id)
             await conn?.refresh()
         } catch {
             errorMessage = error.localizedDescription

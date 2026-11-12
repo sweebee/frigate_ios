@@ -258,7 +258,10 @@ struct ReviewView: View {
         if !silent { loading = true }
         loadError = nil
         do {
-            let result = try await fetch(before: nil)
+            var result = try await fetch(before: nil)
+            // Frigate's list can lag a moment behind items just marked reviewed.
+            for i in result.indices where model.reviewedIDs.contains(result[i].item.id) { result[i].item.hasBeenReviewed = true }
+            if unreviewedOnly { result.removeAll { $0.item.hasBeenReviewed } }
             entries = result
             canLoadMore = result.count >= pageSize
         } catch is CancellationError {
@@ -288,6 +291,7 @@ struct ReviewView: View {
                 try await client.markViewed(items.map(\.item.id))
                 let ids = Set(items.map(\.id))
                 for i in entries.indices where ids.contains(entries[i].id) { entries[i].item.hasBeenReviewed = true }
+                model.reviewedIDs.formUnion(items.map(\.item.id))
                 await conn.refresh()
             } catch {
                 loadError = error.localizedDescription

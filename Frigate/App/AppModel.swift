@@ -174,6 +174,9 @@ final class AppModel {
     var showsLiveGrid: Bool { liveGrid && (liveGridOnCellular || !NetworkStatus.shared.isExpensive) }
     /// Set to open the add-server sheet.
     var showAddServer = false
+    /// Review items marked reviewed in this session. Frigate can take a moment before its
+    /// review list reflects a change, so screens check this too.
+    var reviewedIDs: Set<String> = []
 
     init() {
         if let data = UserDefaults.standard.data(forKey: "servers"),
