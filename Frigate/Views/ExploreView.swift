@@ -239,13 +239,6 @@ struct ExploreView: View {
                 } label: {
                     Chip(title: filter.day.map(FrigateFormat.dayTitle) ?? L("All dates"), outlined: filter.day != nil, trailingChevron: true)
                 }
-                Menu {
-                    option(L("Newest first"), filter.sort == .newest) { filter.sort = .newest }
-                    option(L("Oldest first"), filter.sort == .oldest) { filter.sort = .oldest }
-                    option(L("Highest score"), filter.sort == .score) { filter.sort = .score }
-                } label: {
-                    Chip(title: sortTitle, outlined: filter.sort != .newest, systemImage: "arrow.up.arrow.down")
-                }
                 if filter.isActive {
                     Button { filter = ExploreFilter() } label: {
                         Image(systemName: "xmark").font(.system(size: 12, weight: .bold))
@@ -260,14 +253,6 @@ struct ExploreView: View {
             .padding(.horizontal, 16)
         }
         .buttonStyle(.plain)
-    }
-
-    private var sortTitle: String {
-        switch filter.sort {
-        case .newest: return L("Newest first")
-        case .oldest: return L("Oldest first")
-        case .score: return L("Highest score")
-        }
     }
 
     private func toggle(_ set: inout Set<String>, _ value: String) {
