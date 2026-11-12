@@ -1418,6 +1418,26 @@
         }
       }
     },
+    "Live video, automatic live view, recent alerts": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live video, automatische liveweergave, recente meldingen"
+          }
+        }
+      }
+    },
+    "Live view": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liveweergave"
+          }
+        }
+      }
+    },
     "Load more": {
       "localizations": {
         "nl": {
@@ -1953,12 +1973,12 @@
         }
       }
     },
-    "Plays recent alerts at the top of Live as short looping clips. Turn off to show a still image.": {
+    "Plays recent alerts as short looping clips. Turn off to show a still image.": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Speelt recente meldingen bovenaan Live af als korte lusvideo's. Zet uit om alleen een stilstaand beeld te tonen."
+            "value": "Speelt recente meldingen af als korte lusvideo's. Zet uit om alleen een stilstaand beeld te tonen."
           }
         }
       }
@@ -2005,6 +2025,16 @@
     },
     "REC": {
       "shouldTranslate": false
+    },
+    "Recent alerts": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recente meldingen"
+          }
+        }
+      }
     },
     "Reconnecting…": {
       "localizations": {
@@ -2422,6 +2452,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toon recente gebeurtenissen"
+          }
+        }
+      }
+    },
+    "Shows unreviewed alerts of the last day at the top of Live.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toont onbeoordeelde meldingen van het afgelopen etmaal bovenaan Live."
           }
         }
       }

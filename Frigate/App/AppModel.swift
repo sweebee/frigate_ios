@@ -240,6 +240,10 @@ final class AppModel {
     var playAlertPreviews: Bool = UserDefaults.standard.object(forKey: "playAlertPreviews") as? Bool ?? true {
         didSet { UserDefaults.standard.set(playAlertPreviews, forKey: "playAlertPreviews") }
     }
+    /// Show the row of recent alerts at the top of Live.
+    var showRecentAlerts: Bool = UserDefaults.standard.object(forKey: "showRecentAlerts") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showRecentAlerts, forKey: "showRecentAlerts") }
+    }
     /// Whether the overview should show live video right now.
     var showsLiveGrid: Bool { liveGrid && (liveGridOnCellular || !NetworkStatus.shared.isExpensive) }
     /// Set to open the add-server sheet.

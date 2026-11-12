@@ -53,37 +53,28 @@ struct ServersView: View {
                         serverRow(conn)
                     }
 
-                    VStack(spacing: 0) {
-                        ToggleRow(title: L("Live video in overview"),
-                                  subtitle: L("Plays the low-resolution stream of every camera instead of refreshing snapshots. Uses more data and battery."),
-                                  isOn: model.liveGrid) { on in withAnimation { model.liveGrid = on } }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .frame(minHeight: 60)
-                        if model.liveGrid {
-                            Rectangle().fill(Theme.cardBorder).frame(height: 1)
-                            ToggleRow(title: L("Also on mobile data"), isOn: model.liveGridOnCellular) { model.liveGridOnCellular = $0 }
-                                .padding(.horizontal, 14)
-                                .frame(minHeight: 52)
-                        } else {
-                            Rectangle().fill(Theme.cardBorder).frame(height: 1)
-                            ToggleRow(title: L("Automatic live view"),
-                                      subtitle: L("Switches a camera to live video while it sees motion or a moving object, and back to snapshots when it is quiet."),
-                                      isOn: model.autoLive) { model.autoLive = $0 }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .frame(minHeight: 60)
+                    SectionLabel(text: L("Settings")).padding(.top, 10)
+                    NavigationLink {
+                        LiveSettingsView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.grid.2x2")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Theme.accent)
+                                .frame(width: 32, height: 32)
+                                .background(Theme.control, in: RoundedRectangle(cornerRadius: 8))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Live view").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.text)
+                                Text("Live video, automatic live view, recent alerts")
+                                    .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textTertiary)
                         }
-                        Rectangle().fill(Theme.cardBorder).frame(height: 1)
-                        ToggleRow(title: L("Play alerts"),
-                                  subtitle: L("Plays recent alerts at the top of Live as short looping clips. Turn off to show a still image."),
-                                  isOn: model.playAlertPreviews) { model.playAlertPreviews = $0 }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .frame(minHeight: 60)
+                        .padding(.horizontal, 14).padding(.vertical, 12)
+                        .card()
                     }
-                    .card()
-                    .padding(.top, 10)
+                    .buttonStyle(.plain)
 
                     Text("Tender for Frigate · connects directly to your Frigate NVR servers. Not affiliated with the Frigate project.")
                         .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
@@ -155,5 +146,67 @@ struct ServersView: View {
         case .connecting: return Theme.warning
         case .offline: return Theme.offline
         }
+    }
+}
+
+/// Settings for the Live tab, in their own screen.
+struct LiveSettingsView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 4) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
+                            .frame(width: 32, height: 44, alignment: .leading)
+                    }
+                    .accessibilityLabel("Back")
+                    Text("Live view").font(.system(size: 28, weight: .bold)).kerning(-0.4)
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+                VStack(spacing: 0) {
+                    row(ToggleRow(title: L("Live video in overview"),
+                                  subtitle: L("Plays the low-resolution stream of every camera instead of refreshing snapshots. Uses more data and battery."),
+                                  isOn: model.liveGrid) { on in withAnimation { model.liveGrid = on } })
+                    if model.liveGrid {
+                        divider
+                        row(ToggleRow(title: L("Also on mobile data"), isOn: model.liveGridOnCellular) { model.liveGridOnCellular = $0 })
+                    } else {
+                        divider
+                        row(ToggleRow(title: L("Automatic live view"),
+                                      subtitle: L("Switches a camera to live video while it sees motion or a moving object, and back to snapshots when it is quiet."),
+                                      isOn: model.autoLive) { model.autoLive = $0 })
+                    }
+                    divider
+                    row(ToggleRow(title: L("Recent alerts"),
+                                  subtitle: L("Shows unreviewed alerts of the last day at the top of Live."),
+                                  isOn: model.showRecentAlerts) { on in withAnimation { model.showRecentAlerts = on } })
+                    if model.showRecentAlerts {
+                        divider
+                        row(ToggleRow(title: L("Play alerts"),
+                                      subtitle: L("Plays recent alerts as short looping clips. Turn off to show a still image."),
+                                      isOn: model.playAlertPreviews) { model.playAlertPreviews = $0 })
+                    }
+                }
+                .card()
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+        }
+        .screenBackground()
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var divider: some View { Rectangle().fill(Theme.cardBorder).frame(height: 1) }
+
+    private func row(_ toggle: ToggleRow) -> some View {
+        toggle
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(minHeight: 56)
     }
 }

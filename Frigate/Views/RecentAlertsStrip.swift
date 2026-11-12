@@ -2,7 +2,7 @@ import AVFoundation
 import SwiftUI
 
 /// Row of recent unreviewed alerts at the top of Live, like Frigate's live dashboard.
-/// Each plays Frigate's short preview clip on a loop, or shows its thumbnail.
+/// Each plays Frigate's short preview clip on a loop over its thumbnail, or shows the thumbnail.
 struct RecentAlertsStrip: View {
     @Environment(AppModel.self) private var model
     @State private var entries: [ReviewEntry] = []

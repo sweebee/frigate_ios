@@ -24,7 +24,7 @@ struct LiveView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     header
-                    RecentAlertsStrip()
+                    if model.showRecentAlerts { RecentAlertsStrip() }
                     if !groupNames.isEmpty { groupChips }
                     content
                 }
