@@ -29,6 +29,8 @@ final class ServerConnection: Identifiable {
     var activeObjects: [String: [String]] = [:]
     /// Start of the most recent review item, per camera.
     var lastActivity: [String: Date] = [:]
+    /// When the config was last fetched; it is fetched again now and then to pick up new cameras.
+    private var configLoaded = Date.distantPast
     /// Live motion and tracking per camera, pushed by Frigate over its websocket.
     var activity: [String: CameraActivity] = [:]
     private var activitySocket: URLSessionWebSocketTask?
@@ -94,6 +96,7 @@ final class ServerConnection: Identifiable {
                 usingRemote = remote
                 version = v
                 config = try await c.config()
+                configLoaded = Date()
                 status = .online
                 lastSeen = Date()
                 await refresh()
@@ -167,9 +170,16 @@ final class ServerConnection: Identifiable {
         }
     }
 
-    /// Refreshes the frequently changing state.
-    func refresh() async {
+    /// Refreshes the frequently changing state. `reloadConfig` also fetches the config again
+    /// (new or renamed cameras); it is fetched anyway when older than five minutes.
+    func refresh(reloadConfig: Bool = false) async {
         guard let client else { return }
+        if reloadConfig || Date().timeIntervalSince(configLoaded) > 300 {
+            if let fresh = try? await client.config() {
+                config = fresh
+                configLoaded = Date()
+            }
+        }
         async let statsReq = try? client.stats()
         async let summaryReq = try? client.reviewSummary()
         async let activeReq = try? client.activeEvents()
@@ -322,11 +332,12 @@ final class AppModel {
         }
     }
 
-    func refreshAll() async {
+    /// `reloadConfig` for user-started refreshes (pull to refresh, returning to the app).
+    func refreshAll(reloadConfig: Bool = false) async {
         await withTaskGroup(of: Void.self) { group in
             for c in orderedConnections {
                 group.addTask { @MainActor in
-                    if c.client == nil || !c.isOnline { await c.connect() } else { await c.refresh() }
+                    if c.client == nil || !c.isOnline { await c.connect() } else { await c.refresh(reloadConfig: reloadConfig) }
                 }
             }
         }

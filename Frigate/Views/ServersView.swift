@@ -91,7 +91,7 @@ struct ServersView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .refreshable { await model.refreshAll() }
+            .refreshable { await model.refreshAll(reloadConfig: true) }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
             .fullScreenCover(item: $webInterface) { WebInterfaceView(url: $0.url, title: $0.title) }
