@@ -295,11 +295,16 @@ struct ChatLineView: View {
                     .textSelection(.enabled)
             }
         case .assistant:
-            Text(Self.markdown(line.text))
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.text)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
+            HStack {
+                Text(Self.markdown(line.text))
+                    .font(.system(size: 15))
+                    .foregroundStyle(Theme.text)
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.cardBorder, lineWidth: 1))
+                    .textSelection(.enabled)
+                Spacer(minLength: 32)
+            }
         case .tools:
             Label(L("Used \(line.text)"), systemImage: "wrench.and.screwdriver")
                 .font(.system(size: 12, weight: .medium))
