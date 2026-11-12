@@ -11,7 +11,6 @@ struct ReviewView: View {
 
     @Environment(AppModel.self) private var model
     @State private var kind: Kind = .alert
-    @State private var serverFilter: UUID? = nil
     @State private var cameraFilter: Set<String> = []
     @State private var labelFilter: Set<String> = []
     @State private var zoneFilter: Set<String> = []
@@ -23,14 +22,10 @@ struct ReviewView: View {
 
     private let pageSize = 60
 
-    private var connections: [ServerConnection] {
-        let all = model.reviewConnections.filter(\.isOnline)
-        guard let serverFilter else { return all }
-        return all.filter { $0.server.id == serverFilter }
-    }
+    private var connections: [ServerConnection] { model.reviewConnections.filter(\.isOnline) }
 
     private var filterKey: String {
-        "\(kind)|\(serverFilter?.uuidString ?? "")|\(cameraFilter.sorted())|\(labelFilter.sorted())|\(zoneFilter.sorted())|\(unreviewedOnly)|\(model.reviewConnections.map { "\($0.id)\($0.isOnline)" })"
+        "\(kind)|\(cameraFilter.sorted())|\(labelFilter.sorted())|\(zoneFilter.sorted())|\(unreviewedOnly)|\(model.reviewConnections.map { "\($0.id)\($0.isOnline)" })"
     }
 
     var body: some View {
@@ -69,6 +64,8 @@ struct ReviewView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // Same place as on the other tabs: server switcher above the title.
+            HStack { ServerSwitcher(); Spacer() }.frame(minHeight: 44)
             HStack {
                 LargeTitle(text: L("Review"))
                 Spacer()
@@ -118,16 +115,6 @@ struct ReviewView: View {
     private var filters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                if model.scope == .all && model.orderedConnections.count > 1 {
-                    Menu {
-                        Button { serverFilter = nil } label: { checkLabel(L("All servers"), serverFilter == nil) }
-                        ForEach(model.orderedConnections) { c in
-                            Button { serverFilter = c.server.id } label: { checkLabel(c.server.name, serverFilter == c.server.id) }
-                        }
-                    } label: {
-                        Chip(title: serverFilter.flatMap { model.connection(for: $0)?.server.name } ?? L("All servers"), trailingChevron: true)
-                    }
-                }
                 Menu {
                     Button { cameraFilter = [] } label: { checkLabel(L("All cameras"), cameraFilter.isEmpty) }
                     ForEach(availableCameras, id: \.camera.name) { pair in
