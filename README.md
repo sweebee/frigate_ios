@@ -8,6 +8,10 @@ Requires iOS 17 and Xcode 26 or newer. No third-party dependencies.
 > feedback, then tested in the iOS Simulator against a real Frigate 0.18 server. No code was written by hand.
 > Expect rough edges, and review the code before trusting it with anything important.
 
+## TestFlight
+
+https://testflight.apple.com/join/s6KEWhy1
+
 ## Screenshots
 
 <table>
