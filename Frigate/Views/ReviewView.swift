@@ -82,8 +82,8 @@ struct ReviewView: View {
             }
             SegmentedBar(options: [Kind.alert, .detection, .motion], selection: $kind) { k in
                 switch k {
-                case .alert: return countTitle(L("Alerts"), connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedAlerts ?? 0) })
-                case .detection: return countTitle(L("Detections"), connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedDetections ?? 0) })
+                case .alert: return countTitle(L("Alerts"), max(connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedAlerts ?? 0) }, listedUnreviewed(.alert)))
+                case .detection: return countTitle(L("Detections"), max(connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedDetections ?? 0) }, listedUnreviewed(.detection)))
                 case .motion: return L("Motion")
                 }
             }
@@ -91,6 +91,14 @@ struct ReviewView: View {
         }
         .padding(.top, 8)
         .padding(.bottom, 4)
+    }
+
+    /// Unreviewed items of the last day in the loaded list. The summary behind the counts is
+    /// refreshed less often, so a brand new item would otherwise be missing from the count.
+    private func listedUnreviewed(_ k: Kind) -> Int {
+        guard k == kind else { return 0 }
+        let dayAgo = Date().addingTimeInterval(-86400)
+        return entries.filter { !$0.item.hasBeenReviewed && $0.item.start > dayAgo }.count
     }
 
     private func countTitle(_ title: String, _ n: Int) -> String { n > 0 ? "\(title) · \(n)" : title }
