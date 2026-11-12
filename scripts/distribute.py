@@ -135,7 +135,8 @@ def main():
     else:
         sys.exit("Beta review not approved within 2 hours; run this script again later.")
 
-    for attempt in range(10):
+    # Even after approval the group can answer 404 for a while (seen up to ~15 minutes).
+    for attempt in range(60):
         status, data = api("POST", f"/v1/builds/{build_id}/relationships/betaGroups",
                            {"data": [{"type": "betaGroups", "id": group["id"]}]})
         if status < 300:
