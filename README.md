@@ -1,6 +1,7 @@
-# Frigate for iOS
+# Tender for Frigate
 
-Native SwiftUI client for [Frigate NVR](https://frigate.video), built from the mockups in `design/`.
+Native iOS client for [Frigate NVR](https://frigate.video), built from the mockups in `design/`.
+Tender is an independent app, compatible with Frigate NVR; it is not affiliated with or endorsed by the Frigate project.
 Requires iOS 17 and Xcode 26 or newer. No third-party dependencies.
 
 > **This app is fully vibe coded.** Every line of code, the Xcode project, the TestFlight setup and
@@ -93,5 +94,5 @@ scripts/testflight.sh
 ```
 
 Archives with a timestamp build number, signs with the "Frigate App Store" profile and uploads.
-App Store Connect: "Frigate NVR Client" (bundle ID `nl.wiebenieuwenhuis.frigate`, team EBTM3728EJ);
+App Store Connect: "Tender for Frigate" (bundle ID `nl.wiebenieuwenhuis.frigate`, team EBTM3728EJ);
 the internal group "Intern" gets every build automatically.

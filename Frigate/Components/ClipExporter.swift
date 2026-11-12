@@ -27,7 +27,7 @@ final class ClipExporter {
         do {
             let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
             guard status == .authorized || status == .limited else {
-                state = .failed(L("Allow Frigate to add photos in Settings to save clips."))
+                state = .failed(L("Allow Tender to add photos in Settings to save clips."))
                 return
             }
             let file = try await download(client: client, camera: camera, start: start, end: end)

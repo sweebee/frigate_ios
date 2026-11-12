@@ -6,13 +6,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Frigate"
+            "value": "Tender"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Frigate"
+            "value": "Tender"
           }
         }
       }
@@ -22,13 +22,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Frigate looks for NVR servers on your local network and connects to them."
+            "value": "Tender looks for Frigate NVR servers on your local network and connects to them."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Frigate zoekt NVR-servers op je lokale netwerk en maakt er verbinding mee."
+            "value": "Tender zoekt Frigate NVR-servers op je lokale netwerk en maakt er verbinding mee."
           }
         }
       }

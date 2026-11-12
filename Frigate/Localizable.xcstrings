@@ -755,12 +755,12 @@
         }
       }
     },
-    "Allow Frigate to add photos in Settings to save clips.": {
+    "Allow Tender to add photos in Settings to save clips.": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sta Frigate in Instellingen toe om foto's toe te voegen om clips op te slaan."
+            "value": "Sta Tender in Instellingen toe om foto's toe te voegen om clips op te slaan."
           }
         }
       }
@@ -1081,16 +1081,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "10 seconden vooruit"
-          }
-        }
-      }
-    },
-    "Frigate for iOS · connects directly to your Frigate NVR servers.": {
-      "localizations": {
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Frigate voor iOS · verbindt rechtstreeks met je eigen Frigate NVR-servers."
           }
         }
       }
@@ -2122,6 +2112,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Praten"
+          }
+        }
+      }
+    },
+    "Tender for Frigate · connects directly to your Frigate NVR servers. Not affiliated with the Frigate project.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tender for Frigate · verbindt rechtstreeks met je eigen Frigate NVR-servers. Geen onderdeel van het Frigate-project."
           }
         }
       }

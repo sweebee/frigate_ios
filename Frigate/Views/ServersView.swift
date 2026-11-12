@@ -70,7 +70,7 @@ struct ServersView: View {
                     .card()
                     .padding(.top, 10)
 
-                    Text("Frigate for iOS · connects directly to your Frigate NVR servers.")
+                    Text("Tender for Frigate · connects directly to your Frigate NVR servers. Not affiliated with the Frigate project.")
                         .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 20)

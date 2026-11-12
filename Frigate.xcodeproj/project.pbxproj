@@ -199,8 +199,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Frigate/Support/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Frigate;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Frigate looks for NVR servers on your local network and connects to them.";
+				INFOPLIST_KEY_CFBundleDisplayName = Tender;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Tender looks for Frigate NVR servers on your local network and connects to them.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save camera snapshots and video clips to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -232,8 +232,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Frigate/Support/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Frigate;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Frigate looks for NVR servers on your local network and connects to them.";
+				INFOPLIST_KEY_CFBundleDisplayName = Tender;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Tender looks for Frigate NVR servers on your local network and connects to them.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save camera snapshots and video clips to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
