@@ -23,6 +23,9 @@ final class ServerConnection: Identifiable {
     var usingRemote = false
     var version: String?
     var config: FrigateConfig?
+    /// go2rtc stream names, to offer only streams that exist and skip straight to snapshots
+    /// for cameras without a restream. Nil until loaded.
+    var go2rtcStreams: Set<String>?
     var stats: FrigateStats?
     var summary: ReviewSummary?
     /// Labels of objects currently being tracked, per camera.
@@ -104,6 +107,7 @@ final class ServerConnection: Identifiable {
                 version = v
                 config = try await c.config()
                 configLoaded = Date()
+                go2rtcStreams = try? await c.go2rtcStreams()
                 status = .online
                 lastSeen = Date()
                 await refresh()
@@ -179,12 +183,18 @@ final class ServerConnection: Identifiable {
 
     /// Refreshes the frequently changing state. `reloadConfig` also fetches the config again
     /// (new or renamed cameras); it is fetched anyway when older than five minutes.
+    /// Live streams of a camera that go2rtc can play; see `CameraConfig.streams(available:)`.
+    func liveStreams(_ camera: CameraConfig) -> [(title: String, name: String)] {
+        camera.streams(available: go2rtcStreams)
+    }
+
     func refresh(reloadConfig: Bool = false) async {
         guard let client else { return }
         if reloadConfig || Date().timeIntervalSince(configLoaded) > 300 {
             if let fresh = try? await client.config() {
                 config = fresh
                 configLoaded = Date()
+                if let streams = try? await client.go2rtcStreams() { go2rtcStreams = streams }
             }
         }
         async let statsReq = try? client.stats()

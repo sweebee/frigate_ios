@@ -59,6 +59,7 @@ struct CameraConfig: Decodable {
     var ui: UI?
     var zones: [String: AnyJSON]?
     var onvif: Onvif?
+    var ffmpeg: Ffmpeg?
 
     struct Detect: Decodable {
         var enabled: Bool?; var width: Int?; var height: Int?
@@ -73,9 +74,13 @@ struct CameraConfig: Decodable {
     struct Live: Decodable { var streams: [String: String]? }
     struct UI: Decodable { var order: Int?; var dashboard: Bool? }
     struct Onvif: Decodable { var host: String? }
+    struct Ffmpeg: Decodable {
+        var inputs: [Input]?
+        struct Input: Decodable { var path: String?; var roles: [String]? }
+    }
 
     enum CodingKeys: String, CodingKey {
-        case name, enabled, detect, record, audio, live, ui, zones, onvif
+        case name, enabled, detect, record, audio, live, ui, zones, onvif, ffmpeg
         case friendlyName = "friendly_name"
     }
 
@@ -88,15 +93,30 @@ struct CameraConfig: Decodable {
     /// Seconds to add to detection times to find them in the recording.
     var annotationOffset: Double { (detect?.annotationOffset ?? 0) / 1000 }
 
-    /// go2rtc stream names, main stream first.
-    var streams: [(title: String, name: String)] {
-        guard let s = live?.streams, !s.isEmpty else { return [("Main", name)] }
-        return s.map { (title: $0.key, name: $0.value) }
-            .sorted { lhs, rhs in
-                if lhs.name == name { return true }
-                if rhs.name == name { return false }
-                return lhs.title < rhs.title
+    /// Streams for live view, main stream first: Frigate's `live.streams`, or else the go2rtc
+    /// restreams the camera itself reads (rtsp://127.0.0.1:8554/<name>), which Frigate's web UI
+    /// would not offer. `available` is the server's go2rtc stream list when known; streams
+    /// missing from it are left out, so an empty result means there is no restream to play.
+    func streams(available: Set<String>?) -> [(title: String, name: String)] {
+        var list: [(title: String, name: String)]
+        if let s = live?.streams, !s.isEmpty {
+            list = s.map { (title: $0.key, name: $0.value) }
+        } else {
+            var names = [name]
+            for input in ffmpeg?.inputs ?? [] {
+                guard let path = input.path, let url = URLComponents(string: path),
+                      ["127.0.0.1", "localhost"].contains(url.host ?? ""), url.port == 8554 else { continue }
+                let stream = String(url.path.dropFirst())
+                if !stream.isEmpty && !names.contains(stream) { names.append(stream) }
             }
+            list = names.map { (title: $0 == name ? "Main" : $0, name: $0) }
+        }
+        if let available { list = list.filter { available.contains($0.name) } }
+        return list.sorted { lhs, rhs in
+            if lhs.name == name { return true }
+            if rhs.name == name { return false }
+            return lhs.title < rhs.title
+        }
     }
 }
 

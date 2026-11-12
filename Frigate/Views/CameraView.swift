@@ -29,6 +29,19 @@ struct CameraView: View {
 
     private var conn: ServerConnection? { model.connection(for: route.serverID) }
     private var camera: CameraConfig? { conn?.config?.cameras[route.camera] }
+    /// Streams to choose from; empty when the camera has no go2rtc restream.
+    private var streams: [(title: String, name: String)] {
+        guard let conn, let camera else { return [] }
+        return conn.liveStreams(camera)
+    }
+    private var streamKey: String { "liveStream.\(route.serverID.uuidString).\(route.camera)" }
+    /// The stream picked in a menu, remembered per camera.
+    private var streamChoice: Binding<String> {
+        Binding(get: { player.stream }, set: {
+            player.stream = $0
+            UserDefaults.standard.set($0, forKey: streamKey)
+        })
+    }
 
     /// iPhone held sideways: full-screen live video with an overlay that hides itself.
     private var isLandscape: Bool { verticalSizeClass == .compact }
@@ -77,10 +90,19 @@ struct CameraView: View {
         .onAppear {
             player.suspended = false
             if player.stream.isEmpty {
-                // On mobile data start with the lighter sub stream when the camera has one.
-                let streams = camera?.streams ?? []
-                let preferred = NetworkStatus.shared.isExpensive && streams.count > 1 ? streams.last : streams.first
-                player.stream = preferred?.name ?? route.camera
+                let streams = self.streams
+                if streams.isEmpty && conn?.go2rtcStreams != nil {
+                    // No restream to play: go straight to snapshots instead of waiting for
+                    // MSE and WebRTC to time out.
+                    player.preferred = .mjpeg
+                }
+                if let saved = UserDefaults.standard.string(forKey: streamKey), streams.contains(where: { $0.name == saved }) {
+                    player.stream = saved
+                } else {
+                    // On mobile data start with the lighter sub stream when the camera has one.
+                    let preferred = NetworkStatus.shared.isExpensive && streams.count > 1 ? streams.last : streams.first
+                    player.stream = preferred?.name ?? route.camera
+                }
             }
         }
     }
@@ -138,9 +160,9 @@ struct CameraView: View {
 
     private var moreMenu: some View {
             Menu {
-                if let camera, camera.streams.count > 1 {
-                    Picker("Stream", selection: $player.stream) {
-                        ForEach(camera.streams, id: \.name) { s in Text(s.title).tag(s.name) }
+                if streams.count > 1 {
+                    Picker("Stream", selection: streamChoice) {
+                        ForEach(streams, id: \.name) { s in Text(s.title).tag(s.name) }
                     }
                 }
                 Picker("Playback", selection: $player.preferred) {
@@ -174,6 +196,7 @@ struct CameraView: View {
             Color.black
             LivePlayerView(client: client, camera: camera.name, state: player)
                 .zoomable()
+            if !player.playing { LivePoster(client: client, camera: camera.name).allowsHitTesting(false) }
             streamStatus
         }
         .aspectRatio(player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio, contentMode: .fit)
@@ -186,6 +209,7 @@ struct CameraView: View {
                 .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
                 .padding(10)
         }
+        .overlay(alignment: .bottomTrailing) { streamChip.padding(8) }
         .overlay(alignment: .bottomLeading) {
             let objects = conn?.activeObjects[camera.name] ?? []
             if !objects.isEmpty {
@@ -209,8 +233,33 @@ struct CameraView: View {
                     }
                 }
                 .foregroundStyle(.white)
+                .padding(.horizontal, 16).padding(.vertical, 12)
+                .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                 .padding()
             }
+    }
+
+    /// Which stream plays, as a menu on the video; only when there is a choice.
+    @ViewBuilder
+    private var streamChip: some View {
+        if streams.count > 1 {
+            Menu {
+                Picker("Stream", selection: streamChoice) {
+                    ForEach(streams, id: \.name) { s in Text(s.title).tag(s.name) }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "square.stack.3d.up").font(.system(size: 11, weight: .semibold))
+                    Text(streams.first { $0.name == player.stream }?.title ?? player.stream)
+                        .font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 9).padding(.vertical, 5)
+                .background(.black.opacity(0.6), in: Capsule())
+            }
+            .accessibilityLabel("Stream")
+        }
     }
 
     @ViewBuilder
@@ -241,6 +290,7 @@ struct CameraView: View {
                 .zoomable()
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
+            if !player.playing { LivePoster(client: client, camera: camera.name).ignoresSafeArea().allowsHitTesting(false) }
             streamStatus
             if landscapePTZ {
                 PTZControls(client: client, camera: camera.name, overlay: true)
@@ -524,6 +574,7 @@ struct FullscreenLiveView: View {
                 .ignoresSafeArea()
                 .onChange(of: scenePhase) { _, phase in state.suspended = phase != .active }
             if !state.playing {
+                LivePoster(client: client, camera: camera.name).ignoresSafeArea().allowsHitTesting(false)
                 VStack(spacing: 8) {
                     ProgressView().tint(.white)
                     Text(state.statusText).font(.system(size: 13)).foregroundStyle(.white)

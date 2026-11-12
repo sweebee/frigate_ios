@@ -168,8 +168,9 @@ struct CameraTile: View {
                             RemoteImage(url: conn.client?.latestImageURL(camera: camera.name, height: 270),
                                         session: conn.client?.session ?? .shared,
                                         refresh: online ? (objects.isEmpty ? 6 : 2) * (NetworkStatus.shared.isExpensive ? 2.5 : 1) : nil)
-                            if online && (model.showsLiveGrid || (model.autoLive && autoLiveOn)), let client = conn.client {
-                                TileLivePlayer(client: client, camera: camera)
+                            if online && (model.showsLiveGrid || (model.autoLive && autoLiveOn)), let client = conn.client,
+                               let sub = conn.liveStreams(camera).last {
+                                TileLivePlayer(client: client, camera: camera, stream: sub.name)
                             }
                         }
                     }
@@ -244,6 +245,8 @@ struct CameraTile: View {
 struct TileLivePlayer: View {
     let client: FrigateClient
     let camera: CameraConfig
+    /// The lightest stream the camera has.
+    let stream: String
     @State private var state = LivePlayerState()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -252,8 +255,8 @@ struct TileLivePlayer: View {
             .opacity(state.playing ? 1 : 0)
             .allowsHitTesting(false)
             .onAppear {
-                // Sub stream when the camera has one, without the snapshot fallback.
-                state.stream = camera.streams.count > 1 ? (camera.streams.last?.name ?? camera.name) : camera.name
+                // Without the snapshot fallback: the snapshot underneath already shows.
+                state.stream = stream
                 state.preferred = .mse
                 state.suspended = false
             }

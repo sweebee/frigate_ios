@@ -311,6 +311,11 @@ final class FrigateClient: @unchecked Sendable {
         url("api/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/clip.mp4")
     }
 
+    /// Names of the server's go2rtc streams; empty when Frigate runs without go2rtc restreams.
+    func go2rtcStreams() async throws -> Set<String> {
+        Set(try await get([String: AnyJSON].self, "api/go2rtc/streams").keys)
+    }
+
     /// Whether a go2rtc stream can receive audio (a camera speaker), like Frigate's web UI
     /// checks: one of its producers offers "audio, sendonly".
     func supportsTwoWayAudio(stream: String) async -> Bool {

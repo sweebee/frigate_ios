@@ -17,6 +17,8 @@ struct RemoteImage: View {
     var session: URLSession = .shared
     var refresh: TimeInterval? = nil
     var contentMode: ContentMode = .fill
+    /// Shown from the cache until `url` has loaded, e.g. a smaller image of the same scene.
+    var placeholder: URL? = nil
 
     @State private var image: UIImage?
     @State private var failed = false
@@ -24,12 +26,13 @@ struct RemoteImage: View {
     var body: some View {
         ZStack {
             Theme.placeholder
-            if let image {
+            if let image = image ?? placeholder.flatMap(ImageCache.shared.image(for:)) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
                     .transition(.opacity)
-            } else if failed {
+            }
+            if image == nil && failed {
                 Image(systemName: "photo").foregroundStyle(Theme.textSecondary.opacity(0.5))
             }
         }
@@ -51,7 +54,7 @@ struct RemoteImage: View {
                let img = await decode(data) {
                 image = img
                 failed = false
-                if refresh == nil { ImageCache.shared.set(img, for: url) }
+                ImageCache.shared.set(img, for: url)
             } else if image == nil {
                 failed = true
             }

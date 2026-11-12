@@ -44,6 +44,19 @@ final class LivePlayerState {
     }
 }
 
+/// The camera's latest frame, shown while the live stream connects. The overview tile's
+/// smaller frame shows at once from the cache until the sharper one arrives.
+struct LivePoster: View {
+    let client: FrigateClient
+    let camera: String
+
+    var body: some View {
+        RemoteImage(url: client.latestImageURL(camera: camera, height: 720), session: client.session,
+                    contentMode: .fit, placeholder: client.latestImageURL(camera: camera, height: 270))
+            .background(Color.black)
+    }
+}
+
 /// Plays a go2rtc stream through Frigate's proxy: MSE over websocket first, then WebRTC,
 /// then MJPEG from the Frigate API as the last fallback.
 struct LivePlayerView: UIViewRepresentable {
@@ -95,6 +108,7 @@ struct LivePlayerView: UIViewRepresentable {
 
     private func load(_ web: WKWebView, coordinator: Coordinator) {
         coordinator.loadedKey = loadKey
+        coordinator.loadStarted = Date()
         coordinator.closeSignal()
         if state.talking { Coordinator.startTalkAudio() } else { Coordinator.endTalkAudio() }
         if state.suspended {
@@ -148,6 +162,7 @@ struct LivePlayerView: UIViewRepresentable {
         let client: FrigateClient
         let camera: String
         var loadedKey = ""
+        var loadStarted = Date()
         weak var webView: WKWebView?
         private var signal: URLSessionWebSocketTask?
 
@@ -217,7 +232,15 @@ struct LivePlayerView: UIViewRepresentable {
                 Task { @MainActor in state.micError = err }
             }
             Task { @MainActor in
-                if let s = body["status"] as? String { state.status = s }
+                if let s = body["status"] as? String {
+                    #if DEBUG
+                    if s == "Live" && state.status != "Live" {
+                        NSLog("[live] %@ %@ %@ playing after %.2fs", camera, state.stream,
+                              body["mode"] as? String ?? "", Date().timeIntervalSince(loadStarted))
+                    }
+                    #endif
+                    state.status = s
+                }
                 if let m = body["mode"] as? String { state.activeMode = m }
                 if let p = body["playing"] as? Bool { state.playing = p }
                 if let a = body["audio"] as? Bool { state.hasAudio = a }
@@ -264,7 +287,9 @@ function stopSnapshots(){
   if (img) { img.remove(); img = null; }
 }
 function cleanupTransport(){
-  if (ws) { ws.onclose = null; try { ws.close(); } catch(e){} ws = null; }
+  // Detach every handler first: closing a socket that is still connecting fires 'error',
+  // which would otherwise skip the next transport.
+  if (ws) { ws.onclose = ws.onerror = ws.onmessage = ws.onopen = null; try { ws.close(); } catch(e){} ws = null; }
   if (pc) { try { pc.close(); } catch(e){} pc = null; }
   if (timer) { clearTimeout(timer); timer = null; }
   video.removeAttribute('src'); video.srcObject = null;
@@ -278,7 +303,7 @@ function next(reason){
   if (!mode) { post({status: 'Stream unavailable' + (reason ? ': ' + reason : ''), playing:false}); return; }
   post({status: 'Connecting', mode: mode});
   // Give each transport a few seconds to produce frames.
-  timer = setTimeout(() => { if (!playingNow) next(mode + ' timed out'); }, mode === 'mse' ? 15000 : (mode === 'webrtc' ? 12000 : 8000));
+  timer = setTimeout(() => { if (!playingNow) next(mode + ' timed out'); }, mode === 'mse' ? 10000 : 8000);
   if (mode === 'mse') startMSE(); else if (mode === 'webrtc') startWebRTC(); else startMJPEG();
 }
 let playingNow = false;
