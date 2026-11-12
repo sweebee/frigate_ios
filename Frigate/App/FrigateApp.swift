@@ -64,7 +64,14 @@ struct RootView: View {
         .sheet(isPresented: $model.showAddServer) {
             NavigationStack { ConnectView() }
         }
-        .task { await model.connectAll() }
+        .task {
+            await model.connectAll()
+            // Screenshots: `-ScreenshotRoute camera/carport` opens a screen without a URL prompt.
+            if let route = UserDefaults.standard.string(forKey: "ScreenshotRoute"), let url = URL(string: "frigate://" + route) {
+                try? await Task.sleep(for: .seconds(1))
+                await model.handle(url)
+            }
+        }
         .onOpenURL { url in Task { await model.handle(url) } }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await model.refreshAll() } }

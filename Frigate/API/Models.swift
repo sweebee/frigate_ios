@@ -17,7 +17,7 @@ struct FrigateConfig: Decodable {
     /// Cameras shown on the dashboard, in UI order.
     var orderedCameras: [CameraConfig] {
         cameras.values
-            .filter { $0.enabled != false && $0.ui?.dashboard != false }
+            .filter { $0.enabled != false && $0.ui?.dashboard != false && ScreenshotMode.allows($0.name) }
             .sorted { ($0.ui?.order ?? 0, $0.name) < ($1.ui?.order ?? 0, $1.name) }
     }
 

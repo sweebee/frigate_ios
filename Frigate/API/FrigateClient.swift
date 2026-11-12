@@ -102,6 +102,7 @@ final class FrigateClient: @unchecked Sendable {
     func reviews(cameras: [String]? = nil, labels: [String]? = nil, zones: [String]? = nil, severity: Severity? = nil,
                  reviewed: Bool? = nil, after: Date? = nil, before: Date? = nil, limit: Int = 100) async throws -> [ReviewItem] {
         var q: [String: String?] = ["limit": String(limit)]
+        let cameras = ScreenshotMode.scope(cameras)
         if let cameras, !cameras.isEmpty { q["cameras"] = cameras.joined(separator: ",") }
         if let labels, !labels.isEmpty { q["labels"] = labels.joined(separator: ",") }
         if let zones, !zones.isEmpty { q["zones"] = zones.joined(separator: ",") }
@@ -113,12 +114,14 @@ final class FrigateClient: @unchecked Sendable {
     }
 
     func reviewSummary() async throws -> ReviewSummary {
-        try await get(ReviewSummary.self, "api/review/summary")
+        let q: [String: String?] = ["cameras": ScreenshotMode.cameras?.joined(separator: ",")]
+        return try await get(ReviewSummary.self, "api/review/summary", query: q)
     }
 
     /// Days ("yyyy-MM-dd") that have recordings for the cameras, or all cameras.
     func recordingDays(cameras: [String]? = nil) async throws -> Set<String> {
         var q: [String: String?] = [:]
+        let cameras = ScreenshotMode.scope(cameras)
         if let cameras, !cameras.isEmpty { q["cameras"] = cameras.joined(separator: ",") }
         let map = try await get([String: Bool].self, "api/recordings/summary", query: q)
         return Set(map.filter(\.value).keys)
@@ -127,6 +130,7 @@ final class FrigateClient: @unchecked Sendable {
     /// Alert and detection counts per day ("yyyy-MM-dd").
     func reviewDays(cameras: [String]? = nil) async throws -> [String: ReviewSummary.DayCounts] {
         var q: [String: String?] = [:]
+        let cameras = ScreenshotMode.scope(cameras)
         if let cameras, !cameras.isEmpty { q["cameras"] = cameras.joined(separator: ",") }
         let all = try await get([String: ReviewSummary.DayCounts].self, "api/review/summary", query: q)
         return all.filter { $0.key != "last24Hours" }
