@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 struct CameraView: View {
@@ -11,6 +12,9 @@ struct CameraView: View {
     /// A menu in the overlay is open; the overlay must not hide underneath it.
     @State private var menuOpen = false
     @State private var player = LivePlayerState()
+    /// The camera has a speaker go2rtc can send audio to.
+    @State private var canTalk = false
+    @State private var micDenied = false
     @State private var reviews: [ReviewItem] = []
     @State private var loadingReviews = true
     @State private var share: ShareItem?
@@ -44,7 +48,22 @@ struct CameraView: View {
         } message: { Text(errorMessage ?? "") }
         .task { await loadReviews() }
         .task { await watchRecording() }
-        .onDisappear { player.suspended = true }
+        .onDisappear { player.suspended = true; player.talking = false }
+        .task(id: player.stream) {
+            guard let client = conn?.client else { return }
+            let stream = player.stream.isEmpty ? route.camera : player.stream
+            canTalk = await client.supportsTwoWayAudio(stream: stream)
+            if !canTalk { player.talking = false }
+        }
+        .alert("Microphone not available", isPresented: $micDenied) {
+            Button("Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Allow Tender to use the microphone in Settings to talk through the camera.")
+        }
+        .onChange(of: player.micError) { _, err in
+            if err != nil { player.talking = false; player.micError = nil; micDenied = true }
+        }
         .onChange(of: scenePhase) { _, phase in
             // Stop in the background, start fresh when the app is back.
             player.suspended = phase != .active
@@ -315,7 +334,9 @@ struct CameraView: View {
                           enabled: player.hasAudio || player.activeMode != "mjpeg") {
                 player.setMuted(!player.muted)
             }
-            controlButton("mic", "Talk", enabled: false) {}
+            controlButton(player.talking ? "mic.fill" : "mic", "Talk", active: player.talking, enabled: canTalk) {
+                Task { await toggleTalk() }
+            }
             controlButton("camera", "Snapshot", busy: snapshotBusy) {
                 Task { await snapshot(client: client, camera: camera) }
             }
@@ -351,6 +372,21 @@ struct CameraView: View {
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
         .accessibilityLabel(label)
+    }
+
+    /// Starts or stops talking through the camera's speaker.
+    private func toggleTalk() async {
+        if player.talking {
+            player.talking = false
+            return
+        }
+        guard await AVAudioApplication.requestRecordPermission() else {
+            micDenied = true
+            return
+        }
+        player.talking = true
+        // Hear the other side while talking.
+        if player.muted { player.setMuted(false) }
     }
 
     private func snapshot(client: FrigateClient, camera: CameraConfig) async {

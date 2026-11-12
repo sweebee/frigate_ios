@@ -307,6 +307,17 @@ final class FrigateClient: @unchecked Sendable {
         url("api/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/clip.mp4")
     }
 
+    /// Whether a go2rtc stream can receive audio (a camera speaker), like Frigate's web UI
+    /// checks: one of its producers offers "audio, sendonly".
+    func supportsTwoWayAudio(stream: String) async -> Bool {
+        struct Info: Decodable {
+            struct Producer: Decodable { let medias: [String]? }
+            let producers: [Producer]?
+        }
+        guard let info = try? await get(Info.self, "api/go2rtc/streams/\(stream)") else { return false }
+        return (info.producers ?? []).contains { ($0.medias ?? []).contains { $0.contains("audio, sendonly") } }
+    }
+
     /// Websocket version of a server path, e.g. `ws` for Frigate's event feed.
     func socketURL(_ path: String, query: [String: String?] = [:]) -> URL {
         var comps = URLComponents(url: url(path, query: query), resolvingAgainstBaseURL: false)!

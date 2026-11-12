@@ -33,6 +33,22 @@
         }
       }
     },
+    "NSMicrophoneUsageDescription": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Talk through cameras that have a speaker."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Praat via camera's met een speaker."
+          }
+        }
+      }
+    },
     "NSPhotoLibraryAddUsageDescription": {
       "localizations": {
         "en": {

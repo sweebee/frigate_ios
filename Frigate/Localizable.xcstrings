@@ -845,6 +845,16 @@
         }
       }
     },
+    "Allow Tender to use the microphone in Settings to talk through the camera.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sta Tender in Instellingen toe de microfoon te gebruiken om via de camera te praten."
+          }
+        }
+      }
+    },
     "Also on mobile data": {
       "localizations": {
         "nl": {
@@ -1510,6 +1520,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Markeer als beoordeeld"
+          }
+        }
+      }
+    },
+    "Microphone not available": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microfoon niet beschikbaar"
           }
         }
       }

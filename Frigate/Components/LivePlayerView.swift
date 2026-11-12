@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import WebKit
 
@@ -18,6 +19,10 @@ final class LivePlayerState {
     var reloadToken = 0
     /// While true no stream runs (screen hidden or app in the background).
     var suspended = false
+    /// Two-way talk: WebRTC with the microphone sent to the camera's speaker.
+    var talking = false
+    /// Set when the microphone could not be used.
+    var micError: String?
 
     fileprivate weak var webView: WKWebView?
 
@@ -48,7 +53,7 @@ struct LivePlayerView: UIViewRepresentable {
     /// Fill the frame (crop) and use MSE only, for small grid tiles.
     var fill: Bool = false
 
-    func makeCoordinator() -> Coordinator { Coordinator(state: state) }
+    func makeCoordinator() -> Coordinator { Coordinator(state: state, client: client, camera: camera) }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -56,6 +61,8 @@ struct LivePlayerView: UIViewRepresentable {
         config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.add(context.coordinator, name: "player")
         let web = WKWebView(frame: .zero, configuration: config)
+        web.uiDelegate = context.coordinator
+        context.coordinator.webView = web
         web.isOpaque = false
         web.backgroundColor = .black
         web.scrollView.isScrollEnabled = false
@@ -71,18 +78,25 @@ struct LivePlayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ web: WKWebView, context: Context) {
-        let key = "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)|\(state.suspended)"
-        if context.coordinator.loadedKey != key { load(web, coordinator: context.coordinator) }
+        if context.coordinator.loadedKey != loadKey { load(web, coordinator: context.coordinator) }
+    }
+
+    private var loadKey: String {
+        "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)|\(state.suspended)|\(state.talking)"
     }
 
     static func dismantleUIView(_ web: WKWebView, coordinator: Coordinator) {
+        coordinator.closeSignal()
+        Coordinator.endTalkAudio()
         web.evaluateJavaScript("stopAll()")
         web.configuration.userContentController.removeScriptMessageHandler(forName: "player")
         web.loadHTMLString("", baseURL: nil)
     }
 
     private func load(_ web: WKWebView, coordinator: Coordinator) {
-        coordinator.loadedKey = "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)|\(state.suspended)"
+        coordinator.loadedKey = loadKey
+        coordinator.closeSignal()
+        if state.talking { Coordinator.startTalkAudio() } else { Coordinator.endTalkAudio() }
         if state.suspended {
             // Close the stream; iOS does not resume a paused web video reliably.
             web.evaluateJavaScript("stopAll()")
@@ -99,6 +113,8 @@ struct LivePlayerView: UIViewRepresentable {
         case .mjpeg: modes = ["mjpeg"]
         }
         if fill { modes = ["mse"] }
+        // Talking needs WebRTC (the only transport that sends audio back).
+        if state.talking { modes = ["webrtc"] }
         let params: [String: Any] = [
             "mse": client.liveSocketURL(stream: stream, mode: "mse").absoluteString,
             "webrtc": client.liveSocketURL(stream: stream, mode: "webrtc").absoluteString,
@@ -107,6 +123,7 @@ struct LivePlayerView: UIViewRepresentable {
             "modes": modes,
             "muted": state.muted,
             "fit": fill ? "cover" : "contain",
+            "talk": state.talking,
         ]
         let json = String(data: (try? JSONSerialization.data(withJSONObject: params)) ?? Data(), encoding: .utf8) ?? "{}"
         state.status = "Connecting"
@@ -116,20 +133,89 @@ struct LivePlayerView: UIViewRepresentable {
         let store = web.configuration.websiteDataStore.httpCookieStore
         let cookies = HTTPCookieStorage.shared.cookies(for: client.baseURL) ?? []
         let html = Self.html.replacingOccurrences(of: "__PARAMS__", with: json)
-        let base = client.baseURL
+        // The microphone needs a secure page, and a plain http:// server is not one; localhost is.
+        // While talking the page runs from localhost and the WebRTC handshake goes through the
+        // app (see Coordinator), so the page itself never talks to the server.
+        let base = state.talking ? URL(string: "http://localhost/")! : client.baseURL
         Task { @MainActor in
             for c in cookies { await store.setCookie(c) }
             web.loadHTMLString(html, baseURL: base)
         }
     }
 
-    final class Coordinator: NSObject, WKScriptMessageHandler {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKUIDelegate {
         let state: LivePlayerState
+        let client: FrigateClient
+        let camera: String
         var loadedKey = ""
-        init(state: LivePlayerState) { self.state = state }
+        weak var webView: WKWebView?
+        private var signal: URLSessionWebSocketTask?
+
+        init(state: LivePlayerState, client: FrigateClient, camera: String) {
+            self.state = state
+            self.client = client
+            self.camera = camera
+        }
+
+        // MARK: Talk
+
+        /// Speaker output and echo cancellation while talking; the earpiece would be far too quiet.
+        static func startTalkAudio() {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try? session.setActive(true)
+        }
+
+        static func endTalkAudio() {
+            let session = AVAudioSession.sharedInstance()
+            guard session.category == .playAndRecord else { return }
+            try? session.setCategory(.playback, mode: .default)
+        }
+
+        /// The page asked for the microphone; the user already chose to talk.
+        func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+                     initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType,
+                     decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+            decisionHandler(type == .microphone ? .grant : .deny)
+        }
+
+        /// Relays the page's WebRTC handshake to go2rtc over a websocket opened by the app.
+        @MainActor func sendSignal(_ message: [String: Any]) {
+            if signal == nil {
+                let stream = state.stream.isEmpty ? camera : state.stream
+                let task = client.session.webSocketTask(with: client.liveSocketURL(stream: stream, mode: "webrtc"))
+                signal = task
+                task.resume()
+                Task { @MainActor [weak self] in
+                    while true {
+                        guard let msg = try? await task.receive() else { break }
+                        guard case .string(let text) = msg else { continue }
+                        _ = try? await self?.webView?.evaluateJavaScript("onSignal(\(text))")
+                    }
+                    if self?.signal === task {
+                        _ = try? await self?.webView?.evaluateJavaScript("onSignal({type:'error', value:'connection closed'})")
+                    }
+                }
+            }
+            guard let data = try? JSONSerialization.data(withJSONObject: message),
+                  let text = String(data: data, encoding: .utf8) else { return }
+            signal?.send(.string(text)) { _ in }
+        }
+
+        func closeSignal() {
+            signal?.cancel(with: .goingAway, reason: nil)
+            signal = nil
+        }
 
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let body = message.body as? [String: Any] else { return }
+            if let s = body["signal"] as? [String: Any] {
+                Task { @MainActor in sendSignal(s) }
+                return
+            }
+            if let err = body["micError"] as? String {
+                Task { @MainActor in state.micError = err }
+            }
             Task { @MainActor in
                 if let s = body["status"] as? String { state.status = s }
                 if let m = body["mode"] as? String { state.activeMode = m }
@@ -274,9 +360,24 @@ function startMSE(){
   video.play().catch(()=>{});
 }
 
-function startWebRTC(){
+async function onSignal(msg){
+  if (!pc) return;
+  if (msg.type === 'webrtc/answer') await pc.setRemoteDescription({type: 'answer', sdp: msg.value});
+  else if (msg.type === 'webrtc/candidate' && msg.value) { try { await pc.addIceCandidate({candidate: msg.value, sdpMid: '0'}); } catch(e) {} }
+  else if (msg.type === 'error') next(msg.value);
+}
+async function startWebRTC(){
   if (!window.RTCPeerConnection) { next('WebRTC not supported'); return; }
-  pc = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
+  pc = new RTCPeerConnection({bundlePolicy: 'max-bundle', iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
+  // Talking: the microphone goes out first, like Frigate's web UI does.
+  if (P.talk) {
+    try {
+      const mic = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: true, noiseSuppression: true}});
+      mic.getTracks().forEach(t => pc.addTransceiver(t, {direction: 'sendonly'}));
+    } catch (e) {
+      post({micError: String(e && e.name || e)});
+    }
+  }
   pc.addTransceiver('video', {direction: 'recvonly'});
   pc.addTransceiver('audio', {direction: 'recvonly'});
   const stream = new MediaStream();
@@ -286,21 +387,20 @@ function startWebRTC(){
     video.srcObject = stream;
     video.play().catch(()=>{});
   };
+  const send = (o) => {
+    if (P.talk) post({signal: o});
+    else if (ws && ws.readyState === 1) ws.send(JSON.stringify(o));
+  };
+  pc.onicecandidate = (e) => send({type: 'webrtc/candidate', value: e.candidate ? e.candidate.candidate : ''});
+  const offer = async () => {
+    const o = await pc.createOffer();
+    await pc.setLocalDescription(o);
+    send({type: 'webrtc/offer', value: o.sdp});
+  };
+  if (P.talk) { offer(); return; }
   ws = new WebSocket(P.webrtc);
-  pc.onicecandidate = (e) => {
-    if (ws && ws.readyState === 1) ws.send(JSON.stringify({type: 'webrtc/candidate', value: e.candidate ? e.candidate.candidate : ''}));
-  };
-  ws.onopen = async () => {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    ws.send(JSON.stringify({type: 'webrtc/offer', value: offer.sdp}));
-  };
-  ws.onmessage = async (ev) => {
-    const msg = JSON.parse(ev.data);
-    if (msg.type === 'webrtc/answer') await pc.setRemoteDescription({type: 'answer', sdp: msg.value});
-    else if (msg.type === 'webrtc/candidate' && msg.value) { try { await pc.addIceCandidate({candidate: msg.value, sdpMid: '0'}); } catch(e) {} }
-    else if (msg.type === 'error') next(msg.value);
-  };
+  ws.onopen = offer;
+  ws.onmessage = (ev) => onSignal(JSON.parse(ev.data));
   ws.onerror = () => next('websocket error');
 }
 
