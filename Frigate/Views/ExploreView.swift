@@ -210,8 +210,16 @@ struct ExploreView: View {
                 if !zoneOptions.isEmpty {
                     Menu {
                         option(L("All zones"), filter.zones.isEmpty) { filter.zones = [] }
-                        ForEach(zoneOptions, id: \.self) { z in
-                            option(FrigateFormat.prettyName(z), filter.zones.contains(z)) { toggle(&filter.zones, z) }
+                        // With several servers, zones are grouped under their server's name.
+                        ForEach(connections) { conn in
+                            let zones = conn.zones(only: filter.cameras)
+                            if !zones.isEmpty {
+                                Section(connections.count > 1 ? conn.server.name : "") {
+                                    ForEach(zones, id: \.self) { z in
+                                        option(FrigateFormat.prettyName(z), filter.zones.contains(z)) { toggle(&filter.zones, z) }
+                                    }
+                                }
+                            }
                         }
                     } label: {
                         Chip(title: filter.zones.isEmpty ? L("Zones") : filter.zones.map(FrigateFormat.prettyName).sorted().joined(separator: ", "),

@@ -46,6 +46,13 @@ final class ServerConnection: Identifiable {
     var isOnline: Bool { status == .online }
     var cameras: [CameraConfig] { config?.orderedCameras ?? [] }
 
+    /// Zones configured on this server's cameras (all, or only `only` when it names cameras).
+    func zones(only: Set<String> = []) -> [String] {
+        let cams = cameras.filter { only.isEmpty || only.contains($0.name) }
+        return Set(cams.flatMap { $0.zones?.keys.map { $0 } ?? [] })
+            .sorted { FrigateFormat.prettyName($0).localizedStandardCompare(FrigateFormat.prettyName($1)) == .orderedAscending }
+    }
+
     var lastSeen: Date? {
         get { UserDefaults.standard.object(forKey: "lastSeen.\(server.id)") as? Date }
         set { UserDefaults.standard.set(newValue, forKey: "lastSeen.\(server.id)") }

@@ -144,10 +144,18 @@ struct ReviewView: View {
                     if !availableZones.isEmpty {
                         Menu {
                             Button { zoneFilter = [] } label: { checkLabel(L("All zones"), zoneFilter.isEmpty) }
-                            ForEach(availableZones, id: \.self) { z in
-                                Button {
-                                    if zoneFilter.contains(z) { zoneFilter.remove(z) } else { zoneFilter.insert(z) }
-                                } label: { checkLabel(FrigateFormat.prettyName(z), zoneFilter.contains(z)) }
+                            // With several servers, zones are grouped under their server's name.
+                            ForEach(connections) { conn in
+                                let zones = conn.zones(only: cameraFilter)
+                                if !zones.isEmpty {
+                                    Section(connections.count > 1 ? conn.server.name : "") {
+                                        ForEach(zones, id: \.self) { z in
+                                            Button {
+                                                if zoneFilter.contains(z) { zoneFilter.remove(z) } else { zoneFilter.insert(z) }
+                                            } label: { checkLabel(FrigateFormat.prettyName(z), zoneFilter.contains(z)) }
+                                        }
+                                    }
+                                }
                             }
                         } label: {
                             Chip(title: zoneFilter.isEmpty ? L("Zones") : zoneFilter.map(FrigateFormat.prettyName).sorted().joined(separator: ", "),
