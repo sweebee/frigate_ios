@@ -4,6 +4,7 @@ struct EventDetailView: View {
     let route: EventRoute
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var item: ReviewItem
     @State private var player = RecordingPlayer()
     @State private var events: [FrigateEvent] = []
@@ -14,6 +15,9 @@ struct EventDetailView: View {
     @State private var errorMessage: String?
     /// Frigate kept no recording for this item (e.g. retention expired or the camera was down).
     @State private var noRecording = false
+    /// Landscape: the controls drawn over the video; they hide by themselves during playback.
+    @State private var overlayVisible = true
+    @State private var overlayToken = 0
 
     /// Seconds of recording shown before and after the review item.
     private let padding: Double = 5
@@ -46,7 +50,26 @@ struct EventDetailView: View {
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
     private var clipEnd: Double { min(activityEnd + padding, Date().timeIntervalSince1970) }
 
+    private var isLandscape: Bool { verticalSizeClass == .compact }
+
     var body: some View {
+        Group {
+            if isLandscape { landscapeBody } else { portraitBody }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .confirmationDialog("Delete this review item and its recordings?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { Task { await delete() } }
+        }
+        .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(errorMessage ?? "") }
+        .task { await load() }
+        .onDisappear { player.stop() }
+    }
+
+    private var portraitBody: some View {
         VStack(spacing: 0) {
             header
             ScrollView {
@@ -62,17 +85,113 @@ struct EventDetailView: View {
             actions
         }
         .screenBackground()
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
-        .sheet(item: $share) { ShareSheet(items: $0.items) }
-        .confirmationDialog("Delete this review item and its recordings?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) { Task { await delete() } }
+    }
+
+    // MARK: Landscape
+
+    /// Full-screen video. A tap shows or hides the controls; they hide by themselves after
+    /// 4 seconds of playback without touches.
+    private var landscapeBody: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            PlayerLayerView(player: player.player)
+                .zoomable()
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { overlayVisible.toggle() }
+                    keepOverlay()
+                }
+            playerStatus(showPlay: !overlayVisible)
+            if overlayVisible {
+                landscapeOverlay.transition(.opacity)
+            } else {
+                VStack {
+                    Spacer()
+                    GeometryReader { geo in
+                        let p = min(1, player.currentTime / max(player.duration, 0.1))
+                        ZStack(alignment: .leading) {
+                            Rectangle().fill(Color.white.opacity(0.15))
+                            Rectangle().fill(Theme.accent).frame(width: geo.size.width * p)
+                        }
+                    }
+                    .frame(height: 3)
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
         }
-        .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: { Text(errorMessage ?? "") }
-        .task { await load() }
-        .onDisappear { player.stop() }
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
+        .task(id: overlayToken) {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled, player.wantsToPlay, !player.isScrubbing else { return }
+            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
+        }
+    }
+
+    private func keepOverlay() { overlayToken += 1 }
+
+    private var landscapeOverlay: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Back")
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(conn?.config?.cameras[item.camera]?.displayName ?? FrigateFormat.prettyName(item.camera))
+                        .font(.system(size: 15, weight: .semibold))
+                    Text(timeRange).font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+                }
+                .lineLimit(1)
+                ForEach(item.labels, id: \.self) { LabelTag(label: $0, size: 12) }
+                Spacer()
+                Button { Task { await markReviewed() }; keepOverlay() } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: isReviewed ? "checkmark.circle.fill" : "checkmark.circle")
+                        Text("Reviewed")
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(isReviewed ? Theme.textSecondary : Theme.onColor)
+                    .padding(.horizontal, 12).frame(height: 34)
+                    .background(isReviewed ? Color.white.opacity(0.12) : Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(isReviewed)
+                Button { Task { await download() }; keepOverlay() } label: {
+                    Group {
+                        if downloading { ProgressView().tint(.white) } else { Image(systemName: "square.and.arrow.up") }
+                    }
+                    .font(.system(size: 19, weight: .medium)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Share clip")
+                .disabled(downloading || item.inProgress)
+                Button { confirmDelete = true; keepOverlay() } label: {
+                    Image(systemName: "trash").font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Theme.destructive).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Delete")
+            }
+            .foregroundStyle(Theme.text)
+            .padding(.horizontal, 8)
+            .background(Color.black.opacity(0.75).ignoresSafeArea(edges: [.top, .horizontal]))
+
+            HStack(spacing: 18) {
+                OverlayButton(systemImage: "gobackward.10", size: 50, label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
+                OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", size: 60,
+                              label: player.wantsToPlay ? "Pause" : "Play") { player.toggle(); keepOverlay() }
+                OverlayButton(systemImage: "goforward.10", size: 50, label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
+            }
+            .opacity(noRecording || player.error != nil || player.isBuffering || player.duration == 0 ? 0 : 1)
+            .frame(maxHeight: .infinity)
+
+            scrubber
+                .padding(.bottom, 10)
+                .background(Color.black.opacity(0.7).ignoresSafeArea(edges: [.bottom, .horizontal]))
+                .simultaneousGesture(TapGesture().onEnded { keepOverlay() })
+                .onChange(of: player.isScrubbing) { _, _ in keepOverlay() }
+        }
     }
 
     // MARK: Header
@@ -104,6 +223,18 @@ struct EventDetailView: View {
         ZStack {
             PlayerLayerView(player: player.player)
                 .zoomable()
+            playerStatus()
+        }
+        .aspectRatio(conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .background(Color.black)
+        .contentShape(Rectangle())
+        .onTapGesture { player.toggle() }
+    }
+
+    /// No recording, an error, buffering or the play button, drawn over the video.
+    @ViewBuilder
+    private func playerStatus(showPlay: Bool = true) -> some View {
             if noRecording {
                 VStack(spacing: 8) {
                     Image(systemName: "video.slash").font(.system(size: 26))
@@ -118,15 +249,9 @@ struct EventDetailView: View {
                 .foregroundStyle(.white).padding()
             } else if player.isBuffering || player.duration == 0 {
                 ProgressView().tint(.white)
-            } else if !player.wantsToPlay {
+            } else if showPlay && !player.wantsToPlay {
                 OverlayButton(systemImage: "play.fill", size: 56, label: "Play") { player.play() }
             }
-        }
-        .aspectRatio(conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, contentMode: .fit)
-        .frame(maxWidth: .infinity)
-        .background(Color.black)
-        .contentShape(Rectangle())
-        .onTapGesture { player.toggle() }
     }
 
     private var scrubber: some View {
