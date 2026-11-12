@@ -288,13 +288,24 @@ struct EventDetailView: View {
                 Text(FrigateFormat.duration(player.currentTime)).monospacedDigit()
                 Spacer()
                 HStack(spacing: 4) {
+                    Button { player.skip(-10) } label: {
+                        Image(systemName: "gobackward.10").font(.system(size: 16, weight: .medium))
+                            .frame(minWidth: 36, minHeight: 32)
+                    }
+                    .accessibilityLabel("Back 10 seconds")
                     ForEach([Float(1), 2, 4], id: \.self) { r in
                         Button("\(Int(r))x") { player.setRate(r) }
                             .font(.system(size: 12, weight: player.rate == r ? .bold : .regular))
                             .foregroundStyle(player.rate == r ? Theme.accent : Theme.textSecondary)
                             .frame(minWidth: 32, minHeight: 28)
                     }
+                    Button { player.skip(10) } label: {
+                        Image(systemName: "goforward.10").font(.system(size: 16, weight: .medium))
+                            .frame(minWidth: 36, minHeight: 32)
+                    }
+                    .accessibilityLabel("Forward 10 seconds")
                 }
+                .foregroundStyle(Theme.text)
                 Spacer()
                 Text(FrigateFormat.duration(player.duration)).monospacedDigit()
             }
