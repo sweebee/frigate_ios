@@ -82,10 +82,53 @@ struct LabelTag: View {
     var body: some View {
         Text(FrigateFormat.labelName(label))
             .font(.system(size: size, weight: .bold))
+            .lineLimit(1)
+            .fixedSize()
             .foregroundStyle(Theme.onLabel)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
             .background(Theme.labelColor(label), in: RoundedRectangle(cornerRadius: 5))
+    }
+}
+
+/// A label as an icon for common objects (person, car, ...), else as its name.
+struct LabelIcon: View {
+    let label: String
+    var size: CGFloat = 22
+
+    /// SF Symbol for Frigate's common labels; nil for others, which keep their text.
+    static func symbol(for label: String) -> String? {
+        let name: String
+        switch label {
+        case "person": name = "figure.walk"
+        case "car": name = "car.fill"
+        case "truck": name = "truck.box.fill"
+        case "bus": name = "bus.fill"
+        case "motorcycle": name = "motorcycle"
+        case "bicycle": name = "bicycle"
+        case "boat": name = "sailboat.fill"
+        case "dog": name = "dog.fill"
+        case "cat": name = "cat.fill"
+        case "bird": name = "bird.fill"
+        case "horse": name = "hare.fill"
+        case "package": name = "shippingbox.fill"
+        default: return nil
+        }
+        return UIImage(systemName: name) == nil ? nil : name
+    }
+
+    var body: some View {
+        if let symbol = Self.symbol(for: label) {
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.55, weight: .semibold))
+                .foregroundStyle(Theme.onLabel)
+                .frame(width: size, height: size)
+                .background(Theme.labelColor(label), in: RoundedRectangle(cornerRadius: size * 0.28))
+                .accessibilityLabel(FrigateFormat.labelName(label))
+        } else {
+            LabelTag(label: label, size: size * 0.5)
+                .frame(minHeight: size)
+        }
     }
 }
 

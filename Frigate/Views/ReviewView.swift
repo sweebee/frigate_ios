@@ -313,7 +313,7 @@ struct ReviewRow: View {
                 }
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 5) {
-                    ForEach(item.labels.prefix(3), id: \.self) { LabelTag(label: $0) }
+                    ForEach(item.labels.prefix(4), id: \.self) { LabelIcon(label: $0) }
                 }
                 HStack(spacing: 6) {
                     if showServer { ServerBadge(initial: conn.server.initial, tint: conn.server.tint) }

@@ -171,7 +171,7 @@ struct CameraTile: View {
             .overlay(alignment: .bottomLeading) {
                 if !objects.isEmpty {
                     HStack(spacing: 4) {
-                        ForEach(objects.prefix(2), id: \.self) { LabelTag(label: $0) }
+                        ForEach(objects.prefix(3), id: \.self) { LabelIcon(label: $0) }
                     }
                     .padding(8)
                 }

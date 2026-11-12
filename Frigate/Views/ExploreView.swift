@@ -433,7 +433,7 @@ struct ObjectTile: View {
             .overlay(alignment: .topLeading) {
                 if showLabel {
                     HStack(spacing: 4) {
-                        LabelTag(label: event.label)
+                        LabelIcon(label: event.label)
                         if let score = event.bestScore {
                             Text("\(Int((score * 100).rounded()))%")
                                 .font(.system(size: 10, weight: .bold).monospacedDigit())
