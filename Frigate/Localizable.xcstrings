@@ -945,6 +945,16 @@
         }
       }
     },
+    "Camera tiles": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camerategels"
+          }
+        }
+      }
+    },
     "Camera unavailable": {
       "localizations": {
         "nl": {
@@ -2026,16 +2036,6 @@
     "REC": {
       "shouldTranslate": false
     },
-    "Recent alerts": {
-      "localizations": {
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recente meldingen"
-          }
-        }
-      }
-    },
     "Reconnecting…": {
       "localizations": {
         "nl": {
@@ -2442,6 +2442,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toon wachtwoord"
+          }
+        }
+      }
+    },
+    "Show recent alerts": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recente meldingen tonen"
           }
         }
       }

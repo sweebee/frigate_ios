@@ -168,6 +168,7 @@ struct LiveSettingsView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 4)
 
+                SectionLabel(text: L("Camera tiles"))
                 VStack(spacing: 0) {
                     row(ToggleRow(title: L("Live video in overview"),
                                   subtitle: L("Plays the low-resolution stream of every camera instead of refreshing snapshots. Uses more data and battery."),
@@ -181,8 +182,12 @@ struct LiveSettingsView: View {
                                       subtitle: L("Switches a camera to live video while it sees motion or a moving object, and back to snapshots when it is quiet."),
                                       isOn: model.autoLive) { model.autoLive = $0 })
                     }
-                    divider
-                    row(ToggleRow(title: L("Recent alerts"),
+                }
+                .card()
+
+                SectionLabel(text: L("Alerts")).padding(.top, 14)
+                VStack(spacing: 0) {
+                    row(ToggleRow(title: L("Show recent alerts"),
                                   subtitle: L("Shows unreviewed alerts of the last day at the top of Live."),
                                   isOn: model.showRecentAlerts) { on in withAnimation { model.showRecentAlerts = on } })
                     if model.showRecentAlerts {
