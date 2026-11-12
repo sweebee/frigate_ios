@@ -1840,6 +1840,16 @@
         }
       }
     },
+    "Open %@ in the browser": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open %@ in de browser"
+          }
+        }
+      }
+    },
     "Optional": {
       "localizations": {
         "nl": {

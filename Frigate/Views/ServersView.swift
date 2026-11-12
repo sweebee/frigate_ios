@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ServersView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openURL) private var openURL
     @State private var editing: ServerConfig?
 
     var body: some View {
@@ -101,7 +102,7 @@ struct ServersView: View {
 
     private func serverRow(_ conn: ServerConnection) -> some View {
         let active = model.scope == .server(conn.server.id)
-        return HStack(spacing: 12) {
+        return HStack(spacing: 4) {
             Button {
                 model.scope = .server(conn.server.id)
                 model.tab = .live
@@ -130,9 +131,17 @@ struct ServersView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // Frigate's own web interface, at the address the app uses right now (local or remote).
+            if let web = conn.client?.baseURL ?? ServerConfig.normalizedURL(conn.server.url) {
+                Button { openURL(web) } label: {
+                    Image(systemName: "safari").font(.system(size: 20)).foregroundStyle(Theme.textSecondary)
+                        .frame(width: 40, height: 44)
+                }
+                .accessibilityLabel(L("Open \(conn.server.name) in the browser"))
+            }
             Button { editing = conn.server } label: {
                 Image(systemName: "info.circle").font(.system(size: 20)).foregroundStyle(Theme.textSecondary)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 44)
             }
             .accessibilityLabel("Edit \(conn.server.name)")
         }
