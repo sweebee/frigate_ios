@@ -121,6 +121,20 @@ def main():
     else:
         print("Submitted for beta review.")
 
+    # The group accepts the build only once Apple approved the beta review (usually within
+    # minutes for later builds of an approved app).
+    print("Waiting for beta review approval…", flush=True)
+    for _ in range(240):
+        status, data = api("GET", f"/v1/betaAppReviewSubmissions/{build_id}")
+        state = data.get("data", {}).get("attributes", {}).get("betaReviewState") if status < 300 else None
+        if state == "APPROVED":
+            break
+        if state == "REJECTED":
+            sys.exit("Beta review rejected; see App Store Connect.")
+        time.sleep(30)
+    else:
+        sys.exit("Beta review not approved within 2 hours; run this script again later.")
+
     for attempt in range(10):
         status, data = api("POST", f"/v1/builds/{build_id}/relationships/betaGroups",
                            {"data": [{"type": "betaGroups", "id": group["id"]}]})
