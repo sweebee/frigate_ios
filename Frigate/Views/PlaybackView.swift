@@ -122,10 +122,15 @@ struct PlaybackView: View {
 
     /// Ends a scrub: keep showing `t` until the player reports a position near it.
     private func finishScrub(at raw: Double, snap: Double = 0) {
-        let t = snapToRecording(raw, within: snap)
-        heldTime = t
         scrubTime = nil
-        seek(toWall: t, autoplay: player.wantsToPlay)
+        jump(toWall: snapToRecording(raw, within: snap), autoplay: player.wantsToPlay)
+    }
+
+    /// Jumps to `t` and shows that time (and the event there) at once, while the player may
+    /// still be loading another hour of recording.
+    private func jump(toWall t: Double, autoplay: Bool) {
+        heldTime = t
+        seek(toWall: t, autoplay: autoplay)
         Task {
             // Release only once the player is ready and has reported a nearby position
             // on two checks in a row, so a new hour loading cannot flash its start.
@@ -148,12 +153,13 @@ struct PlaybackView: View {
     /// The event offered in the save menu: the last one that started before the playhead.
     /// Unlike `currentReview` it does not disappear when the event ends, so an open menu stays put.
     private var menuReview: ReviewItem? {
-        let t = wallTime
+        // Event times are detection times; the recording runs `annotationOffset` from them.
+        let t = wallTime - annotationOffset
         return visibleReviews.filter { $0.startTime - 5 <= t }.max { $0.startTime < $1.startTime }
     }
 
     private var currentReview: ReviewItem? {
-        let t = wallTime
+        let t = wallTime - annotationOffset
         return reviews.first { t >= $0.startTime - 5 && t <= ($0.endTime ?? .infinity) + 5 }
     }
 
@@ -449,7 +455,7 @@ struct PlaybackView: View {
                     }
                     ForEach(shown) { r in
                         let playing = currentReview?.id == r.id
-                        Button { seek(toWall: r.startTime - 3 + annotationOffset, autoplay: true) } label: {
+                        Button { jump(toWall: r.startTime - 3 + annotationOffset, autoplay: true) } label: {
                             HStack(spacing: 12) {
                                 RemoteImage(url: client?.thumbnailURL(for: r), session: client?.session ?? .shared)
                                     .frame(width: 96, height: 54)
@@ -525,9 +531,9 @@ struct PlaybackView: View {
             pendingStartTime = nil
             seek(toWall: t - 3 + annotationOffset, autoplay: true, skipGap: true)
         } else if let id = pendingReviewID, let item = reviews.first(where: { $0.id == id }) {
-            seek(toWall: item.startTime - 3 + annotationOffset, autoplay: true)
+            jump(toWall: item.startTime - 3 + annotationOffset, autoplay: true)
         } else if let latest = reviews.first(where: { map.hasRecording(at: $0.startTime + annotationOffset + 1) }) {
-            seek(toWall: latest.startTime - 3 + annotationOffset, autoplay: true)
+            jump(toWall: latest.startTime - 3 + annotationOffset, autoplay: true)
         } else {
             seek(toWall: max(last.wallStart, last.wallEnd - 60), autoplay: true)
         }
@@ -975,7 +981,7 @@ extension PlaybackView {
                         ForEach(visibleReviews) { r in
                             let playing = currentReview?.id == r.id
                             Button {
-                                seek(toWall: r.startTime - 3 + annotationOffset, autoplay: true)
+                                jump(toWall: r.startTime - 3 + annotationOffset, autoplay: true)
                                 keepOverlay()
                             } label: {
                                 HStack(spacing: 10) {
