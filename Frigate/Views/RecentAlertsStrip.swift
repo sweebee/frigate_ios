@@ -99,19 +99,30 @@ struct LoopingVideo: View {
         PlayerLayerView(player: player, gravity: .resizeAspectFill)
             .opacity(ready ? 1 : 0)
             .allowsHitTesting(false)
+            // Runs again each time the tile appears. Every run gets a fresh player: a looper
+            // added to a player that another looper still feeds throws inside AVFoundation.
             .task(id: url) {
+                stop()
                 let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPCookiesKey": HTTPCookieStorage.shared.cookies ?? []])
-                let item = AVPlayerItem(asset: asset)
-                player.isMuted = true
-                looper = AVPlayerLooper(player: player, templateItem: item)
-                player.play()
+                let fresh = AVQueuePlayer()
+                fresh.isMuted = true
+                looper = AVPlayerLooper(player: fresh, templateItem: AVPlayerItem(asset: asset))
+                player = fresh
+                fresh.play()
                 // Show the video once the first frame is there.
                 while !Task.isCancelled && !ready {
-                    if player.currentItem?.status == .readyToPlay && player.currentTime().seconds > 0 { ready = true }
+                    if fresh.currentItem?.status == .readyToPlay && fresh.currentTime().seconds > 0 { ready = true }
                     try? await Task.sleep(for: .milliseconds(200))
                 }
             }
-            .onDisappear { player.pause() }
-            .onAppear { if looper != nil { player.play() } }
+            .onDisappear { stop() }
+    }
+
+    private func stop() {
+        looper?.disableLooping()
+        looper = nil
+        player.pause()
+        player.removeAllItems()
+        ready = false
     }
 }
