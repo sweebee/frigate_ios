@@ -41,7 +41,11 @@ struct CameraView: View {
         }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
         .sheet(isPresented: $showPTZ) {
-            if let client = conn?.client { PTZSheet(client: client, camera: route.camera).presentationDetents([.height(320)]) }
+            if let client = conn?.client { PTZSheet(client: client, camera: route.camera)
+                .presentationDetents([.height(320)])
+                // Keep the video undimmed and usable while steering the camera.
+                .presentationBackgroundInteraction(.enabled)
+                .presentationDragIndicator(.visible) }
         }
         .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
