@@ -20,6 +20,8 @@ struct CameraView: View {
     @State private var share: ShareItem?
     @State private var fullscreen = false
     @State private var showPTZ = false
+    /// PTZ pads drawn on the video in landscape (a sheet would cover the picture).
+    @State private var landscapePTZ = false
     @State private var snapshotBusy = false
     /// nil until checked; true when a recording segment was written recently.
     @State private var recordingNow: Bool?
@@ -240,6 +242,14 @@ struct CameraView: View {
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
             streamStatus
+            if landscapePTZ {
+                PTZControls(client: client, camera: camera.name, overlay: true)
+                    .padding(.leading, 24)
+                    .padding(.bottom, 64)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .transition(.opacity)
+                    .simultaneousGesture(TapGesture().onEnded { keepOverlay() })
+            }
             if overlayVisible {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
@@ -273,8 +283,17 @@ struct CameraView: View {
                             OverlayButton(systemImage: "camera.fill", label: "Snapshot") {
                                 Task { await snapshot(client: client, camera: camera) }; keepOverlay()
                             }
+                            if canTalk {
+                                OverlayButton(systemImage: player.talking ? "mic.fill" : "mic", label: "Talk") {
+                                    Task { await toggleTalk() }; keepOverlay()
+                                }
+                                .overlay(Circle().stroke(player.talking ? Theme.accent : .clear, lineWidth: 2))
+                            }
                             if camera.hasOnvif {
-                                OverlayButton(systemImage: "arrow.up.and.down.and.arrow.left.and.right", label: "PTZ") { showPTZ = true }
+                                OverlayButton(systemImage: landscapePTZ ? "xmark" : "arrow.up.and.down.and.arrow.left.and.right",
+                                              label: "PTZ") {
+                                    withAnimation(.easeOut(duration: 0.2)) { landscapePTZ.toggle() }; keepOverlay()
+                                }
                             }
                         }
                         .padding(.trailing, 12)
@@ -315,7 +334,7 @@ struct CameraView: View {
         .task(id: overlayToken) {
             // Hide the overlay after 4 seconds without touches.
             try? await Task.sleep(for: .seconds(4))
-            guard !Task.isCancelled, !showPTZ else { return }
+            guard !Task.isCancelled, !showPTZ, !landscapePTZ else { return }
             // Keep the overlay while one of its menus is open; check again later.
             if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
@@ -528,8 +547,22 @@ struct FullscreenLiveView: View {
 struct PTZSheet: View {
     let client: FrigateClient
     let camera: String
+
+    var body: some View {
+        PTZControls(client: client, camera: camera, overlay: false)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(Theme.card)
+    }
+}
+
+/// Pan, tilt and zoom pads for a camera. Shows only what the camera supports (from
+/// /api/<camera>/ptz/info) plus its presets. `overlay` is the compact style drawn on top of
+/// the video in landscape.
+struct PTZControls: View {
+    let client: FrigateClient
+    let camera: String
+    var overlay: Bool
     @State private var socket: URLSessionWebSocketTask?
-    /// What the camera supports, from /api/<camera>/ptz/info; nil until loaded or when unknown.
     @State private var info: PTZInfo?
 
     struct PTZInfo: Decodable {
@@ -537,21 +570,24 @@ struct PTZSheet: View {
         var presets: [String]?
     }
 
-    // Unknown capabilities: show everything, as before.
+    // Unknown capabilities: show everything.
     private var canMove: Bool { info?.features.map { $0.contains("pt") } ?? true }
     private var canZoom: Bool { info?.features.map { $0.contains("zoom") } ?? true }
     private var presets: [String] { info?.presets ?? [] }
+    private var size: CGFloat { overlay ? 46 : 56 }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text(canMove ? "Pan, tilt and zoom" : "Zoom").font(.headline).padding(.top, 20)
-            HStack(spacing: 36) {
+        VStack(spacing: overlay ? 10 : 16) {
+            if !overlay {
+                Text(canMove ? "Pan, tilt and zoom" : "Zoom").font(.headline).padding(.top, 20)
+            }
+            HStack(alignment: .center, spacing: overlay ? 20 : 36) {
                 if canMove {
-                    VStack(spacing: 8) {
+                    VStack(spacing: overlay ? 4 : 8) {
                         pad("chevron.up", "MOVE_UP")
-                        HStack(spacing: 8) {
+                        HStack(spacing: overlay ? 4 : 8) {
                             pad("chevron.left", "MOVE_LEFT")
-                            Color.clear.frame(width: 56, height: 56)
+                            Color.clear.frame(width: size, height: size)
                             pad("chevron.right", "MOVE_RIGHT")
                         }
                         pad("chevron.down", "MOVE_DOWN")
@@ -574,13 +610,11 @@ struct PTZSheet: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, overlay ? 0 : 16)
                 }
+                .frame(maxWidth: overlay ? 320 : .infinity)
             }
-            Spacer()
         }
-        .frame(maxWidth: .infinity)
-        .background(Theme.card)
         .task {
             if let i = try? await client.get(PTZInfo.self, "api/\(camera)/ptz/info"), i.features != nil { info = i }
         }
@@ -601,12 +635,13 @@ struct PTZSheet: View {
 
     private func pad(_ icon: String, _ command: String) -> some View {
         Image(systemName: icon)
-            .font(.system(size: 20, weight: .semibold))
-            .frame(width: 56, height: 56)
-            .background(Theme.control, in: Circle())
-            .overlay(Circle().stroke(Theme.controlBorder, lineWidth: 1))
+            .font(.system(size: overlay ? 18 : 20, weight: .semibold))
+            .foregroundStyle(overlay ? .white : Theme.text)
+            .frame(width: size, height: size)
+            .background(overlay ? AnyShapeStyle(.black.opacity(0.55)) : AnyShapeStyle(Theme.control), in: Circle())
+            .overlay(Circle().stroke(overlay ? Color.white.opacity(0.15) : Theme.controlBorder, lineWidth: 1))
             .onLongPressGesture(minimumDuration: 0, maximumDistance: 40, pressing: { down in
-                send(down ? command : (command.hasPrefix("ZOOM") ? "STOP" : "STOP"))
+                send(down ? command : "STOP")
             }, perform: {})
             .accessibilityLabel(command.replacingOccurrences(of: "_", with: " ").lowercased())
     }
