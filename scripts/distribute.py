@@ -108,8 +108,19 @@ def main():
     group = next((g for g in groups if g["attributes"]["name"] == GROUP and not g["attributes"]["isInternalGroup"]), None)
     if not group:
         sys.exit(f'No external TestFlight group named "{GROUP}"')
-    # Right after processing, either side of this relationship sometimes answers 404 for a
-    # while; try both, a few times.
+    # Submit first: adding a build to an external group before it is submitted often answers
+    # 404 ("no resource of type builds") for a long time; afterwards it works right away.
+    status, data = api("POST", "/v1/betaAppReviewSubmissions",
+                       {"data": {"type": "betaAppReviewSubmissions",
+                                 "relationships": {"build": {"data": {"type": "builds", "id": build_id}}}}})
+    if status >= 300:
+        codes = " ".join(e.get("code", "") + " " + e.get("detail", "") for e in data.get("errors", []))
+        if "already" not in codes.lower():
+            sys.exit(f"Submit for beta review failed ({status}): {codes[:600]}")
+        print("Already submitted for beta review.")
+    else:
+        print("Submitted for beta review.")
+
     for attempt in range(10):
         status, data = api("POST", f"/v1/builds/{build_id}/relationships/betaGroups",
                            {"data": [{"type": "betaGroups", "id": group["id"]}]})
@@ -122,18 +133,6 @@ def main():
         time.sleep(30)
     else:
         sys.exit(f"Add build to group failed ({status}): {json.dumps(data.get('errors', data))[:600]}")
-
-    status, data = api("POST", "/v1/betaAppReviewSubmissions",
-                       {"data": {"type": "betaAppReviewSubmissions",
-                                 "relationships": {"build": {"data": {"type": "builds", "id": build_id}}}}})
-    if status >= 300:
-        codes = " ".join(e.get("code", "") + " " + e.get("detail", "") for e in data.get("errors", []))
-        if "already" in codes.lower():
-            print("Already submitted for beta review.")
-        else:
-            sys.exit(f"Submit for beta review failed ({status}): {codes[:600]}")
-    else:
-        print("Submitted for beta review.")
 
     subprocess.run(["git", "tag", "-f", TAG, "HEAD"], capture_output=True)
     print(f'Build {version} is in group "{GROUP}". Testers get it once Apple approves the beta review.')
