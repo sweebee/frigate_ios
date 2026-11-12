@@ -78,7 +78,9 @@ struct LiveView: View {
                     Button { group = name } label: { Chip(title: FrigateFormat.prettyName(name), selected: group == name) }
                 }
             }
+            .padding(.horizontal, 16)
         }
+        .padding(.horizontal, -16)
         .buttonStyle(.plain)
     }
 

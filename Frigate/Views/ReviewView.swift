@@ -160,7 +160,10 @@ struct ReviewView: View {
                     .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal, 16)
         }
+        // Scroll edge to edge instead of being cut off at the page margin.
+        .padding(.horizontal, -16)
     }
 
     @ViewBuilder

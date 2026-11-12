@@ -230,6 +230,7 @@ final class FrigateClient: @unchecked Sendable {
 
     /// Tracked objects matching the filters, as Frigate's Explore search does.
     func searchEvents(cameras: [String]? = nil, labels: [String]? = nil, zones: [String]? = nil, subLabels: [String]? = nil,
+                      plate: String? = nil,
                       after: Date? = nil, before: Date? = nil, sort: EventSort = .newest, limit: Int = 50) async throws -> [FrigateEvent] {
         var q: [String: String?] = ["limit": String(limit), "sort": sort.rawValue, "include_thumbnails": "0"]
         let cameras = ScreenshotMode.scope(cameras)
@@ -237,6 +238,7 @@ final class FrigateClient: @unchecked Sendable {
         if let labels, !labels.isEmpty { q["labels"] = labels.joined(separator: ",") }
         if let zones, !zones.isEmpty { q["zones"] = zones.joined(separator: ",") }
         if let subLabels, !subLabels.isEmpty { q["sub_labels"] = subLabels.joined(separator: ",") }
+        if let plate { q["recognized_license_plate"] = plate }
         if let after { q["after"] = String(after.timeIntervalSince1970) }
         if let before { q["before"] = String(before.timeIntervalSince1970) }
         return try await get([FrigateEvent].self, "api/events", query: q)
@@ -244,6 +246,8 @@ final class FrigateClient: @unchecked Sendable {
 
     func trackedLabels() async throws -> [String] { try await get([String].self, "api/labels") }
     func subLabels() async throws -> [String] { try await get([String].self, "api/sub_labels") }
+    /// Plates Frigate's license plate recognition has read.
+    func recognizedPlates() async throws -> [String] { try await get([String].self, "api/recognized_license_plates") }
 
     /// The review item an object belongs to, for playing its video.
     func review(forEvent id: String) async throws -> ReviewItem {

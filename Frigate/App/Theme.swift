@@ -191,6 +191,8 @@ struct Chip: View {
         .frame(height: 34)
         .background(selected ? Theme.accent : Theme.card, in: Capsule())
         .overlay(Capsule().stroke(selected ? .clear : (outlined ? Theme.accent : Theme.controlBorder), lineWidth: 1))
+        // Room for the outline: a horizontal scroll view clips at the frame, cutting it in half.
+        .padding(1)
     }
 }
 

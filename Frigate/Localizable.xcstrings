@@ -1035,6 +1035,16 @@
         }
       }
     },
+    "Clear search": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wis zoekopdracht"
+          }
+        }
+      }
+    },
     "Close": {
       "localizations": {
         "nl": {
@@ -2352,6 +2362,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opnieuw zoeken"
+          }
+        }
+      }
+    },
+    "Search license plate": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoek kenteken"
           }
         }
       }

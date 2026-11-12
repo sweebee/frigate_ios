@@ -15,12 +15,14 @@ struct ExploreFilter: Equatable {
     var subLabels: Set<String> = []
     var day: Date? = nil
     var sort: FrigateClient.EventSort = .newest
+    /// Part of a recognized license plate.
+    var plate: String = ""
 
     var isActive: Bool { self != ExploreFilter() }
     /// Rows per label until a label is picked or the order changes; then one grid.
-    var showsGrid: Bool { !labels.isEmpty || sort != .newest }
+    var showsGrid: Bool { !labels.isEmpty || sort != .newest || !plate.isEmpty }
     /// Only the label rows' shortcut endpoint can be used.
-    var isPlain: Bool { cameras.isEmpty && zones.isEmpty && subLabels.isEmpty && day == nil && ScreenshotMode.cameras == nil }
+    var isPlain: Bool { plate.isEmpty && cameras.isEmpty && zones.isEmpty && subLabels.isEmpty && day == nil && ScreenshotMode.cameras == nil }
 }
 
 struct ExploreView: View {
@@ -33,6 +35,9 @@ struct ExploreView: View {
     @State private var loadError: String?
     @State private var knownLabels: [String] = []
     @State private var knownSubLabels: [String] = []
+    @State private var knownPlates: [String] = []
+    @State private var plateQuery = ""
+    @FocusState private var plateFocused: Bool
     @State private var showDayPicker = false
 
     struct LabelRow: Identifiable {
@@ -53,17 +58,22 @@ struct ExploreView: View {
     var body: some View {
         @Bindable var model = model
         NavigationStack(path: $model.explorePath) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    header
-                    content
+            VStack(spacing: 0) {
+                // Title, search and filters stay put; only the results scroll.
+                header.padding(.bottom, 10)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        content
+                    }
+                    .padding(.top, 2)
+                    .padding(.bottom, 24)
                 }
-                .padding(.bottom, 24)
+                // A new filter shows other (often shorter) content. A fresh scroll view starts at
+                // the top; the old one stayed scrolled past the new content, a black screen.
+                .id("\(filter)")
+                .refreshable { await reload() }
+                .scrollDismissesKeyboard(.immediately)
             }
-            // A new filter shows other (often shorter) content. A fresh scroll view starts at
-            // the top; the old one stayed scrolled past the new content, a black screen.
-            .id("\(filter)")
-            .refreshable { await reload() }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
             .appDestinations()
@@ -78,9 +88,70 @@ struct ExploreView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             LargeTitle(text: L("Explore")).padding(.horizontal, 16)
+            // Only when a server has recognized plates (Frigate's license plate recognition).
+            if !knownPlates.isEmpty { plateSearch }
             filters
         }
         .padding(.top, 8)
+    }
+
+    private var plateSuggestions: [String] {
+        let q = PlateSearch.normalized(plateQuery)
+        guard plateFocused, !q.isEmpty else { return [] }
+        return knownPlates.filter { PlateSearch.normalized($0).contains(q) && $0 != plateQuery }.prefix(8).map { $0 }
+    }
+
+    private var plateSearch: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(Theme.textSecondary)
+                TextField("", text: $plateQuery, prompt: Text("Search license plate").foregroundStyle(Theme.textSecondary))
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .focused($plateFocused)
+                    .onSubmit { filter.plate = plateQuery.trimmingCharacters(in: .whitespaces) }
+                if !plateQuery.isEmpty {
+                    Button { plateQuery = ""; filter.plate = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .font(.system(size: 16))
+            .padding(.horizontal, 12)
+            .frame(height: 40)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(plateFocused ? Theme.accent : Theme.controlBorder, lineWidth: 1))
+            .padding(.horizontal, 16)
+            if !plateSuggestions.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(plateSuggestions, id: \.self) { plate in
+                            Button {
+                                plateQuery = plate
+                                filter.plate = plate
+                                plateFocused = false
+                            } label: {
+                                Chip(title: plate, systemImage: "rectangle.and.text.magnifyingglass")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+        }
+        // "Clear filters" also clears the search text.
+        .onChange(of: filter.plate) { _, plate in if plate.isEmpty && !plateFocused { plateQuery = "" } }
+        // Search a moment after typing stops.
+        .task(id: plateQuery) {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            let q = plateQuery.trimmingCharacters(in: .whitespaces)
+            if filter.plate != q { filter.plate = q }
+        }
     }
 
     private var cameraOptions: [CameraConfig] {
@@ -291,14 +362,16 @@ struct ExploreView: View {
     }
 
     private func loadOptions() async {
-        var labels = Set<String>(), subs = Set<String>()
+        var labels = Set<String>(), subs = Set<String>(), plates = Set<String>()
         for conn in connections {
             guard let client = conn.client else { continue }
             labels.formUnion((try? await client.trackedLabels()) ?? [])
             subs.formUnion((try? await client.subLabels()) ?? [])
+            plates.formUnion((try? await client.recognizedPlates()) ?? [])
         }
         knownLabels = Array(labels)
         knownSubLabels = Array(subs)
+        knownPlates = plates.sorted()
     }
 
     /// Server and the cameras to ask it for, or nil when the camera filter excludes it.
@@ -315,12 +388,13 @@ struct ExploreView: View {
         let f = filter
         let zones = f.zones.isEmpty ? nil : Array(f.zones)
         let subs = f.subLabels.isEmpty ? nil : Array(f.subLabels)
+        let plate = f.plate.isEmpty ? nil : PlateSearch.pattern(f.plate)
         return try await withThrowingTaskGroup(of: [ExploreEntry].self) { group in
             for t in targets() {
                 let id = t.conn.server.id
                 let client = t.client, cams = t.cameras
                 group.addTask {
-                    try await client.searchEvents(cameras: cams, labels: labels, zones: zones, subLabels: subs,
+                    try await client.searchEvents(cameras: cams, labels: labels, zones: zones, subLabels: subs, plate: plate,
                                                   after: after, before: before, sort: f.sort, limit: limit)
                         .map { ExploreEntry(serverID: id, event: $0) }
                 }
@@ -494,5 +568,20 @@ struct DayPickerSheet: View {
         }
         .presentationDetents([.medium, .large])
         .onAppear { picked = day ?? Date() }
+    }
+}
+
+/// Matching license plates loosely: "hk008" finds "HK-008-X".
+enum PlateSearch {
+    /// Letters and digits only, upper case.
+    static func normalized(_ text: String) -> String {
+        String(text.uppercased().filter { $0.isLetter || $0.isNumber })
+    }
+
+    /// Regex for Frigate's recognized_license_plate filter: case-insensitive, contains the
+    /// characters in order with optional dashes or spaces between them.
+    static func pattern(_ text: String) -> String {
+        let chars = normalized(text).map { String($0) }
+        return "(?i).*" + chars.joined(separator: "[- ]?") + ".*"
     }
 }
