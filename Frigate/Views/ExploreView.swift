@@ -60,6 +60,9 @@ struct ExploreView: View {
                 }
                 .padding(.bottom, 24)
             }
+            // A new filter shows other (often shorter) content. A fresh scroll view starts at
+            // the top; the old one stayed scrolled past the new content, a black screen.
+            .id("\(filter)")
             .refreshable { await reload() }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
