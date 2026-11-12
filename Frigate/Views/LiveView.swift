@@ -5,11 +5,16 @@ struct LiveView: View {
     @State private var group: String? = nil
 
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Bigger tiles: one column on iPhone, fewer and wider tiles on iPad.
+    @AppStorage("liveLargeTiles") private var largeTiles = false
 
-    /// Two columns on iPhone; on iPad and Mac as many as fit at a comfortable size.
+    /// Two columns on iPhone (or one with large tiles); on iPad and Mac as many as fit.
     private var columns: [GridItem] {
-        sizeClass == .regular
-            ? [GridItem(.adaptive(minimum: 250, maximum: 480), spacing: 12)]
+        if sizeClass == .regular {
+            return [GridItem(.adaptive(minimum: largeTiles ? 420 : 250, maximum: largeTiles ? 900 : 480), spacing: 12)]
+        }
+        return largeTiles
+            ? [GridItem(.flexible(), spacing: 10)]
             : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
     }
 
@@ -40,7 +45,18 @@ struct LiveView: View {
     }
 
     private var header: some View {
-        LargeTitle(text: L("Live"))
+        HStack {
+            LargeTitle(text: L("Live"))
+            Spacer()
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) { largeTiles.toggle() }
+            } label: {
+                Image(systemName: largeTiles ? "square.grid.2x2" : "rectangle.grid.1x2")
+                    .font(.system(size: 18, weight: .medium))
+                    .frame(width: 40, height: 40)
+            }
+            .accessibilityLabel(largeTiles ? "Small tiles" : "Large tiles")
+        }
         .padding(.top, 8)
     }
 

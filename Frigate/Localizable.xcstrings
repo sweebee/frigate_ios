@@ -1368,6 +1368,16 @@
         }
       }
     },
+    "Large tiles": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grote tegels"
+          }
+        }
+      }
+    },
     "Last 24 hours": {
       "localizations": {
         "nl": {
@@ -2382,6 +2392,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toon recente gebeurtenissen"
+          }
+        }
+      }
+    },
+    "Small tiles": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleine tegels"
           }
         }
       }
