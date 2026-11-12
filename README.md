@@ -48,7 +48,7 @@ Review and Explore tabs can show one server or all of them.
 
 | Screen | What it does |
 | --- | --- |
-| Live | Camera grid with refreshing snapshots, live objects and last activity; camera groups from the Frigate config |
+| Live | Camera grid with refreshing snapshots, live objects and last activity; red outline while an object moves and a dot for motion (like Frigate's web UI); camera groups from the Frigate config |
 | Camera | Live stream through go2rtc (MSE over websocket, WebRTC and MJPEG as fallbacks), audio, snapshot, PTZ (ONVIF cameras), fullscreen, today's events |
 | Review | Alerts, detections and motion across servers; filter by server, camera, label and unreviewed; mark reviewed |
 | Event | Clip playback with the event range highlighted, 1x/2x/4x, score, zones, object lifecycle, download/share, delete |
@@ -56,6 +56,7 @@ Review and Explore tabs can show one server or all of them.
 | Playback | Recordings per camera and day, event list or scrubbable timeline with zoom and a live preview while dragging (like Frigate's web UI), filters by type, label and zone, gaps shown as "no recording", save an event or a span around the playhead to Photos |
 | Landscape | Full-screen live view and playback with an overlay that hides on tap, horizontal timeline and an events panel |
 | Everywhere | Pinch to zoom on live and recorded video, swipe back, lighter streams on mobile data, English and Dutch (follows the iPhone language) |
+| Chat | Ask Frigate's GenAI chat about your cameras and events, with streamed answers (shown when a server has a GenAI provider with the chat role, Frigate 0.18+) |
 | Settings | Servers (add, edit, remove), optional live video in the camera overview |
 
 Credentials are stored in the Keychain. When a username is set the app logs in through
@@ -79,7 +80,7 @@ Useful for testing and shortcuts:
 
 ```
 frigate://add?url=http://192.168.1.21:8971&name=Home
-frigate://live | review | explore | history | settings
+frigate://live | review | explore | history | chat | settings
 frigate://review?view=motion
 frigate://camera/<camera>[?server=<name>]
 frigate://playback/<camera>[?review=<id>&view=timeline]

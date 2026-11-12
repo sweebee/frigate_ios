@@ -208,7 +208,7 @@ final class ServerConnection: Identifiable {
 
 @Observable @MainActor
 final class AppModel {
-    enum Tab: Hashable { case live, review, explore, settings }
+    enum Tab: Hashable { case live, review, explore, chat, settings }
     enum Scope: Hashable, Codable {
         case all
         case server(UUID)
@@ -285,6 +285,21 @@ final class AppModel {
     var unreviewedAlerts: Int { reviewConnections.reduce(0) { $0 + $1.unreviewedAlerts } }
 
     func connection(for id: UUID) -> ServerConnection? { connections[id] }
+
+    /// Online servers with Frigate's GenAI chat.
+    var chatConnections: [ServerConnection] {
+        scopedConnections.filter { $0.isOnline && $0.config?.supportsChat == true }
+    }
+
+    private var chatSessions: [UUID: ChatSession] = [:]
+
+    /// The conversation for a server, kept while switching tabs.
+    func chatSession(for id: UUID) -> ChatSession {
+        if let s = chatSessions[id] { return s }
+        let s = ChatSession()
+        chatSessions[id] = s
+        return s
+    }
 
     func connectAll() async {
         await withTaskGroup(of: Void.self) { group in

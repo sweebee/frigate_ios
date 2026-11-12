@@ -54,6 +54,11 @@ struct RootView: View {
                     ExploreView()
                         .tabItem { Label("Explore", systemImage: "magnifyingglass") }
                         .tag(AppModel.Tab.explore)
+                    if !model.chatConnections.isEmpty {
+                        ChatView()
+                            .tabItem { Label("Chat", systemImage: "bubble.left.and.text.bubble.right") }
+                            .tag(AppModel.Tab.chat)
+                    }
                     ServersView()
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(AppModel.Tab.settings)

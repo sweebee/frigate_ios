@@ -61,8 +61,44 @@ final class FrigateClient: @unchecked Sendable {
         var req = URLRequest(url: url(path))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Frigate rejects cookie-authenticated POSTs without this header.
+        req.setValue("1", forHTTPHeaderField: "X-CSRF-TOKEN")
         req.httpBody = try JSONSerialization.data(withJSONObject: json)
         return try await perform(req)
+    }
+
+    /// Streams a chat answer from Frigate's GenAI chat (/api/chat/completion, newline-delimited JSON).
+    /// `messages` is the conversation as Frigate returned it last time, plus the new user message.
+    func chat(messages: [[String: Any]]) -> AsyncThrowingStream<[String: Any], Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    var req = URLRequest(url: url("api/chat/completion"))
+                    req.httpMethod = "POST"
+                    req.timeoutInterval = 180
+                    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    req.setValue("1", forHTTPHeaderField: "X-CSRF-TOKEN")
+                    req.httpBody = try JSONSerialization.data(withJSONObject: ["messages": messages, "stream": true])
+                    let (bytes, response) = try await session.bytes(for: req)
+                    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                        var body = Data()
+                        for try await b in bytes { body.append(b) }
+                        let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
+                        let detail = (json?["error"] ?? json?["message"] ?? json?["detail"]) as? String
+                        throw http.statusCode == 401 ? FrigateError.unauthorized : FrigateError.http(http.statusCode, detail)
+                    }
+                    for try await line in bytes.lines {
+                        guard let data = line.data(using: .utf8),
+                              let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+                        continuation.yield(event)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 
     private func perform(_ req: URLRequest) async throws -> Data {

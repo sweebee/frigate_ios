@@ -8,10 +8,24 @@ struct AnyJSON: Decodable {}
 struct FrigateConfig: Decodable {
     var cameras: [String: CameraConfig]
     var cameraGroups: [String: CameraGroupConfig]?
+    /// A GenAI provider has the "chat" role, so /api/chat/completion works (Frigate 0.18+).
+    var supportsChat = false
 
     enum CodingKeys: String, CodingKey {
-        case cameras
+        case cameras, genai
         case cameraGroups = "camera_groups"
+    }
+
+    /// `genai` is a map of named providers, each with `roles`; older versions use one flat object.
+    private struct GenAIProvider: Decodable { var roles: [String]? }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        cameras = try c.decode([String: CameraConfig].self, forKey: .cameras)
+        cameraGroups = try c.decodeIfPresent([String: CameraGroupConfig].self, forKey: .cameraGroups)
+        if let providers = try? c.decodeIfPresent([String: GenAIProvider].self, forKey: .genai) {
+            supportsChat = providers.values.contains { $0.roles?.contains("chat") == true }
+        }
     }
 
     /// Cameras shown on the dashboard, in UI order.

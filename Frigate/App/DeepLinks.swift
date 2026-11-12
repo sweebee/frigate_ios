@@ -33,6 +33,7 @@ extension AppModel {
         case "explore": tab = .explore; explorePath = NavigationPath()
         case "history": tab = .explore; explorePath = NavigationPath(); explorePath.append(HistoryRoute())
         case "settings": tab = .settings
+        case "chat": tab = .chat
         case "camera":
             guard let conn, let arg else { return }
             tab = .live

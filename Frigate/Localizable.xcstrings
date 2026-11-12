@@ -855,6 +855,46 @@
         }
       }
     },
+    "Ask a question…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stel een vraag…"
+          }
+        }
+      }
+    },
+    "Ask about your cameras": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vraag iets over je camera's"
+          }
+        }
+      }
+    },
+    "Asking %@, the server with chat.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vragen gaan naar %@, de server met chat."
+          }
+        }
+      }
+    },
+    "Asking %@. Pick a server above to ask another.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vragen gaan naar %@. Kies hierboven een andere server."
+          }
+        }
+      }
+    },
     "Audio": {
       "localizations": {
         "nl": {
@@ -935,6 +975,26 @@
         }
       }
     },
+    "Chat": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat"
+          }
+        }
+      }
+    },
+    "Chat is not available": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat is niet beschikbaar"
+          }
+        }
+      }
+    },
     "Clear filters": {
       "localizations": {
         "nl": {
@@ -951,6 +1011,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sluit"
+          }
+        }
+      }
+    },
+    "Configure a GenAI provider with the chat role in Frigate to ask questions about your cameras.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stel in Frigate een GenAI-provider in met de rol chat om vragen over je camera's te stellen."
           }
         }
       }
@@ -1205,6 +1275,16 @@
         }
       }
     },
+    "Frigate's AI assistant looks at your events, cameras and recordings to answer.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De AI-assistent van Frigate bekijkt je gebeurtenissen, camera's en opnames om te antwoorden."
+          }
+        }
+      }
+    },
     "From the playhead": {
       "localizations": {
         "nl": {
@@ -1410,6 +1490,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Naam"
+          }
+        }
+      }
+    },
+    "New chat": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieuwe chat"
           }
         }
       }
@@ -2146,6 +2236,16 @@
         }
       }
     },
+    "Send": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verstuur"
+          }
+        }
+      }
+    },
     "Server": {
       "localizations": {
         "nl": {
@@ -2246,6 +2346,26 @@
         }
       }
     },
+    "Show camera status": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon de status van mijn camera's"
+          }
+        }
+      }
+    },
+    "Show recent events": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon recente gebeurtenissen"
+          }
+        }
+      }
+    },
     "Snapshot": {
       "localizations": {
         "nl": {
@@ -2262,6 +2382,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Er ging iets mis"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
           }
         }
       }
@@ -2386,6 +2516,16 @@
         }
       }
     },
+    "Thinking…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denkt na…"
+          }
+        }
+      }
+    },
     "This address did not respond like a Frigate server.": {
       "localizations": {
         "nl": {
@@ -2496,6 +2636,16 @@
         }
       }
     },
+    "Used %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gebruikte %@"
+          }
+        }
+      }
+    },
     "Username": {
       "localizations": {
         "nl": {
@@ -2518,6 +2668,16 @@
     },
     "WebRTC": {
       "shouldTranslate": false
+    },
+    "What happened while I was away?": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wat is er gebeurd terwijl ik weg was?"
+          }
+        }
+      }
     },
     "Yesterday": {
       "localizations": {
