@@ -1305,6 +1305,16 @@
         }
       }
     },
+    "Hide password": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verberg wachtwoord"
+          }
+        }
+      }
+    },
     "Highest score": {
       "localizations": {
         "nl": {
@@ -2352,6 +2362,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toon de status van mijn camera's"
+          }
+        }
+      }
+    },
+    "Show password": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toon wachtwoord"
           }
         }
       }

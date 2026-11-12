@@ -10,6 +10,7 @@ struct ConnectView: View {
     @State private var url = ""
     @State private var username = ""
     @State private var password = ""
+    @State private var showPassword = false
     @State private var useRemote = false
     @State private var remoteURL = ""
     @State private var testing = false
@@ -159,7 +160,28 @@ struct ConnectView: View {
             Text(label).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textTertiary)
             Group {
                 if secure {
-                    SecureField("", text: text, prompt: Text(placeholder).foregroundStyle(Color(hex: 0x7C8591)))
+                    HStack(spacing: 8) {
+                        Group {
+                            if showPassword {
+                                TextField("", text: text, prompt: Text(placeholder).foregroundStyle(Color(hex: 0x7C8591)))
+                            } else {
+                                SecureField("", text: text, prompt: Text(placeholder).foregroundStyle(Color(hex: 0x7C8591)))
+                            }
+                        }
+                        .focused($focus, equals: field)
+                        Button {
+                            showPassword.toggle()
+                            // The field is swapped for another view; focus it once that exists.
+                            DispatchQueue.main.async { focus = field }
+                        } label: {
+                            Image(systemName: showPassword ? "eye.slash" : "eye")
+                                .font(.system(size: 16))
+                                .foregroundStyle(Theme.textSecondary)
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(showPassword ? "Hide password" : "Show password")
+                    }
                 } else {
                     TextField("", text: text, prompt: Text(placeholder).foregroundStyle(Color(hex: 0x7C8591)))
                         .keyboardType(keyboard)
