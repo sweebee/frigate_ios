@@ -168,9 +168,15 @@ struct PlaybackView: View {
         }
         .task(id: "\(camera)|\(day.timeIntervalSince1970)") { await load() }
         .onChange(of: player.wantsToPlay) { _, playing in
-            // Paused: bring the controls back so it is clear the video is not stuck.
-            if !playing { withAnimation(.easeOut(duration: 0.2)) { overlayVisible = true } }
-            overlayToken += 1
+            guard !playing else { return }
+            // Paused: bring the controls back so it is clear the video is not stuck. Wait a
+            // moment first: at the end of each hour playback stops briefly and resumes by itself.
+            Task {
+                try? await Task.sleep(for: .milliseconds(800))
+                guard !player.wantsToPlay else { return }
+                withAnimation(.easeOut(duration: 0.2)) { overlayVisible = true }
+                overlayToken += 1
+            }
         }
         .onDisappear { player.stop() }
         .onChange(of: player.finishedCount) { _, _ in
