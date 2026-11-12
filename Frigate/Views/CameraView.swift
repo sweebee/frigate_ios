@@ -12,6 +12,8 @@ struct CameraView: View {
     /// A menu in the overlay is open; the overlay must not hide underneath it.
     @State private var menuOpen = false
     @State private var player = LivePlayerState()
+    /// The lighter sub stream, shown while the main stream connects (it starts sooner).
+    @State private var quick = LivePlayerState()
     /// The camera has a speaker go2rtc can send audio to.
     @State private var canTalk = false
     @State private var micDenied = false
@@ -34,6 +36,23 @@ struct CameraView: View {
         guard let conn, let camera else { return [] }
         return conn.liveStreams(camera)
     }
+    /// The sub stream to bridge with while the main stream starts; nil when the main stream
+    /// is not the one playing, the camera has no lighter stream, or a mode needs one transport.
+    private var quickStream: String? {
+        let s = streams
+        guard s.count > 1, player.stream == s.first?.name, let sub = s.last?.name, sub != player.stream,
+              !player.talking, player.preferred == .auto || player.preferred == .mse else { return nil }
+        return sub
+    }
+
+    /// Runs the sub stream only until the main stream plays.
+    private func syncQuick() {
+        quick.muted = true
+        quick.preferred = .mse
+        quick.stream = quickStream ?? ""
+        quick.suspended = quickStream == nil || player.playing || player.suspended
+    }
+
     private var streamKey: String { "liveStream.\(route.serverID.uuidString).\(route.camera)" }
     /// The stream picked in a menu, remembered per camera.
     private var streamChoice: Binding<String> {
@@ -87,8 +106,14 @@ struct CameraView: View {
             // Stop in the background, start fresh when the app is back.
             player.suspended = phase != .active
         }
+        .onChange(of: player.stream) { _, _ in syncQuick() }
+        .onChange(of: player.playing) { _, _ in syncQuick() }
+        .onChange(of: player.suspended) { _, _ in syncQuick() }
+        .onChange(of: player.preferred) { _, _ in syncQuick() }
+        .onChange(of: player.talking) { _, _ in syncQuick() }
         .onAppear {
             player.suspended = false
+            defer { syncQuick() }
             if player.stream.isEmpty {
                 let streams = self.streams
                 if streams.isEmpty && conn?.go2rtcStreams != nil {
@@ -196,7 +221,8 @@ struct CameraView: View {
             Color.black
             LivePlayerView(client: client, camera: camera.name, state: player)
                 .zoomable()
-            if !player.playing { LivePoster(client: client, camera: camera.name).allowsHitTesting(false) }
+            quickLayer(client: client, camera: camera)
+            if !player.playing && !quick.playing { LivePoster(client: client, camera: camera.name).allowsHitTesting(false) }
             streamStatus
         }
         .aspectRatio(player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio, contentMode: .fit)
@@ -218,9 +244,20 @@ struct CameraView: View {
         }
     }
 
+    /// The sub stream on top of the main one while that connects; touches go to the main player.
+    @ViewBuilder
+    private func quickLayer(client: FrigateClient, camera: CameraConfig) -> some View {
+        if !quick.stream.isEmpty {
+            LivePlayerView(client: client, camera: camera.name, state: quick)
+                .opacity(quick.playing && !player.playing ? 1 : 0)
+                .allowsHitTesting(false)
+        }
+    }
+
     @ViewBuilder
     private var streamStatus: some View {
-            if !player.playing {
+            // While the sub stream bridges, only a failure of the main stream is worth showing.
+            if !player.playing && (!quick.playing || player.status.hasPrefix("Stream unavailable")) {
                 VStack(spacing: 8) {
                     if player.status.hasPrefix("Stream unavailable") {
                         Image(systemName: "exclamationmark.triangle").font(.title2)
@@ -290,7 +327,8 @@ struct CameraView: View {
                 .zoomable()
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
-            if !player.playing { LivePoster(client: client, camera: camera.name).ignoresSafeArea().allowsHitTesting(false) }
+            quickLayer(client: client, camera: camera).ignoresSafeArea()
+            if !player.playing && !quick.playing { LivePoster(client: client, camera: camera.name).ignoresSafeArea().allowsHitTesting(false) }
             streamStatus
             if landscapePTZ {
                 PTZControls(client: client, camera: camera.name, overlay: true)
