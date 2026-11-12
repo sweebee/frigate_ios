@@ -94,7 +94,7 @@ struct LabelTag: View {
 /// A label as an icon for common objects (person, car, ...), else as its name.
 struct LabelIcon: View {
     let label: String
-    var size: CGFloat = 22
+    var size: CGFloat = 18
 
     /// SF Symbol for Frigate's common labels; nil for others, which keep their text.
     static func symbol(for label: String) -> String? {
@@ -126,7 +126,7 @@ struct LabelIcon: View {
                 .background(Theme.labelColor(label), in: RoundedRectangle(cornerRadius: size * 0.28))
                 .accessibilityLabel(FrigateFormat.labelName(label))
         } else {
-            LabelTag(label: label, size: size * 0.5)
+            LabelTag(label: label, size: max(10, size * 0.58))
                 .frame(minHeight: size)
         }
     }

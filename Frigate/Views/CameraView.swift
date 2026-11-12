@@ -260,7 +260,7 @@ struct CameraView: View {
 
                     HStack(spacing: 8) {
                         let objects = conn.activeObjects[camera.name] ?? []
-                        ForEach(objects, id: \.self) { LabelIcon(label: $0, size: 26) }
+                        ForEach(objects, id: \.self) { LabelIcon(label: $0, size: 22) }
                         Spacer()
                         Button {
                             model.tab = .explore
@@ -392,7 +392,7 @@ struct CameraView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.cardBorder, lineWidth: 1))
                                         .overlay(alignment: .bottomLeading) {
-                                            HStack(spacing: 3) { ForEach(r.labels.prefix(3), id: \.self) { LabelIcon(label: $0, size: 20) } }.padding(6)
+                                            HStack(spacing: 3) { ForEach(r.labels.prefix(3), id: \.self) { LabelIcon(label: $0, size: 16) } }.padding(6)
                                         }
                                     Text(FrigateFormat.time(r.start)).font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                                 }
