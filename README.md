@@ -90,16 +90,38 @@ frigate://event/<review id>
 ## Not yet implemented
 
 - Two-way audio (Talk button is disabled).
-- Push notifications (Frigate notifications need APNs or web push; the "notifications per server"
-  toggle from the mockup is left out).
+- Push notifications, see below.
+
+### Why there are no push notifications
+
+Frigate sends its notifications with Web Push, the push system of browsers. An iOS app cannot
+receive Web Push: Apple only delivers notifications to an app through its own service (APNs),
+and only when they are sent with the app developer's key. Frigate can't hold that key, so
+every app with push runs a relay server in between (the Home Assistant app does too). Tender
+deliberately has no server of its own: it connects only to your Frigate servers and collects
+nothing. Polling in the background is not an option either, because iOS runs apps in the
+background only now and then.
+
+What works today:
+
+- **Frigate's web app on your home screen.** Open Frigate in Safari, choose Share → Add to Home
+  Screen, then register the device under Settings → Notifications. Frigate has to be reachable
+  over HTTPS. Notifications open Frigate's web app.
+- **Home Assistant** with the Frigate integration and the Home Assistant app.
+
+If Frigate gains a channel such as [ntfy](https://ntfy.sh), Pushover or Apprise, notifications
+could link to `frigate://event/<id>` and open the event in Tender.
 
 ## TestFlight
 
 ```bash
-scripts/testflight.sh
+scripts/testflight.sh             # internal testers
+scripts/testflight.sh --external  # also the external group, submitted for beta review
 ```
 
 Archives with a timestamp build number, signs with the "Frigate App Store" profile and uploads.
+With `--external`, `scripts/distribute.py` waits for processing, sets "What to Test" from the
+commits since the previous external build and submits the build to the group "Testers".
 App Store Connect: "Tender for Frigate" (bundle ID `nl.wiebenieuwenhuis.frigate`, team EBTM3728EJ);
 the internal group "Intern" gets every build automatically.
 
