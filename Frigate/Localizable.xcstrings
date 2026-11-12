@@ -855,6 +855,16 @@
         }
       }
     },
+    "Ask": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vraag aan"
+          }
+        }
+      }
+    },
     "Ask a question…": {
       "localizations": {
         "nl": {
@@ -881,16 +891,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vragen gaan naar %@, de server met chat."
-          }
-        }
-      }
-    },
-    "Asking %@. Pick a server above to ask another.": {
-      "localizations": {
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vragen gaan naar %@. Kies hierboven een andere server."
           }
         }
       }

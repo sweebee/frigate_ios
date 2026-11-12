@@ -112,8 +112,10 @@ struct ChatView: View {
     @FocusState private var inputFocused: Bool
 
     private var connections: [ServerConnection] { model.chatConnections }
-    /// With "All servers" picked, the first server that has chat.
-    private var conn: ServerConnection? { connections.first }
+    /// The server picked in the chat, else the first server that has chat.
+    private var conn: ServerConnection? {
+        connections.first { $0.server.id == model.chatServerID } ?? connections.first
+    }
     private var session: ChatSession? { conn.map { model.chatSession(for: $0.server.id) } }
 
     var body: some View {
@@ -153,10 +155,27 @@ struct ChatView: View {
                     .accessibilityLabel("New chat")
                 }
             }
-            // Frigate's chat answers for one server; with several, say which one.
-            if model.orderedConnections.count > 1, let conn {
-                Text(connections.count > 1 ? L("Asking \(conn.server.name). Pick a server above to ask another.")
-                                           : L("Asking \(conn.server.name), the server with chat."))
+            // Frigate's chat answers for one server; with several, pick or show which one.
+            if let conn, connections.count > 1 {
+                Menu {
+                    ForEach(connections) { c in
+                        Button { model.chatServerID = c.server.id } label: {
+                            if c.server.id == conn.server.id { Label(c.server.name, systemImage: "checkmark") } else { Text(c.server.name) }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Ask")
+                            .foregroundStyle(Theme.textSecondary)
+                        ServerBadge(initial: conn.server.initial, tint: conn.server.tint, size: 18)
+                        Text(conn.server.name).foregroundStyle(Theme.text)
+                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textSecondary)
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                }
+                .padding(.top, -8)
+            } else if model.orderedConnections.count > 1, let conn {
+                Text(L("Asking \(conn.server.name), the server with chat."))
                     .font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
                     .padding(.top, -8)
             }

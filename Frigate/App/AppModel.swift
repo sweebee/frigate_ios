@@ -292,6 +292,8 @@ final class AppModel {
     }
 
     private var chatSessions: [UUID: ChatSession] = [:]
+    /// Server picked in the Chat tab while showing all servers.
+    var chatServerID: UUID?
 
     /// The conversation for a server, kept while switching tabs.
     func chatSession(for id: UUID) -> ChatSession {
