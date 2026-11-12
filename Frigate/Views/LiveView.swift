@@ -44,21 +44,8 @@ struct LiveView: View {
             HStack {
                 ServerSwitcher()
                 Spacer()
-                Button {
-                    model.tab = .review
-                } label: {
-                    Image(systemName: "bell")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Theme.text)
-                        .frame(width: 44, height: 44)
-                        .overlay(alignment: .topTrailing) {
-                            if model.unreviewedAlerts > 0 {
-                                Circle().fill(Theme.warning).frame(width: 8, height: 8).offset(x: -9, y: 9)
-                            }
-                        }
-                }
-                .accessibilityLabel("Unreviewed alerts")
             }
+            .frame(minHeight: 44)
             LargeTitle(text: L("Live"))
         }
         .padding(.top, 8)
@@ -156,6 +143,8 @@ struct CameraTile: View {
     var body: some View {
         let online = conn.isCameraOnline(camera.name)
         let objects = conn.activeObjects[camera.name] ?? []
+        let activity = online ? conn.activity[camera.name] : nil
+        let tracking = !(activity?.tracking.isEmpty ?? true)
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topLeading) {
                 Color.clear
@@ -194,8 +183,13 @@ struct CameraTile: View {
                     .padding(8)
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if activity?.motion == true { MotionDot().padding(9) }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.cardBorder, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12)
+                .stroke(tracking ? Theme.recording : Theme.cardBorder, lineWidth: tracking ? 2.5 : 1))
+            .animation(.easeOut(duration: 0.2), value: tracking)
 
             HStack(alignment: .firstTextBaseline) {
                 Text(camera.displayName)
@@ -242,5 +236,20 @@ struct TileLivePlayer: View {
             }
             .onDisappear { state.suspended = true }
             .onChange(of: scenePhase) { _, phase in state.suspended = phase != .active }
+    }
+}
+
+/// Pulsing red dot shown while Frigate sees motion, like the web UI.
+struct MotionDot: View {
+    @State private var dim = false
+    var body: some View {
+        Circle()
+            .fill(Theme.recording)
+            .frame(width: 8, height: 8)
+            .shadow(color: Theme.recording.opacity(0.8), radius: 3)
+            .opacity(dim ? 0.35 : 1)
+            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: dim)
+            .onAppear { dim = true }
+            .accessibilityLabel("Motion")
     }
 }

@@ -2,6 +2,12 @@ import Foundation
 import Observation
 import SwiftUI
 
+/// What a camera sees right now: motion, and labels of objects that are moving.
+struct CameraActivity: Equatable {
+    var motion = false
+    var tracking: [String] = []
+}
+
 /// Live state of one configured server.
 @Observable @MainActor
 final class ServerConnection: Identifiable {
@@ -23,6 +29,9 @@ final class ServerConnection: Identifiable {
     var activeObjects: [String: [String]] = [:]
     /// Start of the most recent review item, per camera.
     var lastActivity: [String: Date] = [:]
+    /// Live motion and tracking per camera, pushed by Frigate over its websocket.
+    var activity: [String: CameraActivity] = [:]
+    private var activitySocket: URLSessionWebSocketTask?
 
     nonisolated var id: UUID { serverID }
     private let serverID: UUID
@@ -107,6 +116,57 @@ final class ServerConnection: Identifiable {
         return try await client.version()
     }
 
+    // MARK: Activity feed
+
+    /// Opens Frigate's websocket for motion and tracked objects, unless it is already open.
+    /// The web UI uses the same feed for its red outline and motion dot.
+    func startActivityFeed() {
+        guard let client else { return }
+        if let task = activitySocket, task.state == .running { return }
+        let task = client.session.webSocketTask(with: client.socketURL("ws"))
+        activitySocket = task
+        task.resume()
+        Task {
+            try? await task.send(.string(#"{"topic":"onConnect","message":""}"#))
+            while true {
+                guard let message = try? await task.receive() else { break }
+                if case .string(let text) = message { handleActivity(text) }
+            }
+            if activitySocket === task {
+                activitySocket = nil
+                activity = [:]
+            }
+        }
+    }
+
+    func stopActivityFeed() {
+        activitySocket?.cancel(with: .goingAway, reason: nil)
+        activitySocket = nil
+        activity = [:]
+    }
+
+    private func handleActivity(_ text: String) {
+        guard let data = text.data(using: .utf8),
+              let msg = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let topic = msg["topic"] as? String else { return }
+        if topic == "camera_activity" {
+            guard let payload = (msg["payload"] as? String)?.data(using: .utf8),
+                  let cams = try? JSONSerialization.jsonObject(with: payload) as? [String: [String: Any]] else { return }
+            var next: [String: CameraActivity] = [:]
+            for (cam, info) in cams {
+                let objects = info["objects"] as? [[String: Any]] ?? []
+                // Moving objects only: a parked car is tracked but not "active".
+                let moving = objects.filter { ($0["stationary"] as? Bool) != true }.compactMap { $0["label"] as? String }
+                next[cam] = CameraActivity(motion: info["motion"] as? Bool ?? false, tracking: moving)
+            }
+            activity = next
+        } else if topic.hasSuffix("/motion"), let state = msg["payload"] as? String {
+            let cam = String(topic.dropLast("/motion".count))
+            guard !cam.contains("/") else { return }
+            activity[cam, default: CameraActivity()].motion = state == "ON"
+        }
+    }
+
     /// Refreshes the frequently changing state.
     func refresh() async {
         guard let client else { return }
@@ -128,6 +188,7 @@ final class ServerConnection: Identifiable {
         }
         status = .online
         lastSeen = Date()
+        startActivityFeed()
         if let s { stats = s }
         if let sum { summary = sum }
         if let active {

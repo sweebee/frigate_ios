@@ -271,6 +271,13 @@ final class FrigateClient: @unchecked Sendable {
         url("api/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/clip.mp4")
     }
 
+    /// Websocket version of a server path, e.g. `ws` for Frigate's event feed.
+    func socketURL(_ path: String, query: [String: String?] = [:]) -> URL {
+        var comps = URLComponents(url: url(path, query: query), resolvingAgainstBaseURL: false)!
+        comps.scheme = baseURL.scheme == "https" ? "wss" : "ws"
+        return comps.url!
+    }
+
     /// Websocket URL of the go2rtc MSE endpoint proxied by Frigate.
     func liveSocketURL(stream: String, mode: String) -> URL {
         var comps = URLComponents(url: url("live/\(mode)/api/ws", query: ["src": stream]), resolvingAgainstBaseURL: false)!

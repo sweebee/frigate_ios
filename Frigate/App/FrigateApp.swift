@@ -75,6 +75,8 @@ struct RootView: View {
         .onOpenURL { url in Task { await model.handle(url) } }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await model.refreshAll() } }
+            // The activity feed reopens on the next refresh.
+            if phase == .background { model.orderedConnections.forEach { $0.stopActivityFeed() } }
         }
     }
 }
