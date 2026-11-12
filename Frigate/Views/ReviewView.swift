@@ -314,8 +314,40 @@ struct ReviewView: View {
         }
     }
 
+    /// Marks every unreviewed item that matches the current filters, not only the loaded page,
+    /// and refreshes the counts (again a moment later: Frigate's summary can lag behind).
     private func markAllReviewed() async {
-        await markReviewed(entries)
+        guard kind != .motion else { return }
+        let severity: Severity = kind == .alert ? .alert : .detection
+        let cams = cameraFilter.isEmpty ? nil : Array(cameraFilter)
+        let labels = labelFilter.isEmpty ? nil : Array(labelFilter)
+        let zones = zoneFilter.isEmpty ? nil : Array(zoneFilter)
+        for conn in connections {
+            guard let client = conn.client else { continue }
+            let known = Set(conn.cameras.map(\.name))
+            let serverCams = cams?.filter { known.contains($0) }
+            if let serverCams, serverCams.isEmpty { continue }
+            do {
+                // Pages of unreviewed items until none are left (bounded, to be safe).
+                for _ in 0..<20 {
+                    let items = try await client.reviews(cameras: serverCams, labels: labels, zones: zones, severity: severity,
+                                                         reviewed: false, limit: 500)
+                    let ids = items.map(\.id).filter { !model.reviewedIDs.contains($0) }
+                    if ids.isEmpty { break }
+                    for chunk in stride(from: 0, to: ids.count, by: 100) {
+                        try await client.markViewed(Array(ids[chunk..<min(chunk + 100, ids.count)]))
+                    }
+                    model.reviewedIDs.formUnion(ids)
+                }
+            } catch {
+                loadError = error.localizedDescription
+            }
+        }
+        for i in entries.indices { entries[i].item.hasBeenReviewed = true }
+        if unreviewedOnly { withAnimation { entries.removeAll() } }
+        await model.refreshAll()
+        try? await Task.sleep(for: .seconds(2))
+        await model.refreshAll()
     }
 }
 
