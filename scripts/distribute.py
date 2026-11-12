@@ -108,8 +108,9 @@ def main():
     group = next((g for g in groups if g["attributes"]["name"] == GROUP and not g["attributes"]["isInternalGroup"]), None)
     if not group:
         sys.exit(f'No external TestFlight group named "{GROUP}"')
-    must(api("POST", f"/v1/betaGroups/{group['id']}/relationships/builds",
-             {"data": [{"type": "builds", "id": build_id}]}), "Add build to group")
+    # The group side of this relationship answers 404 for this key; the build side works.
+    must(api("POST", f"/v1/builds/{build_id}/relationships/betaGroups",
+             {"data": [{"type": "betaGroups", "id": group["id"]}]}), "Add build to group")
 
     status, data = api("POST", "/v1/betaAppReviewSubmissions",
                        {"data": {"type": "betaAppReviewSubmissions",
