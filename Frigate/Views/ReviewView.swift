@@ -115,10 +115,15 @@ struct ReviewView: View {
             HStack(spacing: 8) {
                 Menu {
                     Button { cameraFilter = [] } label: { checkLabel(L("All cameras"), cameraFilter.isEmpty) }
-                    ForEach(availableCameras, id: \.camera.name) { pair in
-                        Button {
-                            if cameraFilter.contains(pair.camera.name) { cameraFilter.remove(pair.camera.name) } else { cameraFilter.insert(pair.camera.name) }
-                        } label: { checkLabel(pair.camera.displayName, cameraFilter.contains(pair.camera.name)) }
+                    // With several servers, cameras are grouped under their server's name.
+                    ForEach(connections) { conn in
+                        Section(connections.count > 1 ? conn.server.name : "") {
+                            ForEach(conn.cameras, id: \.name) { cam in
+                                Button {
+                                    if cameraFilter.contains(cam.name) { cameraFilter.remove(cam.name) } else { cameraFilter.insert(cam.name) }
+                                } label: { checkLabel(cam.displayName, cameraFilter.contains(cam.name)) }
+                            }
+                        }
                     }
                 } label: {
                     Chip(title: cameraFilter.isEmpty ? L("Cameras") : L("\(cameraFilter.count) cameras"),

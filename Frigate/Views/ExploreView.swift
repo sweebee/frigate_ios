@@ -110,8 +110,13 @@ struct ExploreView: View {
             HStack(spacing: 8) {
                 Menu {
                     option(L("All cameras"), filter.cameras.isEmpty) { filter.cameras = [] }
-                    ForEach(cameraOptions, id: \.name) { cam in
-                        option(cam.displayName, filter.cameras.contains(cam.name)) { toggle(&filter.cameras, cam.name) }
+                    // With several servers, cameras are grouped under their server's name.
+                    ForEach(connections) { conn in
+                        Section(connections.count > 1 ? conn.server.name : "") {
+                            ForEach(conn.cameras, id: \.name) { cam in
+                                option(cam.displayName, filter.cameras.contains(cam.name)) { toggle(&filter.cameras, cam.name) }
+                            }
+                        }
                     }
                 } label: {
                     Chip(title: filter.cameras.isEmpty ? L("Cameras") : (filter.cameras.count == 1
