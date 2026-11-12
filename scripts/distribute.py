@@ -33,7 +33,8 @@ def token() -> str:
     i = 2 if der[1] < 0x80 else 3
     rl = der[i + 1]; r = der[i + 2:i + 2 + rl]; j = i + 2 + rl
     sl = der[j + 1]; s = der[j + 2:j + 2 + sl]
-    return f"{header}.{payload}.{b64(r[-32:].rjust(32, b'\0') + s[-32:].rjust(32, b'\0'))}"
+    signature = r[-32:].rjust(32, bytes(1)) + s[-32:].rjust(32, bytes(1))
+    return f"{header}.{payload}.{b64(signature)}"
 
 
 def api(method: str, path: str, body=None):
