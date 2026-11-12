@@ -2176,6 +2176,26 @@
         }
       }
     },
+    "Reorder": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volgorde"
+          }
+        }
+      }
+    },
+    "Reorder servers": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volgorde van servers"
+          }
+        }
+      }
+    },
     "Retry": {
       "localizations": {
         "nl": {

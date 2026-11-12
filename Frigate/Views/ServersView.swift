@@ -3,6 +3,7 @@ import SwiftUI
 struct ServersView: View {
     @Environment(AppModel.self) private var model
     @State private var webInterface: WebTarget?
+    @State private var reordering = false
 
     struct WebTarget: Identifiable {
         let url: URL
@@ -55,7 +56,19 @@ struct ServersView: View {
                     }
                     .buttonStyle(.plain)
 
-                    SectionLabel(text: L("Your servers")).padding(.top, 10)
+                    HStack {
+                        SectionLabel(text: L("Your servers"))
+                        if model.servers.count > 1 {
+                            Button { reordering = true } label: {
+                                Image(systemName: "arrow.up.arrow.down")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .frame(width: 32, height: 28)
+                                    .contentShape(Rectangle())
+                            }
+                            .accessibilityLabel("Reorder servers")
+                        }
+                    }
+                    .padding(.top, 10)
                     ForEach(model.orderedConnections) { conn in
                         serverRow(conn)
                     }
@@ -95,6 +108,7 @@ struct ServersView: View {
             .refreshable { await model.refreshAll(reloadConfig: true) }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $reordering) { ReorderServersSheet() }
             .fullScreenCover(item: $webInterface) { WebInterfaceView(url: $0.url, title: $0.title) }
             .sheet(item: $editing) { server in
                 NavigationStack { ConnectView(existing: server) }
@@ -250,5 +264,35 @@ struct LiveSettingsView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .frame(minHeight: 56)
+    }
+}
+
+/// Drag servers into the order the tabs show them in.
+struct ReorderServersSheet: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(model.servers) { server in
+                    HStack(spacing: 12) {
+                        ServerBadge(initial: server.initial, tint: server.tint, size: 28)
+                        Text(server.name).font(.system(size: 16, weight: .semibold))
+                    }
+                    .listRowBackground(Theme.card)
+                }
+                .onMove { model.moveServers(from: $0, to: $1) }
+            }
+            .environment(\.editMode, .constant(.active))
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle(L("Reorder servers"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }

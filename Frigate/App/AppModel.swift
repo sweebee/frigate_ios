@@ -368,6 +368,11 @@ final class AppModel {
         Task { await conn.connect() }
     }
 
+    /// Reorders servers; the order is used in every tab.
+    func moveServers(from source: IndexSet, to destination: Int) {
+        servers.move(fromOffsets: source, toOffset: destination)
+    }
+
     func delete(_ server: ServerConfig) {
         server.password = nil
         servers.removeAll { $0.id == server.id }
