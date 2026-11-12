@@ -65,6 +65,14 @@ struct ServersView: View {
                             ToggleRow(title: L("Also on mobile data"), isOn: model.liveGridOnCellular) { model.liveGridOnCellular = $0 }
                                 .padding(.horizontal, 14)
                                 .frame(minHeight: 52)
+                        } else {
+                            Rectangle().fill(Theme.cardBorder).frame(height: 1)
+                            ToggleRow(title: L("Automatic live view"),
+                                      subtitle: L("Switches a camera to live video while it sees motion or a moving object, and back to snapshots when it is quiet."),
+                                      isOn: model.autoLive) { model.autoLive = $0 }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .frame(minHeight: 60)
                         }
                     }
                     .card()

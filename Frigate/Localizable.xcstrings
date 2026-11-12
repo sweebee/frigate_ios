@@ -915,6 +915,16 @@
         }
       }
     },
+    "Automatic live view": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatische liveweergave"
+          }
+        }
+      }
+    },
     "Back": {
       "localizations": {
         "nl": {
@@ -2472,6 +2482,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wissel van server"
+          }
+        }
+      }
+    },
+    "Switches a camera to live video while it sees motion or a moving object, and back to snapshots when it is quiet.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schakelt een camera naar live beeld zolang er beweging of een bewegend object is, en terug naar foto's als het weer rustig is."
           }
         }
       }

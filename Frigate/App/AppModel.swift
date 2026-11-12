@@ -231,6 +231,11 @@ final class AppModel {
     var liveGridOnCellular: Bool = UserDefaults.standard.bool(forKey: "liveGridOnCellular") {
         didSet { UserDefaults.standard.set(liveGridOnCellular, forKey: "liveGridOnCellular") }
     }
+    /// Switch a tile to live video while its camera sees motion or a moving object, like
+    /// Frigate's "Automatic live view". On by default.
+    var autoLive: Bool = UserDefaults.standard.object(forKey: "autoLive") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(autoLive, forKey: "autoLive") }
+    }
     /// Whether the overview should show live video right now.
     var showsLiveGrid: Bool { liveGrid && (liveGridOnCellular || !NetworkStatus.shared.isExpensive) }
     /// Set to open the add-server sheet.

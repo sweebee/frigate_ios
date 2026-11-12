@@ -148,12 +148,14 @@ struct CameraTile: View {
     let conn: ServerConnection
     let camera: CameraConfig
     @Environment(AppModel.self) private var model
+    @State private var autoLiveOn = false
 
     var body: some View {
         let online = conn.isCameraOnline(camera.name)
         let objects = conn.activeObjects[camera.name] ?? []
         let activity = online ? conn.activity[camera.name] : nil
         let tracking = !(activity?.tracking.isEmpty ?? true)
+        let active = activity?.motion == true || tracking
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topLeading) {
                 Color.clear
@@ -163,7 +165,7 @@ struct CameraTile: View {
                             RemoteImage(url: conn.client?.latestImageURL(camera: camera.name, height: 270),
                                         session: conn.client?.session ?? .shared,
                                         refresh: online ? (objects.isEmpty ? 6 : 2) * (NetworkStatus.shared.isExpensive ? 2.5 : 1) : nil)
-                            if online && model.showsLiveGrid, let client = conn.client {
+                            if online && (model.showsLiveGrid || (model.autoLive && autoLiveOn)), let client = conn.client {
                                 TileLivePlayer(client: client, camera: camera)
                             }
                         }
@@ -214,6 +216,15 @@ struct CameraTile: View {
             .padding(.horizontal, 2)
         }
         .contentShape(Rectangle())
+        // Automatic live view: go live on activity and stay live a little after it ends.
+        .task(id: active) {
+            if active {
+                autoLiveOn = true
+            } else if autoLiveOn {
+                try? await Task.sleep(for: .seconds(10))
+                if !Task.isCancelled { autoLiveOn = false }
+            }
+        }
     }
 
     private func meta(online: Bool) -> String {
