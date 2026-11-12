@@ -44,15 +44,16 @@ final class LivePlayerState {
     }
 }
 
-/// The camera's latest frame, shown while the live stream connects. The overview tile's
-/// smaller frame shows at once from the cache until the sharper one arrives.
+/// The camera's latest frame, refreshed every second while the live stream connects, so
+/// there is a moving picture right away. The overview tile's smaller frame shows at once from
+/// the cache until the sharper one arrives.
 struct LivePoster: View {
     let client: FrigateClient
     let camera: String
 
     var body: some View {
         RemoteImage(url: client.latestImageURL(camera: camera, height: 720), session: client.session,
-                    contentMode: .fit, placeholder: client.latestImageURL(camera: camera, height: 270))
+                    refresh: 1, contentMode: .fit, placeholder: client.latestImageURL(camera: camera, height: 270))
             .background(Color.black)
     }
 }
@@ -235,8 +236,9 @@ struct LivePlayerView: UIViewRepresentable {
                 if let s = body["status"] as? String {
                     #if DEBUG
                     if s == "Live" && state.status != "Live" {
-                        NSLog("[live] %@ %@ %@ playing after %.2fs", camera, state.stream,
-                              body["mode"] as? String ?? "", Date().timeIntervalSince(loadStarted))
+                        NSLog("[live] %@ %@ %@ playing after %.2fs, %d KB", camera, state.stream,
+                              body["mode"] as? String ?? "", Date().timeIntervalSince(loadStarted),
+                              (body["bytes"] as? Int ?? 0) / 1024)
                     }
                     #endif
                     state.status = s
@@ -268,7 +270,7 @@ document.getElementById('v').style.objectFit = P.fit || 'contain';
 const video = document.getElementById('v');
 video.muted = P.muted;
 let ws = null, pc = null, img = null, timer = null, stopped = false;
-let snapTimer = null, retryTimer = null, snapFails = 0;
+let snapTimer = null, retryTimer = null, snapFails = 0, rx = 0;
 function post(o){ try { window.webkit.messageHandlers.player.postMessage(o); } catch(e){} }
 function setMuted(m){ video.muted = m; if (!m) video.play().catch(()=>{}); }
 function stopAll(){
@@ -311,7 +313,7 @@ function markPlaying(mode){
   if (timer) { clearTimeout(timer); timer = null; }
   playingNow = true;
   if (mode !== 'mjpeg') stopSnapshots();
-  post({status:'Live', mode: mode, playing:true, width: video.videoWidth || (img ? img.naturalWidth : 0), height: video.videoHeight || (img ? img.naturalHeight : 0)});
+  post({status:'Live', mode: mode, playing:true, bytes: rx, width: video.videoWidth || (img ? img.naturalWidth : 0), height: video.videoHeight || (img ? img.naturalHeight : 0)});
 }
 video.addEventListener('playing', () => markPlaying(P.modes[idx]));
 // Watchdog: if the picture stops advancing while we think it plays, reconnect.
@@ -375,6 +377,7 @@ function startMSE(){
           next(msg.value);
         }
       } else if (sb) {
+        rx += ev.data.byteLength;
         if (sb.updating || queue.length) queue.push(ev.data);
         else { try { sb.appendBuffer(ev.data); } catch(e) { queue.push(ev.data); } }
       }
