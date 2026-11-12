@@ -211,7 +211,21 @@ final class FrigateClient: @unchecked Sendable {
 
     /// The review item an object belongs to, for playing its video.
     func review(forEvent id: String) async throws -> ReviewItem {
-        try await get(ReviewItem.self, "api/review/event/\(id)")
+        await withReviewedStatus(try await get(ReviewItem.self, "api/review/event/\(id)"))
+    }
+
+    /// A single review item, with its reviewed flag.
+    func review(id: String) async throws -> ReviewItem {
+        await withReviewedStatus(try await get(ReviewItem.self, "api/review/\(id)"))
+    }
+
+    /// Single-item endpoints have no reviewed flag; read it from the list around the item's start.
+    private func withReviewedStatus(_ item: ReviewItem) async -> ReviewItem {
+        let listed = try? await get([ReviewItem].self, "api/review", query: [
+            "cameras": item.camera, "limit": "20",
+            "after": String(item.startTime - 1), "before": String(item.startTime + 1),
+        ])
+        return listed?.first { $0.id == item.id } ?? item
     }
 
     func activeEvents() async throws -> [FrigateEvent] {

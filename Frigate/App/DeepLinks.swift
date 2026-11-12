@@ -48,16 +48,10 @@ extension AppModel {
             explorePath.append(PlaybackRoute(serverID: conn.server.id, camera: arg, day: Calendar.current.startOfDay(for: day), reviewID: q("review"), showTimeline: q("view") == "timeline"))
         case "event":
             guard let conn, let arg, let client = conn.client else { return }
-            var item: ReviewItem
-            do { item = try await client.get(ReviewItem.self, "api/review/\(arg)") } catch {
+            let item: ReviewItem
+            do { item = try await client.review(id: arg) } catch {
                 NSLog("Frigate deep link: could not load review \(arg): \(error)")
                 return
-            }
-            // The single-item endpoint has no reviewed flag; read it from the list.
-            if let listed = try? await client.reviews(cameras: [item.camera], after: item.start.addingTimeInterval(-1),
-                                                      before: item.start.addingTimeInterval(1), limit: 20),
-               let match = listed.first(where: { $0.id == item.id }) {
-                item = match
             }
             tab = .review
             reviewPath = NavigationPath()
