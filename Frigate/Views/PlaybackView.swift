@@ -294,6 +294,7 @@ struct PlaybackView: View {
                                    onScrub: { heldTime = nil; scrubTime = $0; preview.show($0 - annotationOffset) },
                                    onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) },
                                    onInteract: {},
+                                   onScrubCancel: { scrubTime = nil; preview.hide() },
                                    onSelect: { jump(toWall: $0.startTime - 1 + annotationOffset, autoplay: true, earlier: 2) },
                                    scale: $timelineScale)
                     .padding(.top, 6)
@@ -1264,6 +1265,7 @@ extension PlaybackView {
                                        keepOverlay()
                                    },
                                    onInteract: keepOverlay,
+                                   onScrubCancel: { scrubTime = nil; preview.hide() },
                                    onSelect: { jump(toWall: $0.startTime - 1 + annotationOffset, autoplay: true, earlier: 2); keepOverlay() },
                                    scale: $timelineScale)
                     .padding(.top, 6)

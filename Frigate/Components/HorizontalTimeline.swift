@@ -15,6 +15,8 @@ struct HorizontalTimeline: View {
     let onScrubEnd: (Double, Double) -> Void
     /// Called on any touch so the surrounding overlay can stay visible.
     var onInteract: () -> Void = {}
+    /// A drag that turned out to be a click: drop the scrub preview without seeking.
+    var onScrubCancel: () -> Void = {}
     /// A tap on an event's icon above the bars; nil leaves out the icon row.
     var onSelect: ((ReviewItem) -> Void)? = nil
 
@@ -70,6 +72,13 @@ struct HorizontalTimeline: View {
                 .onEnded { v in
                     let base = dragStartTime ?? wallTime
                     dragStartTime = nil
+                    // A click that moved a few points (usual on a trackpad) is still a click:
+                    // go back to where it started and handle it as one.
+                    if abs(v.translation.width) < 6 && abs(v.translation.height) < 6 {
+                        onScrubCancel()
+                        tap(at: v.startLocation)
+                        return
+                    }
                     let released = clamp(base - Double(v.translation.width) * scale)
                     // A quick swipe keeps going, like scrolling.
                     if abs(v.velocity.width) > TimelineFling.minimumSpeed {
@@ -94,14 +103,17 @@ struct HorizontalTimeline: View {
                 }
             }
             .onPreferenceChange(WidthKey.self) { width = $0 }
-            .onTapGesture { p in
-                onInteract()
-                if let onSelect, p.y >= 18, p.y <= 18 + iconRow, let r = review(atX: p.x) {
-                    onSelect(r)
-                    return
-                }
-                onScrubEnd(clamp(wallTime + Double(p.x - width / 2) * scale), scale * 24)
-            }
+            .onTapGesture { p in tap(at: p) }
+    }
+
+    /// A tap or click: on an event's icon plays that event, elsewhere moves there.
+    private func tap(at p: CGPoint) {
+        onInteract()
+        if let onSelect, p.y >= 14, p.y <= 22 + iconRow, let r = review(atX: p.x) {
+            onSelect(r)
+            return
+        }
+        onScrubEnd(clamp(wallTime + Double(p.x - width / 2) * scale), scale * 24)
     }
 
     @State private var width: CGFloat = 0
