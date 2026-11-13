@@ -15,6 +15,8 @@ struct HorizontalTimeline: View {
     let onScrubEnd: (Double, Double) -> Void
     /// Called on any touch so the surrounding overlay can stay visible.
     var onInteract: () -> Void = {}
+    /// A tap on an event's icon above the bars; nil leaves out the icon row.
+    var onSelect: ((ReviewItem) -> Void)? = nil
 
     /// Seconds per point; owned by the parent so its zoom buttons can change it.
     @Binding var scale: Double
@@ -23,10 +25,13 @@ struct HorizontalTimeline: View {
 
     private let barWidth: CGFloat = 3
     private let barArea: CGFloat = 30
+    /// Row of event icons between the time labels and the bars.
+    private var iconRow: CGFloat { onSelect == nil ? 0 : 22 }
+    private let iconSize: CGFloat = 18
 
     var body: some View {
         Canvas { ctx, size in draw(ctx, size: size) }
-            .frame(height: barArea + 22)
+            .frame(height: barArea + 22 + iconRow)
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 2)
                 .onChanged { v in
@@ -57,6 +62,10 @@ struct HorizontalTimeline: View {
             .onPreferenceChange(WidthKey.self) { width = $0 }
             .onTapGesture { p in
                 onInteract()
+                if let onSelect, p.y >= 18, p.y <= 18 + iconRow, let r = review(atX: p.x) {
+                    onSelect(r)
+                    return
+                }
                 onScrubEnd(clamp(wallTime + Double(p.x - width / 2) * scale), scale * 24)
             }
     }
@@ -71,7 +80,63 @@ struct HorizontalTimeline: View {
 
     private func clamp(_ t: Double) -> Double { min(max(t, dayStart), dayEnd) }
 
+    /// Most motion in buckets starting in `from..<to`. `motion` is sorted by start time, so a
+    /// binary search finds the first one; filtering the whole day per bar made dragging slow.
+    private func motionLevel(from: Double, to: Double) -> Double {
+        var lo = 0, hi = motion.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if motion[mid].startTime < from { lo = mid + 1 } else { hi = mid }
+        }
+        var best = 0.0
+        while lo < motion.count, motion[lo].startTime < to {
+            best = max(best, motion[lo].motion ?? 0)
+            lo += 1
+        }
+        return best
+    }
+
+    /// The event whose icon is under `x`, if any.
+    private func review(atX x: CGFloat) -> ReviewItem? {
+        iconPositions(width: width).min { abs($0.x - x) < abs($1.x - x) }.flatMap { abs($0.x - x) <= iconSize ? $0.review : nil }
+    }
+
+    /// Where event icons go: at each event's start, leaving out icons that would overlap.
+    private func iconPositions(width: CGFloat) -> [(x: CGFloat, review: ReviewItem)] {
+        let center = width / 2
+        var out: [(x: CGFloat, review: ReviewItem)] = []
+        var lastX = -CGFloat.infinity
+        for r in reviews.sorted(by: { $0.startTime < $1.startTime }) {
+            let x = center + CGFloat((r.startTime - wallTime) / scale)
+            guard x > -iconSize, x < width + iconSize else { continue }
+            guard x - lastX >= iconSize + 3 else { continue }
+            out.append((x, r))
+            lastX = x
+        }
+        return out
+    }
+
+    private func drawIcons(_ ctx: GraphicsContext, size: CGSize) {
+        for (x, r) in iconPositions(width: size.width) {
+            let label = r.labels.first ?? ""
+            let box = CGRect(x: x - iconSize / 2, y: 20, width: iconSize, height: iconSize)
+            ctx.fill(Path(roundedRect: box, cornerRadius: 5), with: .color(Theme.labelColor(label)))
+            if let symbol = LabelIcon.symbol(for: label) {
+                var img = ctx.resolve(Image(systemName: symbol))
+                img.shading = .color(Theme.onLabel)
+                let k = 11 / max(img.size.width, img.size.height)
+                let w = img.size.width * k, h = img.size.height * k
+                ctx.draw(img, in: CGRect(x: box.midX - w / 2, y: box.midY - h / 2, width: w, height: h))
+            } else {
+                let letter = ctx.resolve(Text(String(FrigateFormat.labelName(label).prefix(1)))
+                    .font(.system(size: 11, weight: .bold)).foregroundColor(Theme.onLabel))
+                ctx.draw(letter, at: CGPoint(x: box.midX, y: box.midY))
+            }
+        }
+    }
+
     private func draw(_ ctx: GraphicsContext, size: CGSize) {
+        if onSelect != nil { drawIcons(ctx, size: size) }
         let center = size.width / 2
         let step = Double(barWidth) * scale
         let maxMotion = max(motion.map { $0.motion ?? 0 }.max() ?? 1, 1)
@@ -96,7 +161,7 @@ struct HorizontalTimeline: View {
                 ctx.fill(Path(roundedRect: CGRect(x: x, y: barBase - h, width: barWidth - 1, height: h), cornerRadius: 1),
                          with: .color(Theme.labelColor(r.labels.first ?? "")))
             } else if map.hasRecording(from: t, to: t + step) {
-                let level = motion.filter { $0.startTime >= t - 15 && $0.startTime < t + step }.map { $0.motion ?? 0 }.max() ?? 0
+                let level = motionLevel(from: t - 15, to: t + step)
                 let h = max(3, CGFloat(level / maxMotion) * barArea * 0.8)
                 ctx.fill(Path(roundedRect: CGRect(x: x, y: barBase - h, width: barWidth - 1, height: h), cornerRadius: 1),
                          with: .color(level > 0 ? Theme.motion.opacity(0.75) : Theme.controlBorder))

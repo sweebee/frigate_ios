@@ -20,8 +20,26 @@ struct DayAvailability {
         return f.string(from: date)
     }
 
+    /// Last result per set of sources, so the calendar opens filled in; it refreshes behind it.
+    @MainActor private static var cache: [String: DayAvailability] = [:]
+
+    static func cacheKey(_ sources: [(client: FrigateClient, cameras: [String]?)]) -> String {
+        sources.map { $0.client.baseURL.absoluteString + "|" + ($0.cameras ?? []).sorted().joined(separator: ",") }
+            .sorted().joined(separator: ";")
+    }
+
+    @MainActor static func cached(_ sources: [(client: FrigateClient, cameras: [String]?)]) -> DayAvailability? {
+        cache[cacheKey(sources)]
+    }
+
     /// Loads recording days and event counts for the given cameras on each server.
-    static func load(_ sources: [(client: FrigateClient, cameras: [String]?)]) async -> DayAvailability {
+    @MainActor static func load(_ sources: [(client: FrigateClient, cameras: [String]?)]) async -> DayAvailability {
+        let result = await fetch(sources)
+        cache[cacheKey(sources)] = result
+        return result
+    }
+
+    private static func fetch(_ sources: [(client: FrigateClient, cameras: [String]?)]) async -> DayAvailability {
         await withTaskGroup(of: DayAvailability.self) { group in
             for source in sources {
                 group.addTask {
@@ -85,6 +103,10 @@ struct RecordingCalendarSheet: View {
         .presentationBackground(Theme.background)
         .task {
             month = calendar.date(from: calendar.dateComponents([.year, .month], from: day)) ?? day
+            if let cached = DayAvailability.cached(sources) {
+                availability = cached
+                loading = false
+            }
             availability = await DayAvailability.load(sources)
             loading = false
         }

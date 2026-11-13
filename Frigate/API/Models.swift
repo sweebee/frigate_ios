@@ -386,10 +386,12 @@ enum FrigateFormat {
         return name.prefix(1).uppercased() + name.dropFirst()
     }
 
+    /// Created once: timelines format labels on every frame, and a new formatter is slow.
+    private static let hm: DateFormatter = { let f = DateFormatter(); f.dateFormat = "HH:mm"; return f }()
+    private static let hms: DateFormatter = { let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; return f }()
+
     static func time(_ date: Date, seconds: Bool = false) -> String {
-        let f = DateFormatter()
-        f.dateFormat = seconds ? "HH:mm:ss" : "HH:mm"
-        return f.string(from: date)
+        (seconds ? hms : hm).string(from: date)
     }
 
     /// "1.9 s" under a minute, otherwise "m:ss".

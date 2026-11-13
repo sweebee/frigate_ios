@@ -156,7 +156,8 @@ final class FrigateClient: @unchecked Sendable {
 
     /// Days ("yyyy-MM-dd") that have recordings for the cameras, or all cameras.
     func recordingDays(cameras: [String]? = nil) async throws -> Set<String> {
-        var q: [String: String?] = [:]
+        // Days in the user's time zone; Frigate defaults to UTC.
+        var q: [String: String?] = ["timezone": TimeZone.current.identifier]
         let cameras = ScreenshotMode.scope(cameras)
         if let cameras, !cameras.isEmpty { q["cameras"] = cameras.joined(separator: ",") }
         let map = try await get([String: Bool].self, "api/recordings/summary", query: q)
@@ -165,7 +166,8 @@ final class FrigateClient: @unchecked Sendable {
 
     /// Alert and detection counts per day ("yyyy-MM-dd").
     func reviewDays(cameras: [String]? = nil) async throws -> [String: ReviewSummary.DayCounts] {
-        var q: [String: String?] = [:]
+        // Days in the user's time zone; Frigate defaults to UTC.
+        var q: [String: String?] = ["timezone": TimeZone.current.identifier]
         let cameras = ScreenshotMode.scope(cameras)
         if let cameras, !cameras.isEmpty { q["cameras"] = cameras.joined(separator: ",") }
         let all = try await get([String: ReviewSummary.DayCounts].self, "api/review/summary", query: q)
