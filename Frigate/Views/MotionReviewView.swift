@@ -199,7 +199,9 @@ struct MotionReviewView: View {
         loading = true
         let now = min(end, Date().timeIntervalSince1970)
         // A new period starts at its end (most recent).
-        if rangeStart != start || wallTime > now || wallTime < start { wallTime = now - 30 }
+        if rangeStart != start || wallTime > now || wallTime < start {
+            wallTime = ScreenshotMode.liveTime.map { min($0, now) } ?? now - 30
+        }
         rangeEnd = now
         rangeStart = start
         var made: [String: PreviewScrubber] = [:]

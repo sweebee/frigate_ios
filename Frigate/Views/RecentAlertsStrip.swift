@@ -45,7 +45,8 @@ struct RecentAlertsStrip: View {
         for conn in connections {
             guard let client = conn.client else { continue }
             let items = (try? await client.reviews(severity: .alert, reviewed: false,
-                                                   after: Date().addingTimeInterval(-86400), limit: 10)) ?? []
+                                                   after: Date().addingTimeInterval(-86400),
+                                                   before: ScreenshotMode.before, limit: 10)) ?? []
             all += items.map { ReviewEntry(serverID: conn.server.id, item: $0) }
         }
         all = all.filter { !model.reviewedIDs.contains($0.item.id) }

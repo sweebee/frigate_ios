@@ -77,6 +77,16 @@ struct LivePlayerView: View {
     }
 
     var body: some View {
+        if ScreenshotMode.liveTime != nil {
+            // Screenshots: the poster (a recording frame) stays; no live video.
+            Color.clear
+        } else {
+            livePlayer
+        }
+    }
+
+    @ViewBuilder
+    private var livePlayer: some View {
         Group {
             if useNative {
                 NativeLivePlayer(client: client, stream: stream, state: state, fill: fill) { reason in

@@ -223,6 +223,7 @@ struct PlaybackView: View {
             }
         }
         .onDisappear { player.stop(); if fullscreen { model.immersive = false } }
+        .onChange(of: isLandscape) { _, landscape in if !landscape && !isWide { fullscreen = false } }
         .onChange(of: player.finishedCount) { _, _ in
             // Continue with the next hour that has recordings.
             guard let chunkStart else { return }
@@ -643,7 +644,8 @@ struct PlaybackView: View {
         map = RecordingMap()
         let start = dayStart, end = dayEnd
         async let segs = try? client.recordings(camera: camera, after: Date(timeIntervalSince1970: start), before: Date(timeIntervalSince1970: end))
-        async let revs = try? client.reviews(cameras: [camera], after: Date(timeIntervalSince1970: start), before: Date(timeIntervalSince1970: end), limit: 500)
+        async let revs = try? client.reviews(cameras: [camera], after: Date(timeIntervalSince1970: start),
+                                             before: ScreenshotMode.before ?? Date(timeIntervalSince1970: end), limit: 500)
         async let mot = try? client.motionActivity(cameras: [camera], after: Date(timeIntervalSince1970: start), before: Date(timeIntervalSince1970: end), scale: 30)
         let (s, r, m) = await (segs, revs, mot)
         reviews = (r ?? []).sorted { $0.startTime > $1.startTime }
@@ -1163,8 +1165,21 @@ extension PlaybackView {
     private func keepOverlay() { overlayToken += 1 }
 
     func setFullscreen(_ on: Bool) {
+        if !isWide {
+            // iPhone: full screen is the landscape view; turn the screen for it.
+            fullscreen = on
+            rotate(to: on ? .landscapeRight : .portrait)
+            keepOverlay()
+            return
+        }
         withAnimation(.easeOut(duration: 0.2)) { fullscreen = on; model.immersive = on }
         keepOverlay()
+    }
+
+    private func rotate(to orientation: UIInterfaceOrientationMask) {
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: orientation)) { _ in }
+        }
     }
 
     private var landscapeOverlay: some View {

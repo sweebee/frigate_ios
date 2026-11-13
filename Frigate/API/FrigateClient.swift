@@ -288,7 +288,10 @@ final class FrigateClient: @unchecked Sendable {
     // MARK: Media URLs
 
     func latestImageURL(camera: String, height: Int? = nil) -> URL {
-        url("api/\(camera)/latest.jpg", query: ["height": height.map(String.init)])
+        if let t = ScreenshotMode.liveTime {
+            return url("api/\(camera)/recordings/\(Int(t))/snapshot.jpg", query: ["height": height.map(String.init)])
+        }
+        return url("api/\(camera)/latest.jpg", query: ["height": height.map(String.init)])
     }
 
     func mjpegURL(camera: String, height: Int = 720) -> URL {

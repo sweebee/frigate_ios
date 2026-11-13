@@ -348,7 +348,7 @@ struct ReviewView: View {
                 if let serverCams, serverCams.isEmpty { continue }
                 group.addTask {
                     let items = try await client.reviews(cameras: serverCams, labels: labels, zones: zones, severity: severity,
-                                                         reviewed: reviewed, after: bounds.after, before: before ?? bounds.before, limit: pageSize)
+                                                         reviewed: reviewed, after: bounds.after, before: before ?? ScreenshotMode.before ?? bounds.before, limit: pageSize)
                     return items.map { ReviewEntry(serverID: id, item: $0) }
                 }
             }

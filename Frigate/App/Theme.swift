@@ -332,7 +332,7 @@ extension Stable {
 struct ClockLabel: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            Text(FrigateFormat.time(ctx.date, seconds: true))
+            Text(FrigateFormat.time(ScreenshotMode.liveTime.map { Date(timeIntervalSince1970: $0) } ?? ctx.date, seconds: true))
         }
     }
 }

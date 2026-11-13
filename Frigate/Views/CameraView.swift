@@ -279,7 +279,7 @@ struct CameraView: View {
 
     @ViewBuilder
     private var streamStatus: some View {
-            if !player.playing {
+            if !player.playing && ScreenshotMode.liveTime == nil {
                 if player.status.hasPrefix("Stream unavailable") {
                     VStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle").font(.title2)
@@ -722,7 +722,7 @@ struct CameraView: View {
         guard let client = conn?.client else { loadingReviews = false; return }
         loadingReviews = true
         let start = Calendar.current.startOfDay(for: Date())
-        reviews = (try? await client.reviews(cameras: [route.camera], after: start, limit: 50)) ?? []
+        reviews = (try? await client.reviews(cameras: [route.camera], after: start, before: ScreenshotMode.before, limit: 50)) ?? []
         loadingReviews = false
     }
 }
