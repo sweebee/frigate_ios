@@ -10,6 +10,8 @@ struct CameraView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var overlayVisible = true
     @State private var overlayToken = 0
+    /// The pointer rests on the controls over the video: keep them.
+    @State private var pointerOnControls = false
     /// A menu in the overlay is open; the overlay must not hide underneath it.
     @State private var menuOpen = false
     @State private var player = LivePlayerState()
@@ -133,10 +135,8 @@ struct CameraView: View {
                                 playerView(client: client, camera: camera)
                                     .clipShape(RoundedRectangle(cornerRadius: filling ? 0 : 12))
                                     .overlay(alignment: .bottom) {
-                                        if showOverlayControls {
-                                            overlayControls(client: client, camera: camera)
-                                                .transition(.opacity)
-                                        }
+                                        overlayControls(client: client, camera: camera)
+                                            .fadingControls(showOverlayControls, pointerOver: $pointerOnControls)
                                     }
                                     // With a mouse the controls show while the pointer moves over the video.
                                     .onContinuousHover { phase in
@@ -167,7 +167,8 @@ struct CameraView: View {
                             try? await Task.sleep(for: .seconds(4))
                             guard !Task.isCancelled, !player.talking, !showPTZ else { return }
                             if MenuPresence.isShowing { overlayToken += 1; return }
-                            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
+                            if pointerOnControls { overlayToken += 1; return }
+            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
                         }
                     } else {
                         ScrollView {
@@ -382,7 +383,6 @@ struct CameraView: View {
                     .transition(.opacity)
                     .simultaneousGesture(TapGesture().onEnded { keepOverlay() })
             }
-            if overlayVisible {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
                         Button { dismiss() } label: {
@@ -451,8 +451,7 @@ struct CameraView: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 10)
                 }
-                .transition(.opacity)
-            }
+                .fadingControls(overlayVisible)
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
@@ -467,6 +466,7 @@ struct CameraView: View {
             guard !Task.isCancelled, !showPTZ, !landscapePTZ else { return }
             // Keep the overlay while one of its menus is open; check again later.
             if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
+            if pointerOnControls { overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
     }

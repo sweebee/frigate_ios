@@ -412,3 +412,22 @@ extension View {
     func headerBarPadding() -> some View { padding(.horizontal, 16) }
 }
 
+
+extension View {
+    /// Fades controls in and out. They stay in the view tree while hidden: removing them
+    /// skipped the fade-out (the video under them redraws every frame).
+    /// `pointerOver` is set while the pointer rests on them, so they are not hidden then.
+    func fadingControls(_ visible: Bool, pointerOver: Binding<Bool>? = nil) -> some View {
+        opacity(visible ? 1 : 0)
+            .allowsHitTesting(visible)
+            .accessibilityHidden(!visible)
+            .animation(.easeOut(duration: 0.25), value: visible)
+            .onHover { inside in pointerOver?.wrappedValue = inside && visible }
+    }
+
+    /// Reports when the pointer rests on this part of a full-screen overlay (its own frame,
+    /// not the whole screen the overlay covers).
+    func pointerOver(_ flag: Binding<Bool>) -> some View {
+        onHover { flag.wrappedValue = $0 }
+    }
+}

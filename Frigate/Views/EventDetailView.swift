@@ -19,6 +19,8 @@ struct EventDetailView: View {
     /// Landscape: the controls drawn over the video; they hide by themselves during playback.
     @State private var overlayVisible = true
     @State private var overlayToken = 0
+    /// The pointer rests on the controls over the video: keep them.
+    @State private var pointerOnControls = false
     /// iPad and Mac: the video fills the window with the landscape controls; same player.
     @State private var fullscreen = false
 
@@ -74,6 +76,7 @@ struct EventDetailView: View {
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled, player.wantsToPlay, !player.isScrubbing else { return }
             if MenuPresence.isShowing { overlayToken += 1; return }
+            if pointerOnControls { overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
         // Paused (also at the end): bring the controls back.
@@ -141,9 +144,7 @@ struct EventDetailView: View {
                     keepOverlay()
                 }
             playerStatus(showPlay: !overlayVisible)
-            if overlayVisible {
-                landscapeOverlay.transition(.opacity)
-            }
+            landscapeOverlay.fadingControls(overlayVisible)
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
@@ -207,6 +208,7 @@ struct EventDetailView: View {
             // Mac full screen: below the window buttons, which sit in the top-left corner.
             .padding(.top, fullscreen && ProcessInfo.processInfo.isMacCatalystApp ? 26 : 0)
             .background(Color.black.opacity(0.75).ignoresSafeArea(edges: [.top, .horizontal]))
+            .pointerOver($pointerOnControls)
 
             HStack(spacing: 18) {
                 OverlayButton(systemImage: "gobackward.10", size: 50, label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
@@ -214,12 +216,14 @@ struct EventDetailView: View {
                               label: player.wantsToPlay ? "Pause" : "Play") { player.toggle(); keepOverlay() }
                 OverlayButton(systemImage: "goforward.10", size: 50, label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
             }
+            .pointerOver($pointerOnControls)
             .opacity(noRecording || player.error != nil || player.isBuffering || player.duration == 0 ? 0 : 1)
             .frame(maxHeight: .infinity)
 
             scrubber
                 .padding(.bottom, 10)
                 .background(Color.black.opacity(0.7).ignoresSafeArea(edges: [.bottom, .horizontal]))
+                .pointerOver($pointerOnControls)
                 .simultaneousGesture(TapGesture().onEnded { keepOverlay() })
                 .onChange(of: player.isScrubbing) { _, _ in keepOverlay() }
         }
@@ -266,14 +270,14 @@ struct EventDetailView: View {
         .frame(maxWidth: .infinity)
         .background(Color.black)
         .overlay(alignment: .bottom) {
-            if overlayVisible && canPlay {
+            if canPlay {
                 PlaybackOverlayControls(player: player, large: horizontalSizeClass == .regular, onUse: keepOverlay)
-                    .transition(.opacity)
+                    .fadingControls(overlayVisible, pointerOver: $pointerOnControls)
             }
         }
         .overlay(alignment: .topTrailing) {
-            if overlayVisible && horizontalSizeClass == .regular && !noRecording {
-                FullscreenButton(isOn: false) { setFullscreen(true) }.padding(10).transition(.opacity)
+            if horizontalSizeClass == .regular && !noRecording {
+                FullscreenButton(isOn: false) { setFullscreen(true) }.padding(10).fadingControls(overlayVisible, pointerOver: $pointerOnControls)
             }
         }
         .onContinuousHover { phase in

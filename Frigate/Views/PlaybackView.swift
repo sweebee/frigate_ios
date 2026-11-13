@@ -99,6 +99,8 @@ struct PlaybackView: View {
     @State private var fullscreen = false
     @State private var showEventsPanel = false
     @State private var overlayToken = 0
+    /// The pointer rests on the controls over the video: keep them.
+    @State private var pointerOnControls = false
     /// A menu in the overlay is open; the overlay must not hide underneath it.
     @State private var menuOpen = false
     /// Where the user scrubbed to, shown until the player has actually arrived there,
@@ -278,6 +280,7 @@ struct PlaybackView: View {
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled, player.wantsToPlay, scrubTime == nil else { return }
             if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
+            if pointerOnControls { overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
     }
@@ -348,6 +351,7 @@ struct PlaybackView: View {
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled, player.wantsToPlay, scrubTime == nil else { return }
             if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
+            if pointerOnControls { overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
     }
@@ -508,17 +512,18 @@ struct PlaybackView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !map.isEmpty && overlayVisible {
+            if !map.isEmpty {
                 HStack(spacing: 8) {
                     saveMenu
                     FullscreenButton(isOn: false) { setFullscreen(true) }
                 }
-                .padding(10).transition(.opacity)
+                .padding(10).fadingControls(overlayVisible, pointerOver: $pointerOnControls)
             }
         }
         .overlay(alignment: .bottom) {
-            if !map.isEmpty && overlayVisible {
+            if !map.isEmpty {
                 PlaybackOverlayControls(player: player, large: isWide, togglePlay: togglePlay, onUse: keepOverlay)
+                    .fadingControls(overlayVisible, pointerOver: $pointerOnControls)
             }
         }
         // With a mouse (Mac, iPad with trackpad) the controls show while the pointer moves
@@ -1133,9 +1138,7 @@ extension PlaybackView {
             } else if player.isBuffering {
                 ProgressView().tint(.white)
             }
-            if overlayVisible {
-                landscapeOverlay.transition(.opacity)
-            }
+            landscapeOverlay.fadingControls(overlayVisible)
             if showEventsPanel {
                 HStack(spacing: 0) {
                     Spacer()
@@ -1157,6 +1160,7 @@ extension PlaybackView {
             guard !Task.isCancelled, player.wantsToPlay, !showEventsPanel, scrubTime == nil else { return }
             // Keep the overlay while one of its menus is open; check again later.
             if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
+            if pointerOnControls { overlayToken += 1; return }
             withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
         }
     }
@@ -1221,6 +1225,7 @@ extension PlaybackView {
             // Mac full screen: below the window buttons, which sit in the top-left corner.
             .padding(.top, fullscreen && ProcessInfo.processInfo.isMacCatalystApp ? 26 : 0)
             .background(Color.black.opacity(0.55).ignoresSafeArea(edges: [.top, .horizontal]))
+            .pointerOver($pointerOnControls)
 
             // Middle: play controls centered, side buttons on the right.
             ZStack {
@@ -1230,6 +1235,7 @@ extension PlaybackView {
                                   label: player.wantsToPlay ? "Pause" : "Play") { togglePlay(); keepOverlay() }
                     OverlayButton(systemImage: "goforward.10", size: 50, label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
                 }
+                .pointerOver($pointerOnControls)
                 HStack {
                     Spacer()
                     VStack(spacing: 12) {
@@ -1242,6 +1248,7 @@ extension PlaybackView {
                         speedMenu
                             .simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                     }
+                    .pointerOver($pointerOnControls)
                     .padding(.trailing, 12)
                 }
             }
@@ -1291,6 +1298,7 @@ extension PlaybackView {
             .padding(.horizontal, 8)
             .padding(.bottom, 34)
             .background(Color.black.opacity(0.6).ignoresSafeArea(edges: [.bottom, .horizontal]))
+            .pointerOver($pointerOnControls)
         }
     }
 
