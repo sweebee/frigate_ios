@@ -113,12 +113,16 @@ final class RecordingPlayer {
 
     func toggle() { wantsToPlay ? pause() : play() }
 
-    func seek(to seconds: Double, precise: Bool = false) {
+    /// `earlier`: how far before `seconds` the player may land, on a keyframe, to start
+    /// sooner; it never lands later than asked.
+    func seek(to seconds: Double, precise: Bool = false, earlier: Double = 0) {
         let t = max(0, duration > 0 ? min(seconds, duration) : seconds)
         currentTime = t
         seeksInFlight += 1
         let tol = precise ? CMTime.zero : CMTime(seconds: 0.5, preferredTimescale: 600)
-        player.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: tol, toleranceAfter: tol) { [weak self] done in
+        let before = earlier > 0 ? CMTime(seconds: earlier, preferredTimescale: 600) : tol
+        let after = earlier > 0 ? CMTime.zero : tol
+        player.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: before, toleranceAfter: after) { [weak self] done in
             Task { @MainActor in
                 guard let self else { return }
                 self.seeksInFlight = max(0, self.seeksInFlight - 1)
