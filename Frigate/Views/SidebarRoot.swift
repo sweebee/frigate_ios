@@ -23,11 +23,10 @@ struct SidebarRoot: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Mac: the hidden title bar keeps 28 pt at the top. The window buttons sit over
-            // the rail, so the screens move up into that room. Done with layout, not the safe
-            // area: changing that made every newly opened screen jump once.
-            .padding(.bottom, isMac ? -18 : 0)
-            .offset(y: isMac ? -18 : 0)
+            // Mac: a new section settles its top inset in its first frames (the title bar's
+            // room, see hideWindowTitle); fading it in keeps that from showing as a jump.
+            .id(isMac ? model.tab : .live)
+            .transition(.opacity.animation(.easeIn(duration: 0.16)))
         }
         .onAppear(perform: hideWindowTitle)
     }
@@ -56,6 +55,9 @@ struct SidebarRoot: View {
         #if targetEnvironment(macCatalyst)
         for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
             scene.titlebar?.titleVisibility = .hidden
+            // The hidden title bar still keeps its 28 pt at the top as safe area. The window
+            // buttons sit over the rail, so give 18 of it back: screens start 10 pt down.
+            for window in scene.windows { window.rootViewController?.additionalSafeAreaInsets.top = -18 }
         }
         #endif
     }
