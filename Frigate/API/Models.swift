@@ -441,7 +441,7 @@ enum FrigateFormat {
         return f.string(from: date)
     }
 
-    static func relative(_ date: Date, now: Date = Date()) -> String {
+    static func relative(_ date: Date, now: Date = ScreenshotMode.liveTime.map { Date(timeIntervalSince1970: $0) } ?? Date()) -> String {
         let d = now.timeIntervalSince(date)
         if d < 60 { return L("Just now") }
         if d < 3600 { return L("\(Int(d / 60)) min ago") }

@@ -2,7 +2,7 @@
 
 # Tender for Frigate
 
-Native iOS client for [Frigate NVR](https://frigate.video), built from the mockups in `design/`.
+Native iPhone, iPad and Mac client for [Frigate NVR](https://frigate.video), built from the mockups in `design/`.
 Tender is an independent app, compatible with Frigate NVR; it is not affiliated with or endorsed by the Frigate project.
 Requires iOS 17 and Xcode 26 or newer. No third-party dependencies.
 
@@ -25,7 +25,7 @@ https://testflight.apple.com/join/s6KEWhy1
     <td align="center"><img src="docs/screenshots/4-event.png" width="200"><br><sub>Event</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/5-history.png" width="200"><br><sub>History</sub></td>
+    <td align="center"><img src="docs/screenshots/5-motion.png" width="200"><br><sub>Motion</sub></td>
     <td align="center"><img src="docs/screenshots/6-playback.png" width="200"><br><sub>Playback</sub></td>
     <td align="center"><img src="docs/screenshots/7-timeline.png" width="200"><br><sub>Timeline</sub></td>
     <td align="center"><img src="docs/screenshots/8-settings.png" width="200"><br><sub>Servers</sub></td>
@@ -33,6 +33,22 @@ https://testflight.apple.com/join/s6KEWhy1
 </table>
 
 <p align="center"><img src="docs/screenshots/9-landscape.png" width="820"><br><sub>Landscape playback: tap to hide the overlay, drag the timeline with a live preview</sub></p>
+
+### iPad and Mac
+
+A narrow rail instead of the tab bar, the video as large as the window allows, and Frigate's
+review grid and timeline. The Mac version is a native Mac Catalyst app.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/ipad-2-camera.jpg" width="410"><br><sub>Camera</sub></td>
+    <td align="center"><img src="docs/screenshots/ipad-3-review.jpg" width="410"><br><sub>Review with timeline</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/ipad-4-playback.jpg" width="410"><br><sub>Playback</sub></td>
+    <td align="center"><img src="docs/screenshots/ipad-5-motion.jpg" width="410"><br><sub>Motion: every camera at one moment</sub></td>
+  </tr>
+</table>
 
 ## Run
 
@@ -49,12 +65,14 @@ you choose whether the tabs show one server or all of them.
 | Screen | What it does |
 | --- | --- |
 | Live | Camera grid with refreshing snapshots, live objects and last activity; red outline while an object moves and a dot for motion, automatic live view on activity, recent alerts as looping clips at the top (like Frigate's web UI); one or two columns; camera groups from the Frigate config |
-| Camera | Live stream through go2rtc (MSE over websocket, WebRTC and MJPEG as fallbacks), audio, two-way talk for cameras with a speaker (go2rtc backchannel, also over plain http), snapshot, PTZ (ONVIF cameras), fullscreen, today's events |
-| Review | Alerts, detections and motion across servers; filter by server, camera, label and unreviewed; mark reviewed |
-| Event | Clip playback with the event range highlighted, 1x/2x/4x, score, zones, object lifecycle, download/share, delete |
+| Camera | Live stream through go2rtc (a native MSE player, with WebRTC and MJPEG as fallbacks), audio (AAC, remembers your choice), two-way talk for cameras with a speaker (go2rtc backchannel, also over plain http), snapshot, PTZ (ONVIF cameras), fullscreen, today's events |
+| Review | Alerts and detections across servers, as a grid with a timeline on iPad and Mac; filter by camera, label, zone, unreviewed and date (last 24 hours by default); mark reviewed |
+| Motion | Every camera's preview at one moment with a motion timeline beside them; drag or play fast (4x to 16x), cameras with motion get a border, tap one to open its recording there |
+| Event | Clip playback with the event range highlighted, the same controls as playback, score, zones, object lifecycle, download/share, delete |
 | Explore | Tracked objects per label (like Frigate's Explore page), a grid when you pick a label, license plate search (when the server has recognized plates), filters by camera, label, zone, sub label and date, object details with snapshot and lifecycle |
 | Playback | Recordings per camera and day, event list or scrubbable timeline with zoom and a live preview while dragging (like Frigate's web UI), filters by type, label and zone, gaps shown as "no recording", save an event or a span around the playhead to Photos |
 | Landscape | Full-screen live view and playback with an overlay that hides on tap, horizontal timeline and an events panel |
+| iPad and Mac | Icon rail instead of the tab bar, large video with details beside or below it, full screen without reloading, controls on mouse hover, trackpad scrolling on timelines |
 | Everywhere | Pinch to zoom on live and recorded video, swipe back, lighter streams on mobile data, English and Dutch (follows the iPhone language) |
 | Chat | Ask Frigate's GenAI chat about your cameras and events, with streamed answers (shown when a server has a GenAI provider with the chat role, Frigate 0.18+) |
 | Settings | Servers (add, edit, remove), optional live video in the camera overview |
@@ -80,7 +98,7 @@ Useful for testing and shortcuts:
 
 ```
 frigate://add?url=http://192.168.1.21:8971&name=Home
-frigate://live | review | explore | history | chat | settings
+frigate://live | review | explore | chat | settings
 frigate://review?view=motion
 frigate://camera/<camera>[?server=<name>]
 frigate://playback/<camera>[?review=<id>&view=timeline]
