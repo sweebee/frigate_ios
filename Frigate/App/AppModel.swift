@@ -304,7 +304,9 @@ final class AppModel {
     var connections: [UUID: ServerConnection] = [:]
     var scope: Scope = .all { didSet { saveScope() } }
     var tab: Tab = .live
-    var livePath = NavigationPath()
+    var livePath = NavigationPath() { didSet { if livePath.isEmpty { openCamera = nil } } }
+    /// The camera picked in the sidebar (wide layout), so the sidebar can mark it.
+    var openCamera: CameraRoute?
     var reviewPath = NavigationPath()
     var explorePath = NavigationPath()
     /// Set by deep links to switch the Review segment (alert, detection, motion).

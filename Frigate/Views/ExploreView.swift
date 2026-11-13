@@ -38,6 +38,8 @@ struct ExploreView: View {
     @State private var knownPlates: [String] = []
     @State private var plateQuery = ""
     @FocusState private var plateFocused: Bool
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var rowWidth: CGFloat = 0
     @State private var showDayPicker = false
 
     struct LabelRow: Identifiable {
@@ -61,6 +63,7 @@ struct ExploreView: View {
             VStack(spacing: 0) {
                 // Title, search and filters stay put; only the results scroll.
                 header.padding(.bottom, 10)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         content
@@ -317,7 +320,7 @@ struct ExploreView: View {
                     ForEach(row.entries) { entry in
                         NavigationLink(value: ObjectRoute(serverID: entry.serverID, event: entry.event)) {
                             ObjectTile(entry: entry, showLabel: false)
-                                .frame(width: 128, height: 128)
+                                .frame(width: tileSide, height: tileSide)
                         }
                         .buttonStyle(.plain)
                     }
@@ -326,6 +329,12 @@ struct ExploreView: View {
             }
         }
         .padding(.top, 6)
+    }
+
+    /// Tiles in a label row: 128 on phones; on iPad and Mac the row's ten tiles fill the width.
+    private var tileSide: CGFloat {
+        guard sizeClass == .regular, rowWidth > 0 else { return 128 }
+        return max(128, (rowWidth - 32 - 9 * 8) / 10)
     }
 
     private var gridView: some View {

@@ -7,11 +7,13 @@ struct LiveView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Bigger tiles: one column on iPhone, fewer and wider tiles on iPad.
     @AppStorage("liveLargeTiles") private var largeTiles = false
+    /// Columns on wide screens (iPad, Mac), picked in the header.
+    @AppStorage("liveColumns") private var wideColumns = 3
 
     /// Two columns on iPhone (or one with large tiles); on iPad and Mac as many as fit.
     private var columns: [GridItem] {
         if sizeClass == .regular {
-            return [GridItem(.adaptive(minimum: largeTiles ? 420 : 250, maximum: largeTiles ? 900 : 480), spacing: 12)]
+            return Array(repeating: GridItem(.flexible(), spacing: 12), count: wideColumns)
         }
         return largeTiles
             ? [GridItem(.flexible(), spacing: 10)]
@@ -45,18 +47,40 @@ struct LiveView: View {
         }
     }
 
+    private static func columnsIcon(_ n: Int) -> String {
+        switch n {
+        case 1: return "rectangle"
+        case 2: return "rectangle.split.2x1"
+        case 3: return "rectangle.split.3x1"
+        default: return "square.grid.4x3.fill"
+        }
+    }
+
     private var header: some View {
         HStack {
             LargeTitle(text: L("Live"))
             Spacer()
-            Button {
-                withAnimation(.easeOut(duration: 0.2)) { largeTiles.toggle() }
-            } label: {
-                Image(systemName: largeTiles ? "square.grid.2x2" : "rectangle.grid.1x2")
-                    .font(.system(size: 18, weight: .medium))
-                    .frame(width: 40, height: 40)
+            if sizeClass == .regular {
+                // Wide screens: pick how many tiles side by side.
+                Picker("Columns", selection: Binding(get: { wideColumns }, set: { c in
+                    withAnimation(.easeOut(duration: 0.2)) { wideColumns = c }
+                })) {
+                    ForEach([1, 2, 3, 4], id: \.self) { n in
+                        Image(systemName: Self.columnsIcon(n)).tag(n).accessibilityLabel("\(n)")
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 180)
+            } else {
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { largeTiles.toggle() }
+                } label: {
+                    Image(systemName: largeTiles ? "square.grid.2x2" : "rectangle.grid.1x2")
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 40, height: 40)
+                }
+                .accessibilityLabel(largeTiles ? "Small tiles" : "Large tiles")
             }
-            .accessibilityLabel(largeTiles ? "Small tiles" : "Large tiles")
         }
         .padding(.top, 8)
     }

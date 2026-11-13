@@ -39,6 +39,7 @@ extension AppModel {
             tab = .live
             livePath = NavigationPath()
             livePath.append(CameraRoute(serverID: conn.server.id, camera: arg))
+            openCamera = CameraRoute(serverID: conn.server.id, camera: arg)
         case "playback":
             guard let conn, let arg else { return }
             tab = .explore

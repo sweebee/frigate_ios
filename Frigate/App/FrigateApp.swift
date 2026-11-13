@@ -29,6 +29,18 @@ struct FrigateApp: App {
                 .environment(model)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
+                // Menus draw their own chips and buttons; on the Mac they would otherwise get a
+                // bezel and extra arrows around them.
+                .menuIndicator(.hidden)
+                .menuStyle(PlainMenuStyle())
+                .modifier(BorderlessButtonsOnMac())
+        }
+        .commands {
+            // On the Mac, settings live in the app menu (⌘,) instead of the sidebar.
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") { model.tab = .settings }
+                    .keyboardShortcut(",", modifiers: .command)
+            }
         }
     }
 }
@@ -36,12 +48,15 @@ struct FrigateApp: App {
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         @Bindable var model = model
         Group {
             if model.servers.isEmpty {
                 NavigationStack { ConnectView(isOnboarding: true) }
+            } else if horizontalSizeClass == .regular {
+                SidebarRoot()
             } else {
                 TabView(selection: $model.tab) {
                     LiveView()
@@ -84,5 +99,26 @@ struct RootView: View {
             // The activity feed reopens on the next refresh.
             if phase == .background { model.orderedConnections.forEach { $0.stopActivityFeed() } }
         }
+    }
+}
+
+/// Menus show their label as drawn (chips, icons) without a button bezel around it, which
+/// the Mac adds by default; only the menu's own buttons are plain, not the rest of the app.
+private struct PlainMenuStyle: MenuStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Menu(configuration)
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+    }
+}
+
+/// The Mac draws a bezel around buttons by default; text buttons here are plain accent text.
+private struct BorderlessButtonsOnMac: ViewModifier {
+    func body(content: Content) -> some View {
+        #if targetEnvironment(macCatalyst)
+        content.buttonStyle(.borderless)
+        #else
+        content
+        #endif
     }
 }

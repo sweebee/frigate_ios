@@ -2456,6 +2456,16 @@
         }
       }
     },
+    "Settings…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instellingen…"
+          }
+        }
+      }
+    },
     "Share clip": {
       "localizations": {
         "nl": {

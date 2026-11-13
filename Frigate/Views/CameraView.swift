@@ -7,6 +7,7 @@ struct CameraView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var overlayVisible = true
     @State private var overlayToken = 0
     /// A menu in the overlay is open; the overlay must not hide underneath it.
@@ -44,7 +45,10 @@ struct CameraView: View {
     }
 
     /// iPhone held sideways: full-screen live video with an overlay that hides itself.
-    private var isLandscape: Bool { verticalSizeClass == .compact }
+    /// The full-screen landscape layout is for phones; wide screens get `wideBody`.
+    private var isLandscape: Bool { verticalSizeClass == .compact && horizontalSizeClass != .regular }
+    /// iPad full screen and the Mac: video and today's events side by side.
+    private var isWide: Bool { horizontalSizeClass == .regular }
 
     var body: some View {
         Group {
@@ -111,13 +115,39 @@ struct CameraView: View {
         VStack(spacing: 0) {
             header
             if let conn, let client = conn.client, let camera {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        playerView(client: client, camera: camera)
-                        controls(client: client, camera: camera)
-                        today(conn: conn)
+                Group {
+                    if isWide {
+                        GeometryReader { geo in
+                            HStack(alignment: .top, spacing: 16) {
+                                // The video never grows taller than the window allows.
+                                VStack(spacing: 0) {
+                                    playerView(client: client, camera: camera)
+                                        .frame(maxHeight: max(200, geo.size.height - 110), alignment: .top)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    controls(client: client, camera: camera)
+                                    Spacer(minLength: 0)
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                                ScrollView {
+                                    today(conn: conn, vertical: true)
+                                        .padding(.bottom, 24)
+                                }
+                                .scrollIndicators(.never)
+                                .frame(width: min(380, geo.size.width * 0.34))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                        }
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                playerView(client: client, camera: camera)
+                                controls(client: client, camera: camera)
+                                today(conn: conn)
+                            }
+                            .padding(.bottom, 24)
+                        }
                     }
-                    .padding(.bottom, 24)
                 }
                 .fullScreenCover(isPresented: $fullscreen) {
                     FullscreenLiveView(client: client, camera: camera, stream: player.stream, muted: player.muted)
@@ -149,7 +179,6 @@ struct CameraView: View {
                 Text(subtitle)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textSecondary)
-                    .lineLimit(1)
             }
             Spacer()
             moreMenu
@@ -245,8 +274,11 @@ struct CameraView: View {
     private var streamChip: some View {
         if streams.count > 1 {
             Menu {
-                Picker("Stream", selection: streamChoice) {
-                    ForEach(streams, id: \.name) { s in Text(s.title).tag(s.name) }
+                // Plain buttons: a Picker in a Menu becomes a "Stream ›" submenu on the Mac.
+                ForEach(streams, id: \.name) { s in
+                    Button { streamChoice.wrappedValue = s.name } label: {
+                        if s.name == player.stream { Label(s.title, systemImage: "checkmark") } else { Text(s.title) }
+                    }
                 }
             } label: {
                 HStack(spacing: 4) {
@@ -485,7 +517,8 @@ struct CameraView: View {
 
     // MARK: Today
 
-    private func today(conn: ServerConnection) -> some View {
+    /// `vertical`: a list beside the video (wide layout) instead of a row under it.
+    private func today(conn: ServerConnection, vertical: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Today").font(.system(size: 20, weight: .bold))
@@ -507,6 +540,27 @@ struct CameraView: View {
             } else if reviews.isEmpty {
                 Text("No activity today").font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 60)
+            } else if vertical {
+                LazyVStack(spacing: 8) {
+                    ForEach(reviews) { r in
+                        NavigationLink(value: EventRoute(serverID: route.serverID, review: r)) {
+                            HStack(spacing: 10) {
+                                RemoteImage(url: conn.client?.thumbnailURL(for: r), session: conn.client?.session ?? .shared)
+                                    .frame(width: 96, height: 58)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                VStack(alignment: .leading, spacing: 5) {
+                                    HStack(spacing: 4) { ForEach(r.labels, id: \.self) { LabelIcon(label: $0, size: 18) } }
+                                    Text(FrigateFormat.time(r.start, seconds: true)).font(.system(size: 14, weight: .semibold))
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .padding(8)
+                            .card(radius: 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
@@ -529,8 +583,10 @@ struct CameraView: View {
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
+        // Beside the video (vertical) the column already has its margins; its top lines up
+        // with the video.
+        .padding(.horizontal, vertical ? 0 : 16)
+        .padding(.top, vertical ? 0 : 14)
     }
 
     /// Shows REC only while Frigate is actually writing recordings for this camera.

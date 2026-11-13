@@ -40,13 +40,41 @@ struct RecordingMap {
         return spans.last?.wallEnd ?? first.wallStart
     }
 
+    /// Index of the first span starting at or after `t`. Spans are sorted by start, so this is
+    /// a binary search: the timelines ask this for every bar on every frame, and a day has
+    /// thousands of segments, which made scrubbing unusably slow when scanned in full.
+    private func firstSpan(startingAtOrAfter t: Double) -> Int {
+        var lo = 0, hi = spans.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if spans[mid].wallStart < t { lo = mid + 1 } else { hi = mid }
+        }
+        return lo
+    }
+
     /// Whether any recording overlaps `start..<end`.
     func hasRecording(from start: Double, to end: Double) -> Bool {
-        spans.contains { $0.wallStart < end && $0.wallEnd > start }
+        // Spans that start before `end`; segments hardly overlap, so the few just before
+        // that point are the only ones that can still reach into the range.
+        var i = firstSpan(startingAtOrAfter: end) - 1
+        var checked = 0
+        while i >= 0, checked < 4 {
+            if spans[i].wallEnd > start { return true }
+            i -= 1
+            checked += 1
+        }
+        return false
     }
 
     func hasRecording(at wall: Double) -> Bool {
-        spans.contains { wall >= $0.wallStart && wall <= $0.wallEnd }
+        var i = firstSpan(startingAtOrAfter: wall.nextUp) - 1
+        var checked = 0
+        while i >= 0, checked < 4 {
+            if wall >= spans[i].wallStart && wall <= spans[i].wallEnd { return true }
+            i -= 1
+            checked += 1
+        }
+        return false
     }
 }
 
@@ -63,6 +91,7 @@ struct PlaybackView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     // Landscape playback state.
     @State private var overlayVisible = true
     @State private var showEventsPanel = false
@@ -165,11 +194,13 @@ struct PlaybackView: View {
     }
 
     /// iPhone held sideways: full-screen video with an overlay, like an NVR app.
-    private var isLandscape: Bool { verticalSizeClass == .compact }
+    private var isLandscape: Bool { verticalSizeClass == .compact && horizontalSizeClass != .regular }
+    /// iPad full screen and the Mac: video with a horizontal timeline under it, events beside.
+    private var isWide: Bool { horizontalSizeClass == .regular }
 
     var body: some View {
         Group {
-            if isLandscape { landscapeBody } else { portraitBody }
+            if isWide { wideBody } else if isLandscape { landscapeBody } else { portraitBody }
         }
         .overlay(alignment: .top) { ExportToast(state: exporter.state) }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
@@ -195,6 +226,84 @@ struct PlaybackView: View {
             let next = chunkStart + chunkLength
             if next < dayEnd { seek(toWall: next, autoplay: true, skipGap: true) }
         }
+    }
+
+    private var wideBody: some View {
+        VStack(spacing: 0) {
+            header
+            GeometryReader { geo in
+                // Explicit size: the video fills the column at 16:9 but leaves room for the timeline.
+                let side = min(380, geo.size.width * 0.34)
+                let videoWidth = max(200, geo.size.width - 32 - 16 - side)
+                let videoHeight = min(videoWidth * 9 / 16, max(160, geo.size.height - 150))
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(spacing: 10) {
+                        videoPlayer
+                            .frame(width: videoHeight * 16 / 9, height: videoHeight)
+                            .frame(maxWidth: .infinity)
+                        horizontalTimeline
+                            .frame(width: videoWidth)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(width: videoWidth)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Stable(key: FilterBarKey(filter: filter, reviewIDs: reviews.map(\.id), camera: camera)) {
+                            ReviewFilterBar(filter: $filter, reviews: reviews,
+                                            zones: (conn?.config?.cameras[camera]?.zones?.keys).map(Array.init) ?? [])
+                        }
+                        .stable()
+                        eventsList
+                    }
+                    .frame(width: side)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+            }
+            .clipped()
+        }
+        .screenBackground()
+        .toolbar(.hidden, for: .navigationBar)
+        .task(id: overlayToken) {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled, player.wantsToPlay, scrubTime == nil else { return }
+            if menuOpen || MenuPresence.isShowing { menuOpen = false; overlayToken += 1; return }
+            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
+        }
+    }
+
+    /// The horizontal timeline from the landscape view, as a block under the video.
+    private var horizontalTimeline: some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: .top) {
+                HorizontalTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion,
+                                   reviews: visibleReviews, map: map,
+                                   onScrub: { heldTime = nil; scrubTime = $0; preview.show($0 - annotationOffset) },
+                                   onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) },
+                                   onInteract: {},
+                                   onSelect: { jump(toWall: $0.startTime - 1 + annotationOffset, autoplay: true, earlier: 2) },
+                                   scale: $timelineScale)
+                    .padding(.top, 6)
+                Rectangle().fill(Theme.accent).frame(width: 2, height: 74).allowsHitTesting(false)
+            }
+            HStack(spacing: 16) {
+                Button { timelineScale = min(timelineScale * 2, HorizontalTimeline.maxScale) } label: {
+                    Image(systemName: "minus.magnifyingglass").font(.system(size: 16))
+                }
+                .accessibilityLabel("Zoom out")
+                Button { timelineScale = max(timelineScale / 2, HorizontalTimeline.minScale) } label: {
+                    Image(systemName: "plus.magnifyingglass").font(.system(size: 16))
+                }
+                .accessibilityLabel("Zoom in")
+                Spacer()
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.textSecondary)
+            .padding(.horizontal, 4)
+        }
+        .padding(.horizontal, 8).padding(.vertical, 8)
+        .card(radius: 12)
     }
 
     private var portraitBody: some View {
@@ -356,7 +465,7 @@ struct PlaybackView: View {
                 .overlay { if preview.showing { PreviewSurface(preview: preview) } }
                 .onTapGesture { toggleOverlay() }
             if loading {
-                ProgressView().tint(.white)
+                VideoSpinner()
             } else if map.isEmpty {
                 VStack(spacing: 6) {
                     Image(systemName: "film.stack").font(.title2)
@@ -366,7 +475,7 @@ struct PlaybackView: View {
             } else if let error = player.error {
                 Text(error).font(.system(size: 13)).foregroundStyle(.white).padding()
             } else if player.isBuffering {
-                ProgressView().tint(.white)
+                VideoSpinner()
             }
         }
         .aspectRatio(16 / 9, contentMode: .fit)
@@ -390,10 +499,13 @@ struct PlaybackView: View {
         }
         .overlay(alignment: .bottom) {
             if !map.isEmpty && overlayVisible {
-                HStack(spacing: 10) {
-                    OverlayButton(systemImage: "gobackward.10", label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
-                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", label: player.wantsToPlay ? "Pause" : "Play") { togglePlay(); keepOverlay() }
-                    OverlayButton(systemImage: "goforward.10", label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
+                // Larger on iPad and Mac, where the video is big.
+                let size: CGFloat = isWide ? 56 : 44
+                HStack(spacing: isWide ? 16 : 10) {
+                    OverlayButton(systemImage: "gobackward.10", size: size, label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
+                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", size: isWide ? 64 : 44,
+                                  label: player.wantsToPlay ? "Pause" : "Play") { togglePlay(); keepOverlay() }
+                    OverlayButton(systemImage: "goforward.10", size: size, label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
                     Menu {
                         ForEach([Float(0.5), 1, 2], id: \.self) { r in
                             Button { player.setRate(r) } label: {
@@ -402,15 +514,22 @@ struct PlaybackView: View {
                         }
                     } label: {
                         Text(rateTitle(player.rate))
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: isWide ? 16 : 13, weight: .bold))
                             .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
+                            .frame(width: size, height: size)
                             .background(.black.opacity(0.6), in: Circle())
                     }
                     .accessibilityLabel("Playback speed")
                 }
-                .padding(10)
+                .padding(isWide ? 16 : 10)
             }
+        }
+        // With a mouse (Mac, iPad with trackpad) the controls show while the pointer moves
+        // over the video, like any video player; they hide again after a few seconds.
+        .onContinuousHover { phase in
+            guard case .active = phase else { return }
+            if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+            keepOverlay()
         }
     }
 
@@ -438,8 +557,13 @@ struct PlaybackView: View {
     private var eventsList: some View {
         ScrollViewReader { proxy in
             ScrollView {
+                // The playhead moves several times a second and every move rebuilds this screen;
+                // the list only needs to change when its rows or the playing event change.
+                let shown = visibleReviews
+                let playingID = currentReview?.id
+                Stable(key: EventsListKey(ids: shown.map(\.id), total: reviews.count, playing: playingID,
+                                          loading: loading, recorded: map.spans.count, filtered: filter.isActive, day: day)) {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    let shown = visibleReviews
                     SectionLabel(text: filter.isActive
                                  ? L("\(FrigateFormat.dayTitle(day)) · \(shown.count) of \(reviews.count) events")
                                  : L("\(FrigateFormat.dayTitle(day)) · \(shown.count) events"))
@@ -457,7 +581,7 @@ struct PlaybackView: View {
                         .frame(maxWidth: .infinity, minHeight: 80)
                     }
                     ForEach(shown) { r in
-                        let playing = currentReview?.id == r.id
+                        let playing = playingID == r.id
                         Button { jump(toWall: r.startTime - 1 + annotationOffset, autoplay: true, earlier: 2) } label: {
                             HStack(spacing: 12) {
                                 RemoteImage(url: client?.thumbnailURL(for: r), session: client?.session ?? .shared)
@@ -506,6 +630,8 @@ struct PlaybackView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+                }
+                .stable()
             }
             .onChange(of: pendingReviewID) { _, id in
                 if let id { proxy.scrollTo(id, anchor: .center) }
@@ -530,6 +656,8 @@ struct PlaybackView: View {
         segments = (s ?? []).sorted { $0.startTime < $1.startTime }
         map = RecordingMap(segments: segments, from: start, to: end)
         await preview.prepare(client: client, camera: camera, start: start, end: end)
+        // Fill the calendar's cache now, so the day picker opens without waiting.
+        Task { [camera] in _ = await DayAvailability.load([(client: client, cameras: [camera])]) }
         chunkStart = nil
         chunkMap = RecordingMap()
         loading = false
@@ -1074,9 +1202,10 @@ extension PlaybackView {
                                        keepOverlay()
                                    },
                                    onInteract: keepOverlay,
+                                   onSelect: { jump(toWall: $0.startTime - 1 + annotationOffset, autoplay: true, earlier: 2); keepOverlay() },
                                    scale: $timelineScale)
                     .padding(.top, 6)
-                Rectangle().fill(Theme.accent).frame(width: 2, height: 52).allowsHitTesting(false)
+                Rectangle().fill(Theme.accent).frame(width: 2, height: 74).allowsHitTesting(false)
             }
             .overlay(alignment: .bottom) {
                 HStack(spacing: 16) {
@@ -1155,5 +1284,27 @@ extension PlaybackView {
         .frame(width: 236)
         .frame(maxHeight: .infinity)
         .background(Theme.card.opacity(0.97).ignoresSafeArea())
+    }
+}
+
+/// What the event list shows; it is redrawn only when this changes.
+private struct EventsListKey: Equatable {
+    let ids: [String]
+    let total: Int
+    let playing: String?
+    let loading: Bool
+    let recorded: Int
+    let filtered: Bool
+    let day: Date
+}
+
+/// A loading spinner that stands out on any picture: large, on a dark disc.
+struct VideoSpinner: View {
+    var body: some View {
+        ProgressView()
+            .controlSize(.large)
+            .tint(.white)
+            .frame(width: 64, height: 64)
+            .background(.black.opacity(0.55), in: Circle())
     }
 }
