@@ -207,10 +207,12 @@ struct PlayerLayerView: UIViewRepresentable {
     /// Called with whether the layer has a frame to show. The player's clock can run
     /// while the layer is still (or again, after the app was in the background) empty.
     var onReadyForDisplay: ((Bool) -> Void)? = nil
+    /// Clear lets what is underneath (a thumbnail) show until the player has a frame.
+    var background: UIColor = .black
 
     func makeUIView(context: Context) -> PlayerUIView {
         let v = PlayerUIView()
-        v.backgroundColor = .black
+        v.backgroundColor = background
         v.playerLayer.player = player
         v.playerLayer.videoGravity = gravity
         v.onReady = onReadyForDisplay

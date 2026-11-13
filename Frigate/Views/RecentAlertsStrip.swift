@@ -97,7 +97,7 @@ struct LoopingVideo: View {
     @State private var ready = false
 
     var body: some View {
-        PlayerLayerView(player: player, gravity: .resizeAspectFill, onReadyForDisplay: { ready = $0 })
+        PlayerLayerView(player: player, gravity: .resizeAspectFill, onReadyForDisplay: { ready = $0 }, background: .clear)
             .opacity(ready ? 1 : 0)
             .allowsHitTesting(false)
             // Runs again each time the tile appears. Every run gets a fresh player: a looper
