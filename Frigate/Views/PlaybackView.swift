@@ -377,11 +377,10 @@ struct PlaybackView: View {
                 HStack(spacing: 6) {
                     timeLabel
                         .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .padding(.horizontal, 8).frame(height: VideoChip.height)
                         .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
-                    if let r = currentReview, let label = r.labels.first {
-                        LabelTag(label: label)
-                    }
+                    // Every object in the event, as icons (text only for labels without one).
+                    ForEach(currentReview?.labels ?? [], id: \.self) { LabelIcon(label: $0, size: VideoChip.height) }
                 }
                 .padding(10)
             }
@@ -472,7 +471,7 @@ struct PlaybackView: View {
                                             .padding(3)
                                     }
                                 VStack(alignment: .leading, spacing: 5) {
-                                    HStack(spacing: 5) { ForEach(r.labels.prefix(3), id: \.self) { LabelTag(label: $0) } }
+                                    HStack(spacing: 5) { ForEach(r.labels, id: \.self) { LabelIcon(label: $0, size: 20) } }
                                     Text(FrigateFormat.time(r.start, seconds: true)).font(.system(size: 14, weight: .semibold))
                                     let zones = (r.data.zones ?? []).map(FrigateFormat.prettyName)
                                     Text(zones.isEmpty ? (r.severity == .alert ? L("Alert") : L("Detection")) : L("Zone: \(zones.joined(separator: ", "))"))
@@ -480,7 +479,13 @@ struct PlaybackView: View {
                                 }
                                 Spacer(minLength: 0)
                                 if playing {
-                                    Text("Playing").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.accent).padding(.trailing, 6)
+                                    // An icon: the text "Playing" wrapped next to a row of labels.
+                                    Image(systemName: "play.fill").font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(Theme.onColor)
+                                        .frame(width: 26, height: 26)
+                                        .background(Theme.accent, in: Circle())
+                                        .padding(.trailing, 4)
+                                        .accessibilityLabel("Playing")
                                 }
                             }
                             .padding(8)
@@ -1024,7 +1029,7 @@ extension PlaybackView {
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .background(.black.opacity(0.55), in: Capsule())
-                if let r = currentReview, let label = r.labels.first { LabelTag(label: label) }
+                ForEach(currentReview?.labels ?? [], id: \.self) { LabelIcon(label: $0, size: 26) }
                 Button { showDatePicker = true; keepOverlay() } label: {
                     Image(systemName: "calendar").font(.system(size: 19)).foregroundStyle(Theme.text).frame(width: 44, height: 44)
                 }
@@ -1128,7 +1133,7 @@ extension PlaybackView {
                                         .frame(width: 64, height: 36)
                                         .clipShape(RoundedRectangle(cornerRadius: 6))
                                     VStack(alignment: .leading, spacing: 3) {
-                                        HStack(spacing: 4) { ForEach(r.labels.prefix(1), id: \.self) { LabelTag(label: $0) } }
+                                        HStack(spacing: 4) { ForEach(r.labels, id: \.self) { LabelIcon(label: $0, size: 18) } }
                                         Text(FrigateFormat.time(r.start, seconds: true)).font(.system(size: 13, weight: .semibold))
                                     }
                                     Spacer(minLength: 0)

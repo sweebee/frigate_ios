@@ -379,9 +379,11 @@ enum FrigateFormat {
     }
 
     /// Frigate object label in the user's language (table Labels.xcstrings), e.g. person -> persoon.
+    /// A label as shown to people: translated, with a capital first letter like Frigate's web UI.
     static func labelName(_ raw: String) -> String {
         let pretty = raw.replacingOccurrences(of: "_", with: " ")
-        return Bundle.main.localizedString(forKey: raw, value: pretty, table: "Labels")
+        let name = Bundle.main.localizedString(forKey: raw, value: pretty, table: "Labels")
+        return name.prefix(1).uppercased() + name.dropFirst()
     }
 
     static func time(_ date: Date, seconds: Bool = false) -> String {

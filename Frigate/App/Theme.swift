@@ -79,6 +79,8 @@ struct SectionLabel: View {
 struct LabelTag: View {
     let label: String
     var size: CGFloat = 11
+    /// Fixed height, to line up with other chips on a video (see `VideoChip`).
+    var height: CGFloat? = nil
     var body: some View {
         Text(FrigateFormat.labelName(label))
             .font(.system(size: size, weight: .bold))
@@ -86,9 +88,15 @@ struct LabelTag: View {
             .fixedSize()
             .foregroundStyle(Theme.onLabel)
             .padding(.horizontal, 7)
-            .padding(.vertical, 2)
-            .background(Theme.labelColor(label), in: RoundedRectangle(cornerRadius: 5))
+            .padding(.vertical, height == nil ? 2 : 0)
+            .frame(height: height)
+            .background(Theme.labelColor(label), in: RoundedRectangle(cornerRadius: height == nil ? 5 : 6))
     }
+}
+
+/// Height of the chips on top of a video (time, labels), so they line up.
+enum VideoChip {
+    static let height: CGFloat = 22
 }
 
 /// A label as an icon for common objects (person, car, ...), else as its name.
@@ -96,25 +104,45 @@ struct LabelIcon: View {
     let label: String
     var size: CGFloat = 18
 
-    /// SF Symbol for Frigate's common labels; nil for others, which keep their text.
+    /// SF Symbol for Frigate's labels, including Frigate+ and audio ones; nil for others,
+    /// which keep their text. Each label lists alternatives, newest symbol first, so older
+    /// iOS versions fall back to one they have.
     static func symbol(for label: String) -> String? {
-        let name: String
+        let candidates: [String]
         switch label {
-        case "person": name = "figure.walk"
-        case "car": name = "car.fill"
-        case "truck": name = "truck.box.fill"
-        case "bus": name = "bus.fill"
-        case "motorcycle": name = "motorcycle"
-        case "bicycle": name = "bicycle"
-        case "boat": name = "sailboat.fill"
-        case "dog": name = "dog.fill"
-        case "cat": name = "cat.fill"
-        case "bird": name = "bird.fill"
-        case "horse": name = "hare.fill"
-        case "package": name = "shippingbox.fill"
+        case "person": candidates = ["figure.walk"]
+        case "face": candidates = ["face.smiling.inverse", "face.smiling"]
+        case "car": candidates = ["car.fill"]
+        case "truck": candidates = ["truck.box.fill"]
+        case "garbage_truck": candidates = ["truck.box.fill"]
+        case "bus", "school_bus": candidates = ["bus.fill"]
+        case "motorcycle": candidates = ["motorcycle", "moped.fill"]
+        case "bicycle": candidates = ["bicycle"]
+        case "boat": candidates = ["sailboat.fill"]
+        case "license_plate": candidates = ["123.rectangle.fill"]
+        case "package": candidates = ["shippingbox.fill"]
+        case "waste_bin": candidates = ["trash.fill"]
+        case "robot_lawnmower": candidates = ["leaf.fill"]
+        // Delivery vans and couriers recognized by Frigate+.
+        case "amazon", "ups", "usps", "fedex", "dhl", "dpd", "gls", "postnl", "postnord", "an_post",
+             "purolator", "nzpost", "canada_post", "royal_mail":
+            candidates = ["box.truck.fill", "truck.box.fill"]
+        case "dog": candidates = ["dog.fill"]
+        case "cat": candidates = ["cat.fill"]
+        case "bird": candidates = ["bird.fill"]
+        case "horse": candidates = ["figure.equestrian.sports", "pawprint.fill"]
+        case "rabbit": candidates = ["hare.fill"]
+        case "deer", "fox", "skunk", "squirrel", "raccoon", "bear", "kangaroo", "cow", "goat", "sheep":
+            candidates = ["pawprint.fill"]
+        // Audio labels.
+        case "speech", "yell": candidates = ["waveform"]
+        case "bark": candidates = ["dog.fill"]
+        case "baby_crying": candidates = ["figure.and.child.holdinghands", "waveform"]
+        case "fire_alarm": candidates = ["light.beacon.max.fill", "bell.and.waves.left.and.right.fill"]
+        case "glass_breaking": candidates = ["burst.fill"]
         default: return nil
         }
-        return UIImage(systemName: name) == nil ? nil : name
+        return candidates.first { UIImage(systemName: $0) != nil }
     }
 
     var body: some View {
