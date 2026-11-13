@@ -286,11 +286,11 @@ final class FrigateClient: @unchecked Sendable {
     // MARK: Media URLs
 
     func latestImageURL(camera: String, height: Int? = nil) -> URL {
-        url("api/\(camera)/latest.jpg", query: ["h": height.map(String.init)])
+        url("api/\(camera)/latest.jpg", query: ["height": height.map(String.init)])
     }
 
     func mjpegURL(camera: String, height: Int = 720) -> URL {
-        url("api/\(camera)", query: ["h": String(height)])
+        url("api/\(camera)", query: ["height": String(height)])
     }
 
     func thumbnailURL(for event: FrigateEvent) -> URL { url("api/events/\(event.id)/thumbnail.webp") }
