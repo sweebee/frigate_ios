@@ -97,12 +97,8 @@ struct HorizontalTimeline: View {
                     scale = min(max(base / v.magnification, Self.minScale), Self.maxScale)
                 }
                 .onEnded { _ in pinchBase = nil })
-            .background {
-                GeometryReader { geo in
-                    Color.clear.preference(key: WidthKey.self, value: geo.size.width)
-                }
-            }
-            .onPreferenceChange(WidthKey.self) { width = $0 }
+            // Its width, for turning a tap's x into a time (a preference here never arrived).
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
             .onTapGesture { p in tap(at: p) }
     }
 
@@ -117,10 +113,6 @@ struct HorizontalTimeline: View {
     }
 
     @State private var width: CGFloat = 0
-    private struct WidthKey: PreferenceKey {
-        static var defaultValue: CGFloat = 0
-        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-    }
 
     static let minScale = 0.25, maxScale = 30.0
 
