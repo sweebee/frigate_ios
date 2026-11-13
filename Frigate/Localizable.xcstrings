@@ -1534,6 +1534,16 @@
         }
       }
     },
+    "Medium tiles": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Middelgrote tegels"
+          }
+        }
+      }
+    },
     "Microphone not available": {
       "localizations": {
         "nl": {
@@ -2762,6 +2772,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deze groep heeft geen camera's op %@."
+          }
+        }
+      }
+    },
+    "Tile size": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tegelgrootte"
           }
         }
       }

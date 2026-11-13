@@ -5,6 +5,7 @@ struct EventDetailView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var item: ReviewItem
     @State private var player = RecordingPlayer()
     @State private var events: [FrigateEvent] = []
@@ -50,7 +51,7 @@ struct EventDetailView: View {
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
     private var clipEnd: Double { min(activityEnd + padding, Date().timeIntervalSince1970) }
 
-    private var isLandscape: Bool { verticalSizeClass == .compact }
+    private var isLandscape: Bool { verticalSizeClass == .compact && horizontalSizeClass != .regular }
 
     var body: some View {
         Group {
@@ -72,6 +73,25 @@ struct EventDetailView: View {
     private var portraitBody: some View {
         VStack(spacing: 0) {
             header
+            if horizontalSizeClass == .regular {
+                // iPad and Mac: video and scrubber beside the details.
+                WideDetailLayout(aspect: conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, reserve: 64) {
+                    VStack(spacing: 0) {
+                        videoPlayer.clipShape(RoundedRectangle(cornerRadius: 12))
+                        scrubber
+                    }
+                } side: {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            info
+                            tiles
+                            lifecycle
+                        }
+                        .padding(.bottom, 16)
+                    }
+                    actions
+                }
+            } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     videoPlayer
@@ -83,6 +103,7 @@ struct EventDetailView: View {
                 .padding(.bottom, 16)
             }
             actions
+            }
         }
         .screenBackground()
     }
@@ -198,13 +219,11 @@ struct EventDetailView: View {
 
     private var header: some View {
         HStack {
+            // Only the arrow, like every other screen.
             Button { dismiss() } label: {
-                HStack(spacing: 2) {
-                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                    Text("Back").font(.system(size: 17))
-                }
-                .frame(height: 44)
+                Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
             }
+            .accessibilityLabel("Back")
             Spacer()
             Button { Task { await download() } } label: {
                 Image(systemName: "square.and.arrow.up").font(.system(size: 19, weight: .medium))

@@ -6,6 +6,7 @@ struct ObjectDetailView: View {
     let route: ObjectRoute
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var timeline: [TimelineEntry] = []
     @State private var share: ShareItem?
     @State private var opening = false
@@ -19,16 +20,33 @@ struct ObjectDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    image
-                    info
-                    tiles
-                    lifecycle
+            if sizeClass == .regular {
+                // iPad and Mac: the snapshot beside the details instead of above them.
+                WideDetailLayout(aspect: camera?.aspectRatio ?? 16 / 9) {
+                    image.clipShape(RoundedRectangle(cornerRadius: 12))
+                } side: {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            info
+                            tiles
+                            lifecycle
+                        }
+                        .padding(.bottom, 16)
+                    }
+                    actions
                 }
-                .padding(.bottom, 16)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        image
+                        info
+                        tiles
+                        lifecycle
+                    }
+                    .padding(.bottom, 16)
+                }
+                actions
             }
-            actions
         }
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
@@ -44,13 +62,11 @@ struct ObjectDetailView: View {
 
     private var header: some View {
         HStack {
+            // Only the arrow, like every other screen.
             Button { dismiss() } label: {
-                HStack(spacing: 2) {
-                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                    Text("Back").font(.system(size: 17))
-                }
-                .frame(height: 44)
+                Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
             }
+            .accessibilityLabel("Back")
             Spacer()
             if event.hasSnapshot == true {
                 Button { Task { await shareSnapshot() } } label: {
@@ -200,6 +216,35 @@ struct ObjectDetailView: View {
             share = ShareItem(items: [file])
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// Media on the left at its own aspect ratio, as large as the window allows, and a column of
+/// details on the right; for iPad and Mac.
+struct WideDetailLayout<Media: View, Side: View>: View {
+    let aspect: Double
+    /// Height under the picture that `media` also uses, e.g. a scrubber.
+    var reserve: CGFloat = 0
+    @ViewBuilder let media: Media
+    @ViewBuilder let side: Side
+
+    var body: some View {
+        GeometryReader { geo in
+            let sideWidth = min(400, geo.size.width * 0.36)
+            let maxWidth = max(200, geo.size.width - sideWidth - 48)
+            let height = min(maxWidth / aspect, max(160, geo.size.height - 24 - reserve))
+            HStack(alignment: .top, spacing: 16) {
+                media
+                    .frame(width: height * aspect, height: height + reserve, alignment: .top)
+                    .frame(width: maxWidth, alignment: .top)
+                VStack(spacing: 0) { side }
+                    .frame(width: sideWidth)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
     }
 }

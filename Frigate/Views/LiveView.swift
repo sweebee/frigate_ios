@@ -7,8 +7,12 @@ struct LiveView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Bigger tiles: one column on iPhone, fewer and wider tiles on iPad.
     @AppStorage("liveLargeTiles") private var largeTiles = false
-    /// Columns on wide screens (iPad, Mac), picked in the header.
-    @AppStorage("liveColumns") private var wideColumns = 3
+    /// Columns on wide screens; the choices fit the device (a Mac window has room for more).
+    @AppStorage("liveWideColumns") private var storedColumns = 0
+    private static let columnChoices: [Int] = ProcessInfo.processInfo.isMacCatalystApp ? [3, 4, 5, 6] : [2, 3, 4]
+    private var wideColumns: Int {
+        Self.columnChoices.contains(storedColumns) ? storedColumns : Self.columnChoices[1]
+    }
 
     /// Two columns on iPhone (or one with large tiles); on iPad and Mac as many as fit.
     private var columns: [GridItem] {
@@ -47,30 +51,23 @@ struct LiveView: View {
         }
     }
 
-    private static func columnsIcon(_ n: Int) -> String {
-        switch n {
-        case 1: return "rectangle"
-        case 2: return "rectangle.split.2x1"
-        case 3: return "rectangle.split.3x1"
-        default: return "square.grid.4x3.fill"
-        }
-    }
-
     private var header: some View {
         HStack {
             LargeTitle(text: L("Live"))
             Spacer()
             if sizeClass == .regular {
-                // Wide screens: pick how many tiles side by side.
-                Picker("Columns", selection: Binding(get: { wideColumns }, set: { c in
-                    withAnimation(.easeOut(duration: 0.2)) { wideColumns = c }
-                })) {
-                    ForEach([1, 2, 3, 4], id: \.self) { n in
-                        Image(systemName: Self.columnsIcon(n)).tag(n).accessibilityLabel("\(n)")
+                // Wide screens: how many cameras side by side, as plain numbers so it says
+                // exactly what you get.
+                HStack(spacing: 8) {
+                    Image(systemName: "square.grid.2x2").font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
+                    Picker("Columns", selection: Binding(get: { wideColumns }, set: { c in
+                        withAnimation(.easeOut(duration: 0.2)) { storedColumns = c }
+                    })) {
+                        ForEach(Self.columnChoices, id: \.self) { n in Text("\(n)").tag(n) }
                     }
+                    .pickerStyle(.segmented)
+                    .frame(width: CGFloat(Self.columnChoices.count) * 40)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 180)
             } else {
                 Button {
                     withAnimation(.easeOut(duration: 0.2)) { largeTiles.toggle() }
