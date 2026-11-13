@@ -374,8 +374,10 @@ struct BackButtonLabel: View {
                 .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
         } else {
+            // On the content's edge, like the titles below it.
             Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                .frame(width: 44, height: 44)
+                .frame(width: 44, height: 44, alignment: .leading)
+                .contentShape(Rectangle())
         }
     }
 }
@@ -399,18 +401,14 @@ struct HeaderIconLabel: View {
         } else {
             Image(systemName: systemName).font(.system(size: 19, weight: .medium))
                 .foregroundStyle(Theme.text)
-                .frame(width: 44, height: 44)
+                .frame(width: 44, height: 44, alignment: .trailing)
+                .contentShape(Rectangle())
         }
     }
 }
 
 extension View {
-    /// Side margins of a screen's top bar: on iPad and Mac the bar's squares line up with the
-    /// content's 16 pt margin; on the phone the bare icons sit a little further out.
-    func headerBarPadding() -> some View { modifier(HeaderBarPadding()) }
+    /// Side margins of a screen's top bar: its buttons line up with the content's 16 pt margin.
+    func headerBarPadding() -> some View { padding(.horizontal, 16) }
 }
 
-private struct HeaderBarPadding: ViewModifier {
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    func body(content: Content) -> some View { content.padding(.horizontal, sizeClass == .regular ? 16 : 8) }
-}

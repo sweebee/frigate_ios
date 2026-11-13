@@ -42,17 +42,17 @@ struct MotionReviewView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ZStack(alignment: .bottom) {
+            // The controls under the grid, so they never cover a camera's name.
+            VStack(spacing: 0) {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: isWide ? 260 : 150), spacing: 10)], spacing: 10) {
                         ForEach(cams) { cam in tile(cam) }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-                    // Room for the controls floating at the bottom.
-                    .padding(.bottom, 90)
+                    .padding(.bottom, 12)
                 }
-                controls.padding(.bottom, 16)
+                controls.padding(.vertical, 10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             PlaybackTimeline(dayStart: rangeStart, dayEnd: rangeEnd, wallTime: wallTime, motion: combined, reviews: [],
