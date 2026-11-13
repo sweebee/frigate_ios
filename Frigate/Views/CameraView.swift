@@ -197,21 +197,18 @@ struct CameraView: View {
         }
         .aspectRatio(player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio, contentMode: .fit)
         .frame(maxWidth: .infinity)
-        .overlay(alignment: .topLeading) { recBadge.padding(10) }
-        .overlay(alignment: .topTrailing) {
-            ClockLabel()
-                .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
-                .padding(10)
+        // Time top left, like the playback screens.
+        .overlay(alignment: .topLeading) {
+            HStack(spacing: 6) {
+                clock(size: 12)
+                recBadge
+                // Objects being tracked, like the label beside the time in playback.
+                ForEach(conn?.activeObjects[camera.name] ?? [], id: \.self) { LabelIcon(label: $0, size: VideoChip.height) }
+            }
+            .padding(10)
         }
         .overlay(alignment: .bottomTrailing) { streamChip.padding(8) }
-        .overlay(alignment: .bottomLeading) {
-            let objects = conn?.activeObjects[camera.name] ?? []
-            if !objects.isEmpty {
-                HStack(spacing: 4) { ForEach(objects, id: \.self) { LabelIcon(label: $0) } }.padding(10)
-            }
-        }
+
     }
 
     @ViewBuilder
@@ -268,21 +265,31 @@ struct CameraView: View {
 
     @ViewBuilder
     private var recBadge: some View {
-            if let recordingNow {
+            // Recording shows as a red dot in the clock; only a stopped recording gets a badge.
+            if recordingNow == false {
                 HStack(spacing: 5) {
-                    if recordingNow {
-                        StatusDot(color: Theme.recording, size: 6)
-                        Text("REC")
-                    } else {
-                        Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10))
-                        Text("Not recording")
-                    }
+                    Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 10))
+                    Text("Not recording")
                 }
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(recordingNow ? Theme.text : Theme.onLabel)
+                .foregroundStyle(Theme.onLabel)
                 .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(recordingNow ? Color.black.opacity(0.6) : Theme.warning, in: RoundedRectangle(cornerRadius: 6))
+                .background(Theme.warning, in: RoundedRectangle(cornerRadius: 6))
             }
+    }
+
+    /// The running clock, with a red dot while the camera is recording.
+    private func clock(size: CGFloat) -> some View {
+        HStack(spacing: 5) {
+            if recordingNow == true {
+                StatusDot(color: Theme.recording, size: size * 0.55).accessibilityLabel("Recording")
+            }
+            ClockLabel()
+        }
+        .font(.system(size: size, weight: .semibold).monospacedDigit())
+        // Same look as the time label in playback.
+        .padding(.horizontal, 8).frame(height: VideoChip.height)
+        .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
     }
 
     // MARK: Landscape
@@ -318,10 +325,7 @@ struct CameraView: View {
                         Spacer()
                         recBadge
                         streamChip.simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
-                        ClockLabel()
-                            .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                            .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(.black.opacity(0.55), in: Capsule())
+                        clock(size: 13)
                         moreMenu.simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                     }
                     .foregroundStyle(Theme.text)
