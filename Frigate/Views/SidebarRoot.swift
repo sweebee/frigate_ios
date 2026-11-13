@@ -23,6 +23,11 @@ struct SidebarRoot: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Mac: the hidden title bar keeps 28 pt at the top. The window buttons sit over
+            // the rail, so the screens move up into that room. Done with layout, not the safe
+            // area: changing that made every newly opened screen jump once.
+            .padding(.bottom, isMac ? -18 : 0)
+            .offset(y: isMac ? -18 : 0)
         }
         .onAppear(perform: hideWindowTitle)
     }
@@ -51,19 +56,6 @@ struct SidebarRoot: View {
         #if targetEnvironment(macCatalyst)
         for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
             scene.titlebar?.titleVisibility = .hidden
-            // The hidden title bar still keeps 28 pt at the top as safe area, which the
-            // navigation stacks honour whatever SwiftUI says. The window buttons sit over the
-            // rail, so let everything start 10 pt below the window's top edge instead.
-        }
-        // Once laid out: the window's real top inset is known only then.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
-                for window in scene.windows {
-                    guard let root = window.rootViewController else { continue }
-                    let systemTop = window.safeAreaInsets.top - root.additionalSafeAreaInsets.top
-                    root.additionalSafeAreaInsets.top = min(0, 10 - systemTop)
-                }
-            }
         }
         #endif
     }

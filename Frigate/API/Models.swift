@@ -10,9 +10,12 @@ struct FrigateConfig: Decodable {
     var cameraGroups: [String: CameraGroupConfig]?
     /// A GenAI provider has the "chat" role, so /api/chat/completion works (Frigate 0.18+).
     var supportsChat = false
+    /// License plate recognition is on, for the server or a camera (a camera can only turn it
+    /// off when the server has it on).
+    var recognizesPlates = false
 
     enum CodingKeys: String, CodingKey {
-        case cameras, genai
+        case cameras, genai, lpr
         case cameraGroups = "camera_groups"
     }
 
@@ -26,6 +29,8 @@ struct FrigateConfig: Decodable {
         if let providers = try? c.decodeIfPresent([String: GenAIProvider].self, forKey: .genai) {
             supportsChat = providers.values.contains { $0.roles?.contains("chat") == true }
         }
+        let global = (try? c.decodeIfPresent(CameraConfig.Toggle.self, forKey: .lpr))??.enabled == true
+        recognizesPlates = cameras.values.contains { $0.enabled != false && ($0.lpr?.enabled ?? global) }
     }
 
     /// Cameras shown on the dashboard, in UI order.
@@ -60,6 +65,8 @@ struct CameraConfig: Decodable {
     var zones: [String: AnyJSON]?
     var onvif: Onvif?
     var ffmpeg: Ffmpeg?
+    /// License plate recognition on this camera.
+    var lpr: Toggle?
 
     struct Detect: Decodable {
         var enabled: Bool?; var width: Int?; var height: Int?
@@ -80,7 +87,7 @@ struct CameraConfig: Decodable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case name, enabled, detect, record, audio, live, ui, zones, onvif, ffmpeg
+        case name, enabled, detect, record, audio, live, ui, zones, onvif, ffmpeg, lpr
         case friendlyName = "friendly_name"
     }
 

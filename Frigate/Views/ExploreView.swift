@@ -91,8 +91,9 @@ struct ExploreView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             LargeTitle(text: L("Explore")).padding(.horizontal, 16)
-            // Only when a server has recognized plates (Frigate's license plate recognition).
-            if !knownPlates.isEmpty { plateSearch }
+            // Only when a server recognizes plates now (Frigate's license plate recognition) and
+            // has found some; plates left from before it was turned off do not count.
+            if !knownPlates.isEmpty && connections.contains(where: { $0.config?.recognizesPlates == true }) { plateSearch }
             filters
         }
         .padding(.top, 8)
