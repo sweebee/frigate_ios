@@ -307,6 +307,8 @@ final class AppModel {
     var livePath = NavigationPath() { didSet { if livePath.isEmpty { openCamera = nil } } }
     /// The camera picked in the sidebar (wide layout), so the sidebar can mark it.
     var openCamera: CameraRoute?
+    /// A video fills the window (iPad and Mac): the section rail steps aside.
+    var immersive = false
     var reviewPath = NavigationPath()
     var explorePath = NavigationPath()
     /// Set by deep links to switch the Review segment (alert, detection, motion).

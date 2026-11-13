@@ -20,6 +20,9 @@ struct CameraView: View {
     @State private var loadingReviews = true
     @State private var share: ShareItem?
     @State private var fullscreen = false
+    /// iPad and Mac: the video fills the window. The same player keeps playing (the stream
+    /// is not opened again); only the things around it step aside.
+    @State private var filling = false
     @State private var showPTZ = false
     /// PTZ pads drawn on the video in landscape (a sheet would cover the picture).
     @State private var landscapePTZ = false
@@ -72,7 +75,10 @@ struct CameraView: View {
         // Again once the server is connected: opened from a link at launch, it is not yet.
         .task(id: conn?.client == nil) { await loadReviews() }
         .task { await watchRecording() }
-        .onDisappear { player.suspended = true; player.talking = false }
+        .onDisappear {
+            player.suspended = true; player.talking = false
+            if filling { filling = false; model.immersive = false }
+        }
         .task(id: player.stream) {
             guard let client = conn?.client else { return }
             let stream = player.stream.isEmpty ? route.camera : player.stream
@@ -116,7 +122,7 @@ struct CameraView: View {
 
     private var portraitBody: some View {
         VStack(spacing: 0) {
-            header
+            if !filling { header }
             if let conn, let client = conn.client, let camera {
                 Group {
                     if isWide {
@@ -125,7 +131,7 @@ struct CameraView: View {
                         GeometryReader { geo in
                             VStack(spacing: 0) {
                                 playerView(client: client, camera: camera)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .clipShape(RoundedRectangle(cornerRadius: filling ? 0 : 12))
                                     .overlay(alignment: .bottom) {
                                         if showOverlayControls {
                                             overlayControls(client: client, camera: camera)
@@ -144,10 +150,17 @@ struct CameraView: View {
                                     .frame(width: videoHeight(geo.size, camera) * videoAspect(camera),
                                            height: videoHeight(geo.size, camera))
                                     .frame(maxWidth: .infinity)
-                                today(conn: conn)
+                                if !filling { today(conn: conn) }
                                 Spacer(minLength: 0)
                             }
-                            .padding(.top, 4)
+                            .padding(.top, filling ? 0 : 4)
+                            .frame(maxHeight: .infinity, alignment: filling ? .center : .top)
+                        }
+                        .background(filling ? Color.black.ignoresSafeArea() : nil)
+                        .background {
+                            if filling {
+                                Button("") { setFilling(false) }.keyboardShortcut(.cancelAction).opacity(0)
+                            }
                         }
                         // The controls hide after 4 seconds without use, as in playback.
                         .task(id: overlayToken) {
@@ -497,7 +510,13 @@ struct CameraView: View {
     }
 
     private func videoHeight(_ size: CGSize, _ camera: CameraConfig) -> CGFloat {
-        max(160, min((size.width - 32) / videoAspect(camera), size.height - Self.wideStripHeight))
+        if filling { return min(size.width / videoAspect(camera), size.height) }
+        return max(160, min((size.width - 32) / videoAspect(camera), size.height - Self.wideStripHeight))
+    }
+
+    private func setFilling(_ on: Bool) {
+        withAnimation(.easeOut(duration: 0.2)) { filling = on; model.immersive = on }
+        keepOverlay()
     }
 
     /// Height under the video on wide screens: today's row of events.
@@ -517,7 +536,8 @@ struct CameraView: View {
             if camera.hasOnvif {
                 overlayButton("arrow.up.and.down.and.arrow.left.and.right", "PTZ") { showPTZ = true }
             }
-            overlayButton("arrow.up.left.and.arrow.down.right", "Fullscreen") { fullscreen = true }
+            overlayButton(filling ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
+                          filling ? "Exit full screen" : "Fullscreen") { setFilling(!filling) }
         }
         .padding(16)
     }

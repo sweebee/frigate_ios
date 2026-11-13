@@ -281,6 +281,26 @@ struct PlaybackOverlayControls: View {
     }
 }
 
+/// Enters or leaves full screen over a video; Escape leaves it on the Mac.
+struct FullscreenButton: View {
+    let isOn: Bool
+    var size: CGFloat = 36
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: isOn ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: size, height: size)
+                .background(.black.opacity(0.6), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isOn ? "Exit full screen" : "Full screen")
+        .help(Text(isOn ? "Exit full screen" : "Full screen"))
+    }
+}
+
 /// Round translucent button used over video.
 struct OverlayButton: View {
     let systemImage: String

@@ -22,6 +22,7 @@ struct HorizontalTimeline: View {
     @Binding var scale: Double
     @State private var pinchBase: Double?
     @State private var dragStartTime: Double?
+    @State private var fling = TimelineFling()
 
     private let barWidth: CGFloat = 3
     private let barArea: CGFloat = 30
@@ -36,6 +37,7 @@ struct HorizontalTimeline: View {
             .gesture(DragGesture(minimumDistance: 2)
                 .onChanged { v in
                     onInteract()
+                    if dragStartTime == nil { fling.cancel() }
                     let base = dragStartTime ?? wallTime
                     if dragStartTime == nil { dragStartTime = base }
                     // Dragging right moves back in time.
@@ -44,7 +46,15 @@ struct HorizontalTimeline: View {
                 .onEnded { v in
                     let base = dragStartTime ?? wallTime
                     dragStartTime = nil
-                    onScrubEnd(clamp(base - Double(v.translation.width) * scale), scale * 24)
+                    let released = clamp(base - Double(v.translation.width) * scale)
+                    // A quick swipe keeps going, like scrolling.
+                    if abs(v.velocity.width) > TimelineFling.minimumSpeed {
+                        let snap = scale * 24
+                        fling.start(from: released, velocity: -Double(v.velocity.width) * scale, clamp: clamp,
+                                    step: onScrub, end: { onScrubEnd($0, snap) })
+                    } else {
+                        onScrubEnd(released, scale * 24)
+                    }
                 })
             .simultaneousGesture(MagnifyGesture()
                 .onChanged { v in
@@ -184,5 +194,44 @@ struct HorizontalTimeline: View {
             }
             lt += interval
         }
+    }
+}
+
+/// Keeps a timeline moving after the finger lets go, slowing down like an iOS scroll view.
+/// A new touch stops it.
+@MainActor
+final class TimelineFling {
+    private var task: Task<Void, Never>?
+
+    /// Points per second below which a release just stops.
+    static let minimumSpeed: CGFloat = 300
+
+    /// `velocity` is in timeline seconds per second. Calls `step` every frame with the new
+    /// time and `end` once with where it came to rest.
+    func start(from time: Double, velocity: Double, clamp: @escaping (Double) -> Double,
+               step: @escaping (Double) -> Void, end: @escaping (Double) -> Void) {
+        cancel()
+        task = Task { @MainActor in
+            var t = time, v = velocity
+            let frame = 1.0 / 60
+            // UIScrollView's normal deceleration: speed drops 0.2 % every millisecond.
+            let decay = pow(0.998, frame * 1000)
+            while abs(v) * frame > 0.0001, !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(frame))
+                if Task.isCancelled { return }
+                let next = clamp(t + v * frame)
+                if next == t { break } // hit the start or end of the day
+                t = next
+                v *= decay
+                step(t)
+                if abs(v) < abs(velocity) * 0.02 { break }
+            }
+            if !Task.isCancelled { end(t) }
+        }
+    }
+
+    func cancel() {
+        task?.cancel()
+        task = nil
     }
 }

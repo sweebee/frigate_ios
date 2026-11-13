@@ -9,8 +9,10 @@ struct SidebarRoot: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            rail
-            Divider().overlay(Theme.cardBorder)
+            if !model.immersive {
+                rail
+                Divider().overlay(Theme.cardBorder)
+            }
             Group {
                 switch model.tab {
                 case .live: LiveView()

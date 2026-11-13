@@ -19,6 +19,8 @@ struct EventDetailView: View {
     /// Landscape: the controls drawn over the video; they hide by themselves during playback.
     @State private var overlayVisible = true
     @State private var overlayToken = 0
+    /// iPad and Mac: the video fills the window with the landscape controls; same player.
+    @State private var fullscreen = false
 
     /// Seconds of recording shown before and after the review item.
     private let padding: Double = 5
@@ -55,7 +57,7 @@ struct EventDetailView: View {
 
     var body: some View {
         Group {
-            if isLandscape { landscapeBody } else { portraitBody }
+            if isLandscape || fullscreen { landscapeBody } else { portraitBody }
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
@@ -78,7 +80,7 @@ struct EventDetailView: View {
         .onChange(of: player.wantsToPlay) { _, playing in
             if !playing { withAnimation(.easeOut(duration: 0.2)) { overlayVisible = true } }
         }
-        .onDisappear { player.stop() }
+        .onDisappear { player.stop(); if fullscreen { model.immersive = false } }
     }
 
     private var portraitBody: some View {
@@ -156,13 +158,23 @@ struct EventDetailView: View {
 
     private func keepOverlay() { overlayToken += 1 }
 
+    private func setFullscreen(_ on: Bool) {
+        withAnimation(.easeOut(duration: 0.2)) { fullscreen = on; model.immersive = on }
+        keepOverlay()
+    }
+
     private var landscapeOverlay: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                if fullscreen {
+                    FullscreenButton(isOn: true, size: 40) { setFullscreen(false) }
+                        .keyboardShortcut(.cancelAction)
+                } else {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Back")
                 }
-                .accessibilityLabel("Back")
                 VStack(alignment: .leading, spacing: 1) {
                     Text(conn?.config?.cameras[item.camera]?.displayName ?? FrigateFormat.prettyName(item.camera))
                         .font(.system(size: 15, weight: .semibold))
@@ -262,6 +274,11 @@ struct EventDetailView: View {
             if overlayVisible && canPlay {
                 PlaybackOverlayControls(player: player, large: horizontalSizeClass == .regular, onUse: keepOverlay)
                     .transition(.opacity)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if overlayVisible && horizontalSizeClass == .regular && !noRecording {
+                FullscreenButton(isOn: false) { setFullscreen(true) }.padding(10).transition(.opacity)
             }
         }
         .onContinuousHover { phase in

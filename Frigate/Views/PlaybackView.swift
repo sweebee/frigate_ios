@@ -94,6 +94,9 @@ struct PlaybackView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     // Landscape playback state.
     @State private var overlayVisible = true
+    /// iPad and Mac: the video fills the window, with the landscape controls. The same player
+    /// keeps playing; only its picture moves.
+    @State private var fullscreen = false
     @State private var showEventsPanel = false
     @State private var overlayToken = 0
     /// A menu in the overlay is open; the overlay must not hide underneath it.
@@ -200,7 +203,7 @@ struct PlaybackView: View {
 
     var body: some View {
         Group {
-            if isWide { wideBody } else if isLandscape { landscapeBody } else { portraitBody }
+            if isWide && fullscreen { landscapeBody } else if isWide { wideBody } else if isLandscape { landscapeBody } else { portraitBody }
         }
         .overlay(alignment: .top) { ExportToast(state: exporter.state) }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
@@ -219,7 +222,7 @@ struct PlaybackView: View {
                 overlayToken += 1
             }
         }
-        .onDisappear { player.stop() }
+        .onDisappear { player.stop(); if fullscreen { model.immersive = false } }
         .onChange(of: player.finishedCount) { _, _ in
             // Continue with the next hour that has recordings.
             guard let chunkStart else { return }
@@ -499,7 +502,13 @@ struct PlaybackView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !map.isEmpty && overlayVisible { saveMenu.padding(10).transition(.opacity) }
+            if !map.isEmpty && overlayVisible {
+                HStack(spacing: 8) {
+                    saveMenu
+                    FullscreenButton(isOn: false) { setFullscreen(true) }
+                }
+                .padding(10).transition(.opacity)
+            }
         }
         .overlay(alignment: .bottom) {
             if !map.isEmpty && overlayVisible {
@@ -798,6 +807,7 @@ struct PlaybackTimeline: View {
     /// Seconds per row.
     @State private var zoomIndex = 2
     @State private var dragStartTime: Double?
+    @State private var fling = TimelineFling()
     /// When an event was last tapped. A tap that moves a little also ends a drag, which must
     /// not then seek back to where the finger started.
     @State private var lastTap = Date.distantPast
@@ -818,6 +828,7 @@ struct PlaybackTimeline: View {
                 Canvas { ctx, size in draw(ctx, size: size) }
                     .contentShape(Rectangle())
                     .simultaneousGesture(SpatialTapGesture().onEnded { tap in
+                        fling.cancel()
                         if let r = review(at: tap.location, size: geo.size) {
                             lastTap = Date()
                             onSelect(r)
@@ -825,6 +836,7 @@ struct PlaybackTimeline: View {
                     })
                     .gesture(DragGesture(minimumDistance: 10)
                         .onChanged { v in
+                            if dragStartTime == nil { fling.cancel() }
                             let base = dragStartTime ?? wallTime
                             if dragStartTime == nil { dragStartTime = base }
                             // Dragging down moves to later times (newest is on top).
@@ -834,7 +846,15 @@ struct PlaybackTimeline: View {
                             let base = dragStartTime ?? wallTime
                             dragStartTime = nil
                             if Date().timeIntervalSince(lastTap) < 0.5 { onScrubCancel(); return }
-                            onScrubEnd(clamp(base + Double(v.translation.height) * secondsPerPoint), secondsPerPoint * 24)
+                            let released = clamp(base + Double(v.translation.height) * secondsPerPoint)
+                            let snap = secondsPerPoint * 24
+                            // A quick swipe keeps going, like scrolling.
+                            if abs(v.velocity.height) > TimelineFling.minimumSpeed {
+                                fling.start(from: released, velocity: Double(v.velocity.height) * secondsPerPoint, clamp: clamp,
+                                            step: onScrub, end: { onScrubEnd($0, snap) })
+                            } else {
+                                onScrubEnd(released, snap)
+                            }
                         })
 
                 // Playhead
@@ -1128,14 +1148,24 @@ extension PlaybackView {
 
     private func keepOverlay() { overlayToken += 1 }
 
+    func setFullscreen(_ on: Bool) {
+        withAnimation(.easeOut(duration: 0.2)) { fullscreen = on; model.immersive = on }
+        keepOverlay()
+    }
+
     private var landscapeOverlay: some View {
         VStack(spacing: 0) {
             // Top bar
             HStack(spacing: 12) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                if fullscreen {
+                    FullscreenButton(isOn: true, size: 40) { setFullscreen(false) }
+                        .keyboardShortcut(.cancelAction)
+                } else {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Back")
                 }
-                .accessibilityLabel("Back")
                 Stable(key: [camera, conn?.server.name ?? ""] + (conn?.cameras.map(\.name) ?? [])) { cameraMenu }.stable()
                     .simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                 Spacer()

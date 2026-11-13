@@ -1265,6 +1265,16 @@
         }
       }
     },
+    "Exit full screen": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volledig scherm sluiten"
+          }
+        }
+      }
+    },
     "Explore": {
       "localizations": {
         "nl": {
@@ -1331,6 +1341,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vanaf de afspeelpositie"
+          }
+        }
+      }
+    },
+    "Full screen": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volledig scherm"
           }
         }
       }
