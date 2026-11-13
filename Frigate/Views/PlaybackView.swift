@@ -1117,6 +1117,13 @@ extension PlaybackView {
                 .overlay { if preview.showing { PreviewSurface(preview: preview) } }
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
+                // With a mouse (Mac, iPad with trackpad) the controls come back when the pointer
+                // moves over the video; a click or tap toggles them as on a touch screen.
+                .onContinuousHover { phase in
+                    guard case .active = phase else { return }
+                    if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+                    keepOverlay()
+                }
             if loading {
                 ProgressView().tint(.white)
             } else if map.isEmpty {
@@ -1210,6 +1217,8 @@ extension PlaybackView {
             }
             .foregroundStyle(Theme.text)
             .padding(.horizontal, 8)
+            // Mac full screen: below the window buttons, which sit in the top-left corner.
+            .padding(.top, fullscreen && ProcessInfo.processInfo.isMacCatalystApp ? 26 : 0)
             .background(Color.black.opacity(0.55).ignoresSafeArea(edges: [.top, .horizontal]))
 
             // Middle: play controls centered, side buttons on the right.

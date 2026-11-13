@@ -133,6 +133,13 @@ struct EventDetailView: View {
                     withAnimation(.easeOut(duration: 0.2)) { overlayVisible.toggle() }
                     keepOverlay()
                 }
+                // With a mouse (Mac, iPad with trackpad) the controls come back when the pointer
+                // moves over the video; a click or tap toggles them as on a touch screen.
+                .onContinuousHover { phase in
+                    guard case .active = phase else { return }
+                    if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+                    keepOverlay()
+                }
             playerStatus(showPlay: !overlayVisible)
             if overlayVisible {
                 landscapeOverlay.transition(.opacity)
@@ -197,6 +204,8 @@ struct EventDetailView: View {
             }
             .foregroundStyle(Theme.text)
             .padding(.horizontal, 8)
+            // Mac full screen: below the window buttons, which sit in the top-left corner.
+            .padding(.top, fullscreen && ProcessInfo.processInfo.isMacCatalystApp ? 26 : 0)
             .background(Color.black.opacity(0.75).ignoresSafeArea(edges: [.top, .horizontal]))
 
             HStack(spacing: 18) {
