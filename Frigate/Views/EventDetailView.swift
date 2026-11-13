@@ -227,13 +227,13 @@ struct EventDetailView: View {
             .accessibilityLabel("Back")
             Spacer()
             Button { Task { await download() } } label: {
-                Image(systemName: "square.and.arrow.up").font(.system(size: 19, weight: .medium))
-                    .frame(width: 44, height: 44)
+                HeaderIconLabel(systemName: "square.and.arrow.up")
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Share clip")
             .disabled(downloading || item.inProgress)
         }
-        .padding(.horizontal, 8)
+        .headerBarPadding()
         .padding(.bottom, 8)
     }
 

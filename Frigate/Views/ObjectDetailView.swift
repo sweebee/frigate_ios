@@ -67,13 +67,13 @@ struct ObjectDetailView: View {
             Spacer()
             if event.hasSnapshot == true {
                 Button { Task { await shareSnapshot() } } label: {
-                    Image(systemName: "square.and.arrow.up").font(.system(size: 19, weight: .medium))
-                        .frame(width: 44, height: 44)
+                    HeaderIconLabel(systemName: "square.and.arrow.up")
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Share snapshot")
             }
         }
-        .padding(.horizontal, 8)
+        .headerBarPadding()
         .padding(.bottom, 8)
     }
 

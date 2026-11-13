@@ -219,7 +219,7 @@ struct CameraView: View {
             Spacer()
             moreMenu
         }
-        .padding(.horizontal, 8)
+        .headerBarPadding()
         .padding(.bottom, 8)
     }
 
@@ -234,9 +234,7 @@ struct CameraView: View {
                 }
                 Button { player.reloadToken += 1 } label: { Label("Reload stream", systemImage: "arrow.clockwise") }
             } label: {
-                Image(systemName: "ellipsis").font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Theme.text)
-                    .frame(width: 44, height: 44)
+                HeaderIconLabel(systemName: "ellipsis")
             }
             .accessibilityLabel("More options")
     }

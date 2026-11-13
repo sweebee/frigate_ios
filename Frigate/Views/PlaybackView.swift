@@ -259,6 +259,9 @@ struct PlaybackView: View {
                         .stable()
                         eventsList
                     }
+                    // The filters and the list bring the phone's 16 pt margins; here the column
+                    // itself is the margin, so their rows line up with the video and the window.
+                    .padding(.horizontal, -16)
                     .frame(width: side)
                 }
                 .padding(.horizontal, 16)
@@ -431,11 +434,12 @@ struct PlaybackView: View {
             Stable(key: [camera, conn?.server.name ?? ""] + (conn?.cameras.map(\.name) ?? [])) { cameraMenu }.stable()
             Spacer()
             Button { showDatePicker = true } label: {
-                Image(systemName: "calendar").font(.system(size: 19)).foregroundStyle(Theme.text).frame(width: 44, height: 44)
+                HeaderIconLabel(systemName: "calendar")
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Pick date")
         }
-        .padding(.horizontal, 8)
+        .headerBarPadding()
         .padding(.bottom, 6)
     }
 

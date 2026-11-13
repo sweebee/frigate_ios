@@ -370,11 +370,47 @@ struct BackButtonLabel: View {
                 .frame(width: 40, height: 40)
                 .background(Theme.control, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.controlBorder, lineWidth: 1))
-                .frame(width: 44, height: 44)
+                // No extra width: the square's edge lines up with the content below.
+                .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
         } else {
             Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
                 .frame(width: 44, height: 44)
         }
     }
+}
+
+/// A button in a screen's top bar beside the back button: the same raised square on iPad and
+/// Mac, a bare icon on the phone.
+struct HeaderIconLabel: View {
+    let systemName: String
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        if sizeClass == .regular {
+            Image(systemName: systemName)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.text)
+                .frame(width: 40, height: 40)
+                .background(Theme.control, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.controlBorder, lineWidth: 1))
+                .frame(width: 40, height: 44)
+                .contentShape(Rectangle())
+        } else {
+            Image(systemName: systemName).font(.system(size: 19, weight: .medium))
+                .foregroundStyle(Theme.text)
+                .frame(width: 44, height: 44)
+        }
+    }
+}
+
+extension View {
+    /// Side margins of a screen's top bar: on iPad and Mac the bar's squares line up with the
+    /// content's 16 pt margin; on the phone the bare icons sit a little further out.
+    func headerBarPadding() -> some View { modifier(HeaderBarPadding()) }
+}
+
+private struct HeaderBarPadding: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    func body(content: Content) -> some View { content.padding(.horizontal, sizeClass == .regular ? 16 : 8) }
 }
