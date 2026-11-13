@@ -8,6 +8,8 @@ final class LivePlayerState {
     enum Mode: String, CaseIterable { case auto, mse, webrtc, mjpeg }
 
     var muted = true
+    /// UserDefaults key: the user last turned the sound on in a camera's live view.
+    static let soundKey = "liveSound"
     var status = "Connecting"
     var activeMode = ""
     var playing = false

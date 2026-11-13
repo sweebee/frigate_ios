@@ -24,15 +24,12 @@ struct ObjectDetailView: View {
                 // iPad and Mac: the snapshot beside the details instead of above them.
                 WideDetailLayout(aspect: camera?.aspectRatio ?? 16 / 9) {
                     image.clipShape(RoundedRectangle(cornerRadius: 12))
-                } side: {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            info
-                            tiles
-                            lifecycle
-                        }
-                        .padding(.bottom, 16)
-                    }
+                } details: {
+                    info
+                    tiles
+                } extra: {
+                    lifecycle
+                } actions: {
                     actions
                 }
             } else {
@@ -64,7 +61,7 @@ struct ObjectDetailView: View {
         HStack {
             // Only the arrow, like every other screen.
             Button { dismiss() } label: {
-                Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                BackButtonLabel()
             }
             .accessibilityLabel("Back")
             Spacer()
@@ -220,34 +217,88 @@ struct ObjectDetailView: View {
     }
 }
 
-/// Media on the left at its own aspect ratio, as large as the window allows, and a column of
-/// details on the right; for iPad and Mac.
-struct WideDetailLayout<Media: View, Side: View>: View {
+/// iPad and Mac: the media as large as the window allows, with the details around it.
+/// - Upright windows: media across the full width, the details under it.
+/// - Wide windows: media on the left and the details beside it; when the media leaves room
+///   under it (a window not much wider than tall), `extra` fills that room instead of the side.
+/// `details`, `extra` and `actions` bring their own 16 pt side margins.
+struct WideDetailLayout<Media: View, Details: View, Extra: View, Actions: View>: View {
     let aspect: Double
     /// Height under the picture that `media` also uses, e.g. a scrubber.
     var reserve: CGFloat = 0
     @ViewBuilder let media: Media
-    @ViewBuilder let side: Side
+    @ViewBuilder let details: Details
+    @ViewBuilder let extra: Extra
+    @ViewBuilder let actions: Actions
 
     var body: some View {
         GeometryReader { geo in
-            let sideWidth = min(400, geo.size.width * 0.36)
-            let maxWidth = max(200, geo.size.width - sideWidth - 32)
-            let height = min(maxWidth / aspect, max(160, geo.size.height - 28 - reserve))
-            HStack(alignment: .top, spacing: 16) {
+            if geo.size.width < geo.size.height * 1.1 {
+                stacked(geo.size)
+            } else {
+                sideBySide(geo.size)
+            }
+        }
+    }
+
+    private func stacked(_ size: CGSize) -> some View {
+        let width = size.width - 32
+        let height = min(width / aspect, size.height * 0.55)
+        return VStack(spacing: 0) {
+            media
+                .frame(width: height * aspect, height: height + reserve, alignment: .top)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    details
+                    extra
+                }
+                .padding(.bottom, 16)
+            }
+            actions
+        }
+        .padding(.bottom, 8)
+    }
+
+    private func sideBySide(_ size: CGSize) -> some View {
+        let sideWidth = min(400, size.width * 0.36)
+        let maxWidth = max(200, size.width - sideWidth - 32)
+        let height = min(maxWidth / aspect, max(160, size.height - 28 - reserve))
+        // Room left under the media for `extra`.
+        let below = size.height - 28 - reserve - height
+        let extraBelow = below >= 200
+        return HStack(alignment: .top, spacing: 16) {
+            VStack(spacing: 0) {
                 media
                     .frame(width: height * aspect, height: height + reserve, alignment: .top)
-                    .frame(width: maxWidth, alignment: .top)
-                VStack(spacing: 0) { side }
-                    .frame(width: sideWidth)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                if extraBelow {
+                    ScrollView {
+                        // Its margins are for a column of its own; under the media it lines
+                        // up with the media's edges instead.
+                        extra.padding(.horizontal, -16).padding(.bottom, 16)
+                    }
+                    .scrollIndicators(.never)
+                }
             }
-            // The side column's content brings its own 16 pt margins (sides and, with the
-            // actions' 8, the bottom), so this only adds what lines it up with the window.
-            .padding(.leading, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 8)
-            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+            .frame(width: maxWidth, alignment: .top)
+            .frame(maxHeight: .infinity, alignment: .top)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        details
+                        if !extraBelow { extra }
+                    }
+                    .padding(.bottom, 16)
+                }
+                actions
+            }
+            .frame(width: sideWidth)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
+        .padding(.leading, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
 }

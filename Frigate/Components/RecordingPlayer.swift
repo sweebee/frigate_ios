@@ -239,6 +239,46 @@ struct PlayerLayerView: UIViewRepresentable {
     }
 }
 
+/// The playback controls drawn over a recording: back 10 s, play/pause, forward 10 s and the
+/// speed. Shared by the playback and event screens so both look and work the same.
+struct PlaybackOverlayControls: View {
+    let player: RecordingPlayer
+    /// Bigger on iPad and Mac, where the video is big.
+    var large = false
+    /// Play/pause; the playback screen also jumps over gaps.
+    var togglePlay: (() -> Void)? = nil
+    /// Called on every use, to keep the controls on screen a while longer.
+    var onUse: () -> Void = {}
+
+    static let rates: [Float] = [0.5, 1, 2]
+    static func rateTitle(_ r: Float) -> String { r == 0.5 ? "½x" : "\(Int(r))x" }
+
+    var body: some View {
+        let size: CGFloat = large ? 56 : 44
+        HStack(spacing: large ? 16 : 10) {
+            OverlayButton(systemImage: "gobackward.10", size: size, label: "Back 10 seconds") { player.skip(-10); onUse() }
+            OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", size: large ? 64 : 44,
+                          label: player.wantsToPlay ? "Pause" : "Play") { (togglePlay ?? player.toggle)(); onUse() }
+            OverlayButton(systemImage: "goforward.10", size: size, label: "Forward 10 seconds") { player.skip(10); onUse() }
+            Menu {
+                ForEach(Self.rates, id: \.self) { r in
+                    Button { player.setRate(r); onUse() } label: {
+                        if player.rate == r { Label(Self.rateTitle(r), systemImage: "checkmark") } else { Text(Self.rateTitle(r)) }
+                    }
+                }
+            } label: {
+                Text(Self.rateTitle(player.rate))
+                    .font(.system(size: large ? 16 : 13, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: size, height: size)
+                    .background(.black.opacity(0.6), in: Circle())
+            }
+            .accessibilityLabel("Playback speed")
+        }
+        .padding(large ? 16 : 10)
+    }
+}
+
 /// Round translucent button used over video.
 struct OverlayButton: View {
     let systemImage: String

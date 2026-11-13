@@ -376,6 +376,9 @@ struct PlaybackView: View {
             Image(systemName: exporter.isWorking ? "hourglass" : "square.and.arrow.down")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
+                // This symbol's tray sits low in its frame (measured ~0.6 pt at this size,
+                // and the heavy tray adds to it optically); lift it to look centred.
+                .offset(y: exporter.isWorking ? 0 : -1)
                 .frame(width: 36, height: 36)
                 .background(.black.opacity(0.6), in: Circle())
         }
@@ -417,7 +420,7 @@ struct PlaybackView: View {
     private var header: some View {
         HStack {
             Button { dismiss() } label: {
-                Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                BackButtonLabel()
             }
             .accessibilityLabel("Back")
             Spacer()
@@ -499,29 +502,7 @@ struct PlaybackView: View {
         }
         .overlay(alignment: .bottom) {
             if !map.isEmpty && overlayVisible {
-                // Larger on iPad and Mac, where the video is big.
-                let size: CGFloat = isWide ? 56 : 44
-                HStack(spacing: isWide ? 16 : 10) {
-                    OverlayButton(systemImage: "gobackward.10", size: size, label: "Back 10 seconds") { player.skip(-10); keepOverlay() }
-                    OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", size: isWide ? 64 : 44,
-                                  label: player.wantsToPlay ? "Pause" : "Play") { togglePlay(); keepOverlay() }
-                    OverlayButton(systemImage: "goforward.10", size: size, label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
-                    Menu {
-                        ForEach([Float(0.5), 1, 2], id: \.self) { r in
-                            Button { player.setRate(r) } label: {
-                                if player.rate == r { Label(rateTitle(r), systemImage: "checkmark") } else { Text(rateTitle(r)) }
-                            }
-                        }
-                    } label: {
-                        Text(rateTitle(player.rate))
-                            .font(.system(size: isWide ? 16 : 13, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: size, height: size)
-                            .background(.black.opacity(0.6), in: Circle())
-                    }
-                    .accessibilityLabel("Playback speed")
-                }
-                .padding(isWide ? 16 : 10)
+                PlaybackOverlayControls(player: player, large: isWide, togglePlay: togglePlay, onUse: keepOverlay)
             }
         }
         // With a mouse (Mac, iPad with trackpad) the controls show while the pointer moves

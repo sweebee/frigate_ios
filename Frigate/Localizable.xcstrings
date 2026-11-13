@@ -1674,6 +1674,16 @@
         }
       }
     },
+    "No preview": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen voorbeeld"
+          }
+        }
+      }
+    },
     "No recording at this time": {
       "localizations": {
         "nl": {

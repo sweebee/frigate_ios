@@ -67,6 +67,17 @@ struct EventDetailView: View {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
         .task { await load() }
+        // The controls over the video hide after 4 seconds of playback without use.
+        .task(id: overlayToken) {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled, player.wantsToPlay, !player.isScrubbing else { return }
+            if MenuPresence.isShowing { overlayToken += 1; return }
+            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
+        }
+        // Paused (also at the end): bring the controls back.
+        .onChange(of: player.wantsToPlay) { _, playing in
+            if !playing { withAnimation(.easeOut(duration: 0.2)) { overlayVisible = true } }
+        }
         .onDisappear { player.stop() }
     }
 
@@ -75,20 +86,17 @@ struct EventDetailView: View {
             header
             if horizontalSizeClass == .regular {
                 // iPad and Mac: video and scrubber beside the details.
-                WideDetailLayout(aspect: conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, reserve: 80) {
+                WideDetailLayout(aspect: conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, reserve: 64) {
                     VStack(spacing: 0) {
                         videoPlayer.clipShape(RoundedRectangle(cornerRadius: 12))
                         scrubber
                     }
-                } side: {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            info
-                            tiles
-                            lifecycle
-                        }
-                        .padding(.bottom, 16)
-                    }
+                } details: {
+                    info
+                    tiles
+                } extra: {
+                    lifecycle
+                } actions: {
                     actions
                 }
             } else {
@@ -144,11 +152,6 @@ struct EventDetailView: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .task(id: overlayToken) {
-            try? await Task.sleep(for: .seconds(4))
-            guard !Task.isCancelled, player.wantsToPlay, !player.isScrubbing else { return }
-            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
-        }
     }
 
     private func keepOverlay() { overlayToken += 1 }
@@ -221,7 +224,7 @@ struct EventDetailView: View {
         HStack {
             // Only the arrow, like every other screen.
             Button { dismiss() } label: {
-                Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                BackButtonLabel()
             }
             .accessibilityLabel("Back")
             Spacer()
@@ -238,17 +241,39 @@ struct EventDetailView: View {
 
     // MARK: Player
 
+    /// Like the playback screen: a tap shows or hides the controls over the video, the
+    /// pointer shows them on the Mac, and they hide by themselves during playback.
     private var videoPlayer: some View {
         ZStack {
             PlayerLayerView(player: player.player)
                 .zoomable()
-            playerStatus()
+                // On the video itself, as in playback: on the stack around it the zoom's
+                // double-tap swallowed single taps.
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { overlayVisible.toggle() }
+                    keepOverlay()
+                }
+            playerStatus(showPlay: !overlayVisible)
         }
         .aspectRatio(conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .background(Color.black)
-        .contentShape(Rectangle())
-        .onTapGesture { player.toggle() }
+        .overlay(alignment: .bottom) {
+            if overlayVisible && canPlay {
+                PlaybackOverlayControls(player: player, large: horizontalSizeClass == .regular, onUse: keepOverlay)
+                    .transition(.opacity)
+            }
+        }
+        .onContinuousHover { phase in
+            guard case .active = phase else { return }
+            if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+            keepOverlay()
+        }
+    }
+
+    /// Whether there is something to control: a loaded recording, not an error or a spinner.
+    private var canPlay: Bool {
+        !(noRecording || player.error != nil || player.isBuffering || player.duration == 0)
     }
 
     /// No recording, an error, buffering or the play button, drawn over the video.
@@ -300,41 +325,13 @@ struct EventDetailView: View {
                     .onEnded { v in player.endScrub(at: max(0, min(1, v.location.x / w)) * total) })
             }
             .frame(height: 28)
-            // Larger on iPad and Mac, where these sit under a big video and the pointer
-            // needs bigger targets than a finger does on the phone.
-            let wide = horizontalSizeClass == .regular
+            // The buttons sit over the video (PlaybackOverlayControls), as on the playback screen.
             HStack {
                 Text(FrigateFormat.duration(player.currentTime)).monospacedDigit()
                 Spacer()
-                HStack(spacing: wide ? 12 : 4) {
-                    Button { player.skip(-10) } label: {
-                        Image(systemName: "gobackward.10").font(.system(size: wide ? 24 : 16, weight: .medium))
-                            .frame(minWidth: wide ? 48 : 36, minHeight: wide ? 44 : 32)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("Back 10 seconds")
-                    ForEach([Float(1), 2], id: \.self) { r in
-                        Button { player.setRate(r) } label: {
-                            Text("\(Int(r))x")
-                                .font(.system(size: wide ? 17 : 12, weight: player.rate == r ? .bold : .regular))
-                                .foregroundStyle(player.rate == r ? Theme.accent : Theme.textSecondary)
-                                .frame(minWidth: wide ? 48 : 32, minHeight: wide ? 44 : 28)
-                                .contentShape(Rectangle())
-                        }
-                    }
-                    Button { player.skip(10) } label: {
-                        Image(systemName: "goforward.10").font(.system(size: wide ? 24 : 16, weight: .medium))
-                            .frame(minWidth: wide ? 48 : 36, minHeight: wide ? 44 : 32)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("Forward 10 seconds")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.text)
-                Spacer()
                 Text(FrigateFormat.duration(player.duration)).monospacedDigit()
             }
-            .font(.system(size: wide ? 14 : 12))
+            .font(.system(size: horizontalSizeClass == .regular ? 14 : 12))
             .foregroundStyle(Theme.textSecondary)
         }
         .padding(.horizontal, 16)

@@ -417,6 +417,14 @@ enum FrigateFormat {
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 
+    /// "13 nov": a day on a timeline axis.
+    static func shortDay(_ date: Date) -> String { shortDayFormatter.string(from: date) }
+    private static let shortDayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.setLocalizedDateFormatFromTemplate("d MMM")
+        return f
+    }()
+
     static func dayTitle(_ date: Date) -> String {
         let cal = Calendar.current
         if cal.isDateInToday(date) { return L("Today") }

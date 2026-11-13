@@ -26,6 +26,7 @@ struct NativeLivePlayer: UIViewRepresentable {
     func updateUIView(_ view: SampleView, context: Context) {
         view.displayLayer.videoGravity = fill ? .resizeAspectFill : .resizeAspect
         context.coordinator.onFailure = onFailure
+        context.coordinator.setMuted(state.muted)
         if context.coordinator.stream != stream { context.coordinator.start(client: client, stream: stream) }
     }
 
@@ -54,6 +55,10 @@ struct NativeLivePlayer: UIViewRepresentable {
         private var gotKeyframe = false
         private var failed = false
         private var retries = 0
+        /// Live audio: AAC from the stream through a renderer on its own clock. The picture
+        /// shows each frame as it arrives, so the audio is not synced to it, as in any live view.
+        private var audioRenderer: AVSampleBufferAudioRenderer?
+        private var synchronizer: AVSampleBufferRenderSynchronizer?
 
         init(state: LivePlayerState, onFailure: @escaping (String) -> Void) {
             self.state = state
@@ -117,6 +122,13 @@ struct NativeLivePlayer: UIViewRepresentable {
         }
 
         func stop() {
+            if let sync = synchronizer, let renderer = audioRenderer {
+                sync.setRate(0, time: .zero)
+                renderer.flush()
+                sync.removeRenderer(renderer, at: .zero)
+            }
+            audioRenderer = nil
+            synchronizer = nil
             receiving?.cancel()
             watchdog?.cancel()
             task?.cancel(with: .goingAway, reason: nil)
@@ -140,7 +152,10 @@ struct NativeLivePlayer: UIViewRepresentable {
                 switch item {
                 case .format(let format, let size):
                     if size.width > 0 { state.videoSize = size }
-                    let fcc = CMFormatDescriptionGetMediaSubType(format)
+                case .audioFormat:
+                    setUpAudio()
+                case .audio(let sample):
+                    enqueueAudio(sample)
                 case .sample(let sample, let keyframe):
                     if !gotKeyframe {
                         guard keyframe else { continue }
@@ -149,6 +164,41 @@ struct NativeLivePlayer: UIViewRepresentable {
                     enqueue(sample)
                 }
             }
+        }
+
+        private func setUpAudio() {
+            guard audioRenderer == nil else { return }
+            let renderer = AVSampleBufferAudioRenderer()
+            let sync = AVSampleBufferRenderSynchronizer()
+            sync.addRenderer(renderer)
+            renderer.isMuted = state.muted
+            audioRenderer = renderer
+            synchronizer = sync
+            state.hasAudio = true
+        }
+
+        /// Follows the mute button; the audio session is set to playback on the first unmute.
+        func setMuted(_ muted: Bool) {
+            audioRenderer?.isMuted = muted
+            if !muted {
+                let session = AVAudioSession.sharedInstance()
+                if session.category != .playAndRecord { try? session.setCategory(.playback, mode: .default) }
+                try? session.setActive(true)
+            }
+        }
+
+        private func enqueueAudio(_ sample: CMSampleBuffer) {
+            guard let renderer = audioRenderer, let sync = synchronizer else { return }
+            if renderer.status == .failed { audioRenderer = nil; synchronizer = nil; state.hasAudio = false; return }
+            let pts = CMSampleBufferGetPresentationTimeStamp(sample)
+            // Start the clock at the first frame; restart it when the audio falls behind or
+            // runs too far ahead (a stall), so the delay stays small.
+            let now = sync.currentTime()
+            if sync.rate == 0 || CMTimeGetSeconds(pts - now) > 1.0 || CMTimeGetSeconds(now - pts) > 0.5 {
+                renderer.flush()
+                sync.setRate(1, time: pts - CMTime(value: 1, timescale: 5))
+            }
+            if renderer.isReadyForMoreMediaData { renderer.enqueue(sample) }
         }
 
         private func enqueue(_ sample: CMSampleBuffer) {
@@ -173,6 +223,8 @@ struct NativeLivePlayer: UIViewRepresentable {
             var codecs = ["avc1.640029", "avc1.64002A", "avc1.640033"]
             // HEVC also decodes in software (the simulator); a decoder failure falls back to the web.
             codecs.append("hvc1.1.6.L153.B0")
+            // AAC, the audio most cameras send; go2rtc adds an audio track when there is one.
+            codecs += ["mp4a.40.2", "mp4a.40.5"]
             return #"{"type":"mse","value":"\#(codecs.joined(separator: ","))"}"#
         }
     }
@@ -181,12 +233,21 @@ struct NativeLivePlayer: UIViewRepresentable {
 // MARK: - Fragmented MP4
 
 /// Splits a fragmented MP4 stream (an init segment, then moof+mdat fragments) into sample
-/// buffers for one video track.
+/// buffers for one video track and, when go2rtc sends one, an AAC audio track.
 struct FMP4Parser {
     enum Output {
         case format(CMVideoFormatDescription, CGSize)
         case sample(CMSampleBuffer, keyframe: Bool)
+        case audioFormat(CMAudioFormatDescription)
+        case audio(CMSampleBuffer)
     }
+
+    /// Per-track sample defaults from the init segment's trex boxes.
+    private struct TrackDefaults { var duration: UInt32 = 0; var size: UInt32 = 0; var flags: UInt32 = 0 }
+    private var defaults: [UInt32: TrackDefaults] = [:]
+    private var audioFormat: CMAudioFormatDescription?
+    private var audioTrackID: UInt32?
+    private var audioTimescale: UInt32 = 48000
 
     private var buffer = [UInt8]()
     private var format: CMVideoFormatDescription?
@@ -215,7 +276,10 @@ struct FMP4Parser {
                 out += fragment(moofAt: offset, moofSize: size, mdatEnd: offset + size + mdatSize)
                 offset += size + mdatSize
             } else {
-                if type == "moov", let f = initSegment(at: offset + 8, end: offset + size) { out.append(f) }
+                if type == "moov" {
+                    if let f = initSegment(at: offset + 8, end: offset + size) { out.append(f) }
+                    if let a = pendingAudio { out.append(.audioFormat(a)); pendingAudio = nil }
+                }
                 offset += size
             }
         }
@@ -258,12 +322,15 @@ struct FMP4Parser {
 
     private mutating func initSegment(at start: Int, end: Int) -> Output? {
         let boxes = children(start, end)
-        if let mvex = boxes.first(where: { $0.type == "mvex" }), let trex = child("trex", mvex.body, mvex.end) {
+        if let mvex = boxes.first(where: { $0.type == "mvex" }) {
             // version/flags(4) track_ID(4) sample_description_index(4) duration size flags
-            defaultDuration = u32(trex.body + 12)
-            defaultSize = u32(trex.body + 16)
-            defaultFlags = u32(trex.body + 20)
+            for trex in children(mvex.body, mvex.end) where trex.type == "trex" {
+                defaults[u32(trex.body + 4)] = TrackDefaults(duration: u32(trex.body + 12), size: u32(trex.body + 16),
+                                                             flags: u32(trex.body + 20))
+            }
         }
+        var result: Output?
+        for trak in boxes where trak.type == "trak" { if let a = audioTrack(trak.body, trak.end) { pendingAudio = a } }
         for trak in boxes where trak.type == "trak" {
             guard let mdia = child("mdia", trak.body, trak.end),
                   let hdlr = child("hdlr", mdia.body, mdia.end),
@@ -296,9 +363,51 @@ struct FMP4Parser {
             if isHEVC, config.end - config0 > 21 { nalLengthSize = Int(buffer[config0 + 21] & 3) + 1 }
             if !isHEVC, config.end - config0 > 4 { nalLengthSize = Int(buffer[config0 + 4] & 3) + 1 }
             format = desc
-            return .format(desc, CGSize(width: Int(width), height: Int(height)))
+            if let d = defaults[trackID] { defaultDuration = d.duration; defaultSize = d.size; defaultFlags = d.flags }
+            result = .format(desc, CGSize(width: Int(width), height: Int(height)))
+            break
         }
-        return nil
+        return result
+    }
+
+    /// An audio format found in the init segment, handed out with the next feed.
+    private var pendingAudio: CMAudioFormatDescription?
+
+    /// An AAC ("mp4a") track: its id, timescale and format. Other audio codecs are skipped.
+    private mutating func audioTrack(_ start: Int, _ end: Int) -> CMAudioFormatDescription? {
+        guard let mdia = child("mdia", start, end),
+              let hdlr = child("hdlr", mdia.body, mdia.end),
+              String(bytes: buffer[hdlr.body + 8..<hdlr.body + 12], encoding: .ascii) == "soun",
+              let mdhd = child("mdhd", mdia.body, mdia.end),
+              let minf = child("minf", mdia.body, mdia.end),
+              let stbl = child("stbl", minf.body, minf.end),
+              let stsd = child("stsd", stbl.body, stbl.end) else { return nil }
+        let entry = stsd.body + 8
+        // Sample entry header (8) + reserved/data ref (8) + audio fields (20), then child boxes.
+        guard entry + 36 <= stsd.end else { return nil }
+        let entrySize = Int(u32(entry))
+        guard String(bytes: buffer[entry + 4..<entry + 8], encoding: .ascii) == "mp4a",
+              let esds = child("esds", entry + 36, entry + entrySize), esds.end - esds.body > 4 else { return nil }
+        let channels = UInt32(u16(entry + 8 + 16))
+        let rate = Double(u32(entry + 8 + 24) >> 16)
+        // The ES descriptor after esds' version and flags is the decoder's magic cookie.
+        let cookie = Array(buffer[esds.body + 4..<esds.end])
+        var asbd = AudioStreamBasicDescription(mSampleRate: rate, mFormatID: kAudioFormatMPEG4AAC, mFormatFlags: 0,
+                                               mBytesPerPacket: 0, mFramesPerPacket: 1024, mBytesPerFrame: 0,
+                                               mChannelsPerFrame: max(1, channels), mBitsPerChannel: 0, mReserved: 0)
+        var desc: CMAudioFormatDescription?
+        let status = cookie.withUnsafeBytes { raw in
+            CMAudioFormatDescriptionCreate(allocator: nil, asbd: &asbd, layoutSize: 0, layout: nil,
+                                           magicCookieSize: cookie.count, magicCookie: raw.baseAddress,
+                                           extensions: nil, formatDescriptionOut: &desc)
+        }
+        guard status == noErr, let desc else { return nil }
+        if let tkhd = child("tkhd", start, end) {
+            audioTrackID = buffer[tkhd.body] == 1 ? u32(tkhd.body + 20) : u32(tkhd.body + 12)
+        }
+        audioTimescale = buffer[mdhd.body] == 1 ? u32(mdhd.body + 20) : u32(mdhd.body + 12)
+        audioFormat = desc
+        return desc
     }
 
     // MARK: Fragments
@@ -309,6 +418,10 @@ struct FMP4Parser {
         for traf in children(moof + 8, moof + moofSize) where traf.type == "traf" {
             guard let tfhd = child("tfhd", traf.body, traf.end) else { continue }
             let flags = u32(tfhd.body) & 0xFFFFFF
+            if let audioTrackID, u32(tfhd.body + 4) == audioTrackID {
+                out += audioFragment(traf: traf, tfhd: tfhd, flags: flags, moof: moof, mdatEnd: mdatEnd)
+                continue
+            }
             guard u32(tfhd.body + 4) == trackID else { continue }
             var p = tfhd.body + 8
             var base = moof
@@ -363,6 +476,68 @@ struct FMP4Parser {
             }
         }
         return out
+    }
+
+    /// The AAC frames of an audio traf, one sample buffer each.
+    private func audioFragment(traf: (type: String, body: Int, end: Int), tfhd: (body: Int, end: Int), flags: UInt32,
+                               moof: Int, mdatEnd: Int) -> [Output] {
+        guard let audioFormat, let audioTrackID else { return [] }
+        let d = defaults[audioTrackID] ?? TrackDefaults()
+        var p = tfhd.body + 8
+        var base = moof
+        if flags & 0x01 != 0 { base = Int(u64(p)); p += 8 }
+        if flags & 0x02 != 0 { p += 4 }
+        var duration = d.duration, size = d.size
+        if flags & 0x08 != 0 { duration = u32(p); p += 4 }
+        if flags & 0x10 != 0 { size = u32(p); p += 4 }
+        if flags & 0x01 == 0 { base = moof }
+        var decodeTime: UInt64 = 0
+        if let tfdt = child("tfdt", traf.body, traf.end) {
+            decodeTime = buffer[tfdt.body] == 1 ? u64(tfdt.body + 4) : UInt64(u32(tfdt.body + 4))
+        }
+        var out = [Output]()
+        for trun in children(traf.body, traf.end) where trun.type == "trun" {
+            let tf = u32(trun.body) & 0xFFFFFF
+            let count = Int(u32(trun.body + 4))
+            var q = trun.body + 8
+            var at = base
+            if tf & 0x01 != 0 { at = base + Int(Int32(bitPattern: u32(q))); q += 4 }
+            if tf & 0x04 != 0 { q += 4 }
+            for _ in 0..<count {
+                var dur = duration, s = size
+                if tf & 0x100 != 0 { dur = u32(q); q += 4 }
+                if tf & 0x200 != 0 { s = u32(q); q += 4 }
+                if tf & 0x400 != 0 { q += 4 }
+                if tf & 0x800 != 0 { q += 4 }
+                guard at >= 0, s > 0, at + Int(s) <= mdatEnd else { break }
+                if let sample = makeAudioSample(at: at, size: Int(s), format: audioFormat, time: decodeTime) {
+                    out.append(.audio(sample))
+                }
+                at += Int(s)
+                decodeTime += UInt64(dur)
+            }
+        }
+        return out
+    }
+
+    private func makeAudioSample(at offset: Int, size: Int, format: CMAudioFormatDescription, time: UInt64) -> CMSampleBuffer? {
+        var block: CMBlockBuffer?
+        guard CMBlockBufferCreateWithMemoryBlock(allocator: nil, memoryBlock: nil, blockLength: size,
+                                                 blockAllocator: nil, customBlockSource: nil, offsetToData: 0,
+                                                 dataLength: size, flags: kCMBlockBufferAssureMemoryNowFlag,
+                                                 blockBufferOut: &block) == noErr, let block else { return nil }
+        let copied = buffer.withUnsafeBytes { raw in
+            CMBlockBufferReplaceDataBytes(with: raw.baseAddress! + offset, blockBuffer: block,
+                                          offsetIntoDestination: 0, dataLength: size)
+        }
+        guard copied == noErr else { return nil }
+        var packet = AudioStreamPacketDescription(mStartOffset: 0, mVariableFramesInPacket: 0, mDataByteSize: UInt32(size))
+        var sample: CMSampleBuffer?
+        let pts = CMTime(value: CMTimeValue(time), timescale: Int32(audioTimescale))
+        guard CMAudioSampleBufferCreateReadyWithPacketDescriptions(
+            allocator: nil, dataBuffer: block, formatDescription: format, sampleCount: 1,
+            presentationTimeStamp: pts, packetDescriptions: &packet, sampleBufferOut: &sample) == noErr else { return nil }
+        return sample
     }
 
     /// A format from the VPS, SPS and PPS inside a keyframe, when they differ from the last ones.
@@ -434,3 +609,4 @@ struct FMP4Parser {
     }
     private func u64(_ i: Int) -> UInt64 { UInt64(u32(i)) << 32 | UInt64(u32(i + 4)) }
 }
+

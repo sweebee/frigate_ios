@@ -210,8 +210,7 @@ struct LiveSettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 4) {
                     Button { dismiss() } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                            .frame(width: 32, height: 44, alignment: .leading)
+                        BackButtonLabel()
                     }
                     .accessibilityLabel("Back")
                     Text("Live view").font(.system(size: 28, weight: .bold)).kerning(-0.4)

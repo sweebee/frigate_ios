@@ -71,8 +71,7 @@ struct HistoryOverviewView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Button { dismiss() } label: {
-                            Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                                .frame(width: 32, height: 44, alignment: .leading)
+                            BackButtonLabel()
                         }
                         .accessibilityLabel("Back")
                         Text("Recordings").font(.system(size: 28, weight: .bold)).kerning(-0.4)

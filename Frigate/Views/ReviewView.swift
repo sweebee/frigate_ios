@@ -15,38 +15,67 @@ struct ReviewView: View {
     @State private var labelFilter: Set<String> = []
     @State private var zoneFilter: Set<String> = []
     @State private var unreviewedOnly = true
+    /// Like Frigate: the last 24 hours, or one chosen day.
+    @State private var range: ReviewRange = .last24Hours
+    @State private var pickingDay = false
     @State private var entries: [ReviewEntry] = []
     @State private var loading = false
     @State private var canLoadMore = false
     @State private var loadError: String?
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Items on screen, for the timeline beside the grid.
+    @State private var visibility = ReviewVisibility()
 
     private let pageSize = 60
 
     private var connections: [ServerConnection] { model.reviewConnections.filter(\.isOnline) }
 
     private var filterKey: String {
-        "\(kind)|\(cameraFilter.sorted())|\(labelFilter.sorted())|\(zoneFilter.sorted())|\(unreviewedOnly)|\(model.reviewConnections.map { "\($0.id)\($0.isOnline)" })"
+        "\(kind)|\(cameraFilter.sorted())|\(labelFilter.sorted())|\(zoneFilter.sorted())|\(unreviewedOnly)|\(range)|\(model.reviewConnections.map { "\($0.id)\($0.isOnline)" })"
     }
 
     var body: some View {
         @Bindable var model = model
         NavigationStack(path: $model.reviewPath) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8, pinnedViews: []) {
-                    header
+            ScrollViewReader { proxy in
+                HStack(spacing: 0) {
                     if kind == .motion {
-                        MotionOverview(connections: connections, cameraFilter: cameraFilter)
+                        // Motion fills the screen below the header: previews and a timeline.
+                        VStack(spacing: 0) {
+                            header.padding(.horizontal, 16)
+                            MotionReviewView(connections: connections, cameraFilter: cameraFilter,
+                                             start: range.bounds.after.timeIntervalSince1970,
+                                             end: range.bounds.before.timeIntervalSince1970)
+                        }
                     } else {
-                        list
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 8, pinnedViews: []) {
+                            header
+                            list
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 24)
+                    }
+                    }
+                    if showsTimeline {
+                        // Beside the grid, like Frigate's review page; tap or drag to jump.
+                        ReviewTimeline(entries: entries, visibility: visibility) { entry in
+                            withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(entry.id, anchor: .top) }
+                        }
+                        .frame(width: 76)
+                        .padding(.top, 70)
+                        .padding(.bottom, 16)
+                        .padding(.trailing, 12)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
             }
             .refreshable { await reload() }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
             .appDestinations()
+            .sheet(isPresented: $pickingDay) {
+                DayPickerSheet(day: Binding(get: { range.day }, set: { if let d = $0 { range = .day(d) } }))
+            }
             .task(id: filterKey) { await reload() }
             .onChange(of: model.reviewKindRequest, initial: true) { _, v in
                 guard let v else { return }
@@ -80,17 +109,30 @@ struct ReviewView: View {
                         .disabled(!entries.contains { !$0.item.hasBeenReviewed })
                 }
             }
-            SegmentedBar(options: [Kind.alert, .detection, .motion], selection: $kind) { k in
-                switch k {
-                case .alert: return countTitle(L("Alerts"), max(connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedAlerts ?? 0) }, listedUnreviewed(.alert)))
-                case .detection: return countTitle(L("Detections"), max(connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedDetections ?? 0) }, listedUnreviewed(.detection)))
-                case .motion: return L("Motion")
+            if isWide {
+                // Wide screens: the kinds on the left and the filters on the right, on one line.
+                HStack(spacing: 16) {
+                    kindBar.frame(maxWidth: 560)
+                    Spacer(minLength: 0)
+                    filterChips.fixedSize()
                 }
+            } else {
+                kindBar
+                filters
             }
-            filters
         }
         .padding(.top, 8)
         .padding(.bottom, 4)
+    }
+
+    private var kindBar: some View {
+        SegmentedBar(options: [Kind.alert, .detection, .motion], selection: $kind) { k in
+            switch k {
+            case .alert: return countTitle(L("Alerts"), max(connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedAlerts ?? 0) }, listedUnreviewed(.alert)))
+            case .detection: return countTitle(L("Detections"), max(connections.reduce(0) { $0 + ($1.summary?.last24Hours?.unreviewedDetections ?? 0) }, listedUnreviewed(.detection)))
+            case .motion: return L("Motion")
+            }
+        }
     }
 
     /// Unreviewed items of the last day in the loaded list. The summary behind the counts is
@@ -127,6 +169,14 @@ struct ReviewView: View {
 
     private var filters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
+            filterChips
+            .padding(.horizontal, 16)
+        }
+        // Scroll edge to edge instead of being cut off at the page margin.
+        .padding(.horizontal, -16)
+    }
+
+    private var filterChips: some View {
             HStack(spacing: 8) {
                 Menu {
                     Button { cameraFilter = [] } label: { checkLabel(L("All cameras"), cameraFilter.isEmpty) }
@@ -182,11 +232,17 @@ struct ReviewView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                Menu {
+                    let today = Calendar.current.startOfDay(for: Date())
+                    let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today) ?? today
+                    Button { range = .last24Hours } label: { checkLabel(L("Last 24 hours"), range == .last24Hours) }
+                    Button { range = .day(today) } label: { checkLabel(L("Today"), range == .day(today)) }
+                    Button { range = .day(yesterday) } label: { checkLabel(L("Yesterday"), range == .day(yesterday)) }
+                    Button { pickingDay = true } label: { Label("Pick date…", systemImage: "calendar") }
+                } label: {
+                    Chip(title: range.title, outlined: range != .last24Hours, trailingChevron: true)
+                }
             }
-            .padding(.horizontal, 16)
-        }
-        // Scroll edge to edge instead of being cut off at the page margin.
-        .padding(.horizontal, -16)
     }
 
     @ViewBuilder
@@ -210,18 +266,39 @@ struct ReviewView: View {
         } else {
             ForEach(groupedByDay, id: \.day) { group in
                 SectionLabel(text: FrigateFormat.dayTitle(group.day)).padding(.top, 6)
+                if isWide {
+                    // iPad and Mac: large pictures in a grid, like Frigate's review page.
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
+                        ForEach(group.entries) { entry in
+                            if let conn = model.connection(for: entry.serverID) {
+                                NavigationLink(value: EventRoute(serverID: entry.serverID, review: entry.item)) {
+                                    ReviewTile(entry: entry, conn: conn, showServer: model.orderedConnections.count > 1)
+                                }
+                                .buttonStyle(.plain)
+                                .id(entry.id)
+                                .contextMenu { reviewMenu(entry) }
+                                .onGeometryChange(for: Bool.self) { proxy in
+                                    // On screen: its middle within the scroll view.
+                                    guard let bounds = proxy.bounds(of: .scrollView) else { return false }
+                                    let frame = proxy.frame(in: .scrollView)
+                                    return frame.midY >= 0 && frame.midY <= bounds.height
+                                } action: { on in
+                                    visibility.set(entry.id, on)
+                                }
+                                .onDisappear { visibility.set(entry.id, false) }
+                            }
+                        }
+                    }
+                } else {
                 ForEach(group.entries) { entry in
                     if let conn = model.connection(for: entry.serverID) {
                         NavigationLink(value: EventRoute(serverID: entry.serverID, review: entry.item)) {
                             ReviewRow(entry: entry, conn: conn, showServer: model.orderedConnections.count > 1)
                         }
                         .buttonStyle(.plain)
-                        .contextMenu {
-                            if !entry.item.hasBeenReviewed {
-                                Button { Task { await markReviewed([entry]) } } label: { Label("Mark reviewed", systemImage: "checkmark") }
-                            }
-                        }
+                        .contextMenu { reviewMenu(entry) }
                     }
+                }
                 }
             }
             if canLoadMore {
@@ -235,6 +312,16 @@ struct ReviewView: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func reviewMenu(_ entry: ReviewEntry) -> some View {
+        if !entry.item.hasBeenReviewed {
+            Button { Task { await markReviewed([entry]) } } label: { Label("Mark reviewed", systemImage: "checkmark") }
+        }
+    }
+
+    private var isWide: Bool { sizeClass == .regular }
+    private var showsTimeline: Bool { isWide && kind != .motion && !entries.isEmpty }
 
     private var groupedByDay: [(day: Date, entries: [ReviewEntry])] {
         let cal = Calendar.current
@@ -251,6 +338,7 @@ struct ReviewView: View {
         let labels = labelFilter.isEmpty ? nil : Array(labelFilter)
         let zones = zoneFilter.isEmpty ? nil : Array(zoneFilter)
         let reviewed: Bool? = unreviewedOnly ? false : nil
+        let bounds = range.bounds
         return try await withThrowingTaskGroup(of: [ReviewEntry].self) { group in
             for conn in connections {
                 guard let client = conn.client else { continue }
@@ -260,7 +348,7 @@ struct ReviewView: View {
                 if let serverCams, serverCams.isEmpty { continue }
                 group.addTask {
                     let items = try await client.reviews(cameras: serverCams, labels: labels, zones: zones, severity: severity,
-                                                         reviewed: reviewed, before: before, limit: pageSize)
+                                                         reviewed: reviewed, after: bounds.after, before: before ?? bounds.before, limit: pageSize)
                     return items.map { ReviewEntry(serverID: id, item: $0) }
                 }
             }
@@ -462,5 +550,37 @@ struct MotionOverview: View {
             for (cam, items) in byCamera { activity["\(conn.server.id)/\(cam)"] = items }
         }
         loading = false
+    }
+}
+
+/// The period Review shows: like Frigate, the last 24 hours by default, or one day.
+enum ReviewRange: Hashable, CustomStringConvertible {
+    case last24Hours
+    case day(Date)
+
+    var description: String {
+        switch self {
+        case .last24Hours: return "24h"
+        case .day(let d): return "\(Int(d.timeIntervalSince1970))"
+        }
+    }
+
+    var day: Date? { if case .day(let d) = self { return d } else { return nil } }
+
+    var bounds: (after: Date, before: Date) {
+        let now = Date()
+        switch self {
+        case .last24Hours: return (now.addingTimeInterval(-86400), now)
+        case .day(let d):
+            let end = Calendar.current.date(byAdding: .day, value: 1, to: d) ?? d.addingTimeInterval(86400)
+            return (d, min(end, now))
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .last24Hours: return L("Last 24 hours")
+        case .day(let d): return FrigateFormat.dayTitle(d)
+        }
     }
 }

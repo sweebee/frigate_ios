@@ -94,6 +94,8 @@ struct CameraView: View {
         }
         .onAppear {
             player.suspended = false
+            // Sound as the user last left it on a camera (the overview always stays silent).
+            if UserDefaults.standard.bool(forKey: LivePlayerState.soundKey) && player.muted { player.setMuted(false) }
             if player.stream.isEmpty {
                 let streams = self.streams
                 if streams.isEmpty && conn?.go2rtcStreams != nil {
@@ -118,26 +120,41 @@ struct CameraView: View {
             if let conn, let client = conn.client, let camera {
                 Group {
                     if isWide {
+                        // Video as large as the window allows with today's events in a row
+                        // under it; the controls float over the video.
                         GeometryReader { geo in
-                            HStack(alignment: .top, spacing: 16) {
-                                // The video never grows taller than the window allows.
-                                VStack(spacing: 0) {
-                                    playerView(client: client, camera: camera)
-                                        .frame(maxHeight: max(200, geo.size.height - 110), alignment: .top)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                    controls(client: client, camera: camera)
-                                    Spacer(minLength: 0)
-                                }
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                                ScrollView {
-                                    today(conn: conn, vertical: true)
-                                        .padding(.bottom, 24)
-                                }
-                                .scrollIndicators(.never)
-                                .frame(width: min(380, geo.size.width * 0.34))
+                            VStack(spacing: 0) {
+                                playerView(client: client, camera: camera)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(alignment: .bottom) {
+                                        if showOverlayControls {
+                                            overlayControls(client: client, camera: camera)
+                                                .transition(.opacity)
+                                        }
+                                    }
+                                    // With a mouse the controls show while the pointer moves over the video.
+                                    .onContinuousHover { phase in
+                                        guard case .active = phase else { return }
+                                        if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+                                        keepOverlay()
+                                    }
+                                    .animation(.easeOut(duration: 0.2), value: showOverlayControls)
+                                    // Exactly the picture's size: as wide as fits, never so tall
+                                    // that today's row drops out of the window.
+                                    .frame(width: videoHeight(geo.size, camera) * videoAspect(camera),
+                                           height: videoHeight(geo.size, camera))
+                                    .frame(maxWidth: .infinity)
+                                today(conn: conn)
+                                Spacer(minLength: 0)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 12)
+                            .padding(.top, 4)
+                        }
+                        // The controls hide after 4 seconds without use, as in playback.
+                        .task(id: overlayToken) {
+                            try? await Task.sleep(for: .seconds(4))
+                            guard !Task.isCancelled, !player.talking, !showPTZ else { return }
+                            if MenuPresence.isShowing { overlayToken += 1; return }
+                            withAnimation(.easeOut(duration: 0.25)) { overlayVisible = false }
                         }
                     } else {
                         ScrollView {
@@ -152,6 +169,12 @@ struct CameraView: View {
                 }
                 .fullScreenCover(isPresented: $fullscreen) {
                     FullscreenLiveView(client: client, camera: camera, stream: player.stream, muted: player.muted)
+                }
+                // Sound changed in full screen: follow it here too.
+                .onChange(of: fullscreen) { _, open in
+                    guard !open else { return }
+                    let sound = UserDefaults.standard.bool(forKey: LivePlayerState.soundKey)
+                    if sound == player.muted { player.setMuted(!sound) }
                 }
             } else {
                 Spacer()
@@ -169,8 +192,7 @@ struct CameraView: View {
     private var header: some View {
         HStack {
             Button { dismiss() } label: {
-                Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                    .frame(width: 44, height: 44)
+                BackButtonLabel()
             }
             .accessibilityLabel("Back")
             Spacer()
@@ -222,11 +244,14 @@ struct CameraView: View {
             Color.black
             LivePlayerView(client: client, camera: camera.name, state: player)
                 .zoomable()
+                // Wide screens: a tap shows or hides the controls over the video, as in playback.
+                .onTapGesture { if isWide { toggleOverlay() } }
             if !player.playing { LivePoster(client: client, camera: camera.name).allowsHitTesting(false) }
             streamStatus
         }
         .aspectRatio(player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio, contentMode: .fit)
-        .frame(maxWidth: .infinity)
+        // Wide: the video fits the height too, so its overlays must hug the picture.
+        .frame(maxWidth: isWide ? nil : .infinity)
         // Time top left, like the playback screens.
         .overlay(alignment: .topLeading) {
             HStack(spacing: 6) {
@@ -255,16 +280,18 @@ struct CameraView: View {
                     .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                     .padding()
                 } else {
-                    // Small, at the bottom: the refreshing picture underneath stays in view.
+                    // Small, so the refreshing picture underneath stays in view: at the bottom on
+                    // the phone; top right on wide screens, where the controls take the bottom.
                     HStack(spacing: 6) {
                         ProgressView().tint(.white).controlSize(.mini)
-                        Text(player.statusText).font(.system(size: 12, weight: .medium))
+                        Text(player.statusText).font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(.black.opacity(0.6), in: Capsule())
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, 8).frame(height: VideoChip.height)
+                    .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isWide ? .topTrailing : .bottom)
+                    .padding(isWide ? 10 : 0)
+                    .padding(.bottom, isWide ? 0 : 10)
                     .allowsHitTesting(false)
                 }
             }
@@ -370,7 +397,7 @@ struct CameraView: View {
                         VStack(spacing: 12) {
                             OverlayButton(systemImage: player.muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
                                           label: player.muted ? "Unmute" : "Mute") {
-                                player.setMuted(!player.muted); keepOverlay()
+                                toggleSound(); keepOverlay()
                             }
                             OverlayButton(systemImage: "camera.fill", label: "Snapshot") {
                                 Task { await snapshot(client: client, camera: camera) }; keepOverlay()
@@ -447,7 +474,7 @@ struct CameraView: View {
         HStack(spacing: 0) {
             controlButton(player.muted ? "speaker.slash" : "speaker.wave.2", "Audio", active: !player.muted,
                           enabled: player.hasAudio || player.activeMode != "mjpeg") {
-                player.setMuted(!player.muted)
+                toggleSound()
             }
             controlButton(player.talking ? "mic.fill" : "mic", "Talk", active: player.talking, enabled: canTalk) {
                 Task { await toggleTalk() }
@@ -463,6 +490,57 @@ struct CameraView: View {
         .padding(.horizontal, 12)
         .padding(.top, 12)
         .padding(.bottom, 4)
+    }
+
+    private func videoAspect(_ camera: CameraConfig) -> CGFloat {
+        player.videoSize.width > 0 ? player.videoSize.width / player.videoSize.height : camera.aspectRatio
+    }
+
+    private func videoHeight(_ size: CGSize, _ camera: CameraConfig) -> CGFloat {
+        max(160, min((size.width - 32) / videoAspect(camera), size.height - Self.wideStripHeight))
+    }
+
+    /// Height under the video on wide screens: today's row of events.
+    static let wideStripHeight: CGFloat = 196
+
+    /// Over the video on wide screens; shown and hidden like the playback controls.
+    private var showOverlayControls: Bool { overlayVisible || player.talking }
+
+    private func overlayControls(client: FrigateClient, camera: CameraConfig) -> some View {
+        HStack(spacing: 16) {
+            overlayButton(player.muted ? "speaker.slash" : "speaker.wave.2", "Audio", active: !player.muted,
+                          enabled: player.hasAudio || player.activeMode != "mjpeg") { toggleSound() }
+            if canTalk {
+                overlayButton(player.talking ? "mic.fill" : "mic", "Talk", active: player.talking) { Task { await toggleTalk() } }
+            }
+            overlayButton("camera", "Snapshot", busy: snapshotBusy) { Task { await snapshot(client: client, camera: camera) } }
+            if camera.hasOnvif {
+                overlayButton("arrow.up.and.down.and.arrow.left.and.right", "PTZ") { showPTZ = true }
+            }
+            overlayButton("arrow.up.left.and.arrow.down.right", "Fullscreen") { fullscreen = true }
+        }
+        .padding(16)
+    }
+
+    private func overlayButton(_ icon: String, _ label: LocalizedStringKey, active: Bool = false, enabled: Bool = true,
+                               busy: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            // The same round buttons as OverlayButton in playback, with an on state.
+            ZStack {
+                Circle().fill(active ? Theme.accent : .black.opacity(0.6))
+                if busy { ProgressView().tint(.white) } else {
+                    Image(systemName: icon).font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(active ? Theme.onColor : .white)
+                }
+            }
+            .frame(width: 56, height: 56)
+            .opacity(enabled ? 1 : 0.4)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled || busy)
+        .help(Text(label))
+        .accessibilityLabel(label)
     }
 
     private func controlButton(_ icon: String, _ label: LocalizedStringKey, active: Bool = false, enabled: Bool = true,
@@ -487,6 +565,12 @@ struct CameraView: View {
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
         .accessibilityLabel(label)
+    }
+
+    /// Turns the sound on or off and remembers it for the next camera opened.
+    private func toggleSound() {
+        player.setMuted(!player.muted)
+        UserDefaults.standard.set(!player.muted, forKey: LivePlayerState.soundKey)
     }
 
     /// Starts or stops talking through the camera's speaker.
@@ -569,7 +653,7 @@ struct CameraView: View {
                             NavigationLink(value: EventRoute(serverID: route.serverID, review: r)) {
                                 VStack(alignment: .leading, spacing: 6) {
                                     RemoteImage(url: conn.client?.thumbnailURL(for: r), session: conn.client?.session ?? .shared)
-                                        .frame(width: 132, height: 80)
+                                        .frame(width: isWide ? 168 : 132, height: isWide ? 95 : 80)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.cardBorder, lineWidth: 1))
                                         .overlay(alignment: .bottomLeading) {
@@ -582,6 +666,9 @@ struct CameraView: View {
                         }
                     }
                 }
+                // Only as tall as the thumbnails: under the big video on wide screens the
+                // row would otherwise take all the height that is left.
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         // Beside the video (vertical) the column already has its margins; its top lines up
@@ -659,7 +746,10 @@ struct FullscreenLiveView: View {
                 OverlayButton(systemImage: "xmark", size: 40, label: "Close") { dismiss() }
                 Spacer()
                 OverlayButton(systemImage: state.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", size: 40,
-                              label: state.muted ? "Unmute" : "Mute") { state.setMuted(!state.muted) }
+                              label: state.muted ? "Unmute" : "Mute") {
+                state.setMuted(!state.muted)
+                UserDefaults.standard.set(!state.muted, forKey: LivePlayerState.soundKey)
+            }
             }
             .padding(16)
         }

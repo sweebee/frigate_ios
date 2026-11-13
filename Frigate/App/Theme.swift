@@ -356,3 +356,25 @@ enum MenuPresence {
         return view.subviews.contains { contains($0, depth: depth + 1) }
     }
 }
+
+/// The back button's look. On iPad and Mac an arrow on a raised square, like Frigate's own
+/// web app: a bare chevron was easy to miss there. On the phone the usual bare chevron.
+struct BackButtonLabel: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        if sizeClass == .regular {
+            Image(systemName: "arrow.left")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Theme.text)
+                .frame(width: 40, height: 40)
+                .background(Theme.control, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.controlBorder, lineWidth: 1))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        } else {
+            Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
+                .frame(width: 44, height: 44)
+        }
+    }
+}
