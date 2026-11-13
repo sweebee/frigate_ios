@@ -25,6 +25,7 @@ struct SidebarRoot: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             // Mac: a new section settles its top inset in its first frames (the title bar's
             // room, see hideWindowTitle); fading it in keeps that from showing as a jump.
+            .modifier(NoTopEdgeEffect(enabled: isMac))
             .id(isMac ? model.tab : .live)
             .transition(.opacity.animation(.easeIn(duration: 0.16)))
         }
@@ -97,3 +98,16 @@ struct SidebarRoot: View {
     }
 }
 
+
+/// Mac: no bar at the top edge when the pointer comes near the (hidden) title bar; macOS 26
+/// draws its scroll edge effect there over content that runs under it.
+private struct NoTopEdgeEffect: ViewModifier {
+    let enabled: Bool
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *), enabled {
+            content.scrollEdgeEffectHidden(true, for: .top)
+        } else {
+            content
+        }
+    }
+}
