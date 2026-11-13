@@ -109,6 +109,10 @@ def submit(app, version, text, platform):
 
     # Submit first: adding a build to an external group before it is submitted often answers
     # 404 ("no resource of type builds") for a long time; afterwards it works right away.
+    detail = must(api("GET", f"/v1/builds/{build_id}/buildBetaDetail"), "Read beta state")["data"]
+    if detail["attributes"].get("externalBuildState") != "READY_FOR_BETA_SUBMISSION":
+        print(f"{platform}: already submitted ({detail['attributes'].get('externalBuildState')}).")
+        return build_id
     # Only one build per platform can be in beta review; wait (up to a day) for the one before.
     for _ in range(288):
         status, data = api("POST", "/v1/betaAppReviewSubmissions",
