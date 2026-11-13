@@ -232,8 +232,8 @@ struct WideDetailLayout<Media: View, Side: View>: View {
     var body: some View {
         GeometryReader { geo in
             let sideWidth = min(400, geo.size.width * 0.36)
-            let maxWidth = max(200, geo.size.width - sideWidth - 48)
-            let height = min(maxWidth / aspect, max(160, geo.size.height - 24 - reserve))
+            let maxWidth = max(200, geo.size.width - sideWidth - 32)
+            let height = min(maxWidth / aspect, max(160, geo.size.height - 28 - reserve))
             HStack(alignment: .top, spacing: 16) {
                 media
                     .frame(width: height * aspect, height: height + reserve, alignment: .top)
@@ -242,8 +242,11 @@ struct WideDetailLayout<Media: View, Side: View>: View {
                     .frame(width: sideWidth)
                     .frame(maxHeight: .infinity, alignment: .top)
             }
-            .padding(.horizontal, 16)
+            // The side column's content brings its own 16 pt margins (sides and, with the
+            // actions' 8, the bottom), so this only adds what lines it up with the window.
+            .padding(.leading, 16)
             .padding(.top, 4)
+            .padding(.bottom, 8)
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
     }

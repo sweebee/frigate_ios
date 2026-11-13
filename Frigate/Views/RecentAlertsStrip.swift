@@ -88,7 +88,8 @@ struct AlertPreviewTile: View {
     }
 }
 
-/// Muted video that loops, shown only once it plays so the thumbnail below stays visible until then.
+/// Muted video that loops, shown only while its layer has a frame, so the thumbnail below
+/// stays visible until then (and again if the layer is emptied, e.g. in the background).
 struct LoopingVideo: View {
     let url: URL
     @State private var player = AVQueuePlayer()
@@ -96,7 +97,7 @@ struct LoopingVideo: View {
     @State private var ready = false
 
     var body: some View {
-        PlayerLayerView(player: player, gravity: .resizeAspectFill)
+        PlayerLayerView(player: player, gravity: .resizeAspectFill, onReadyForDisplay: { ready = $0 })
             .opacity(ready ? 1 : 0)
             .allowsHitTesting(false)
             // Runs again each time the tile appears. Every run gets a fresh player: a looper
@@ -109,11 +110,10 @@ struct LoopingVideo: View {
                 looper = AVPlayerLooper(player: fresh, templateItem: AVPlayerItem(asset: asset))
                 player = fresh
                 fresh.play()
-                // Show the video once the first frame is there.
-                while !Task.isCancelled && !ready {
-                    if fresh.currentItem?.status == .readyToPlay && fresh.currentTime().seconds > 0 { ready = true }
-                    try? await Task.sleep(for: .milliseconds(200))
-                }
+            }
+            // The system pauses video in the background; carry on when the app is back.
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                if looper != nil { player.play() }
             }
             .onDisappear { stop() }
     }

@@ -75,7 +75,7 @@ struct EventDetailView: View {
             header
             if horizontalSizeClass == .regular {
                 // iPad and Mac: video and scrubber beside the details.
-                WideDetailLayout(aspect: conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, reserve: 64) {
+                WideDetailLayout(aspect: conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, reserve: 80) {
                     VStack(spacing: 0) {
                         videoPlayer.clipShape(RoundedRectangle(cornerRadius: 12))
                         scrubber
@@ -278,17 +278,20 @@ struct EventDetailView: View {
             GeometryReader { geo in
                 let w = geo.size.width
                 let total = max(player.duration, 0.1)
-                let progress = min(1, player.currentTime / total)
                 let evStart = max(0, min(1, (activityStart - clipStart) / total))
                 let evEnd = max(evStart, min(1, (activityEnd - clipStart) / total))
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.controlBorder).frame(height: 4)
-                    RoundedRectangle(cornerRadius: 3).fill(Theme.warning.opacity(0.28))
-                        .frame(width: max(0, (evEnd - evStart) * w), height: 14)
-                        .offset(x: evStart * w)
-                    Capsule().fill(Theme.accent).frame(width: progress * w, height: 4)
-                    Circle().fill(.white).frame(width: 16, height: 16)
-                        .offset(x: progress * w - 8)
+                // Redrawn every frame while playing, so the dot glides instead of stepping.
+                TimelineView(.animation(paused: !player.isPlaying || player.isScrubbing)) { _ in
+                    let progress = min(1, player.liveTime / total)
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.controlBorder).frame(height: 4)
+                        RoundedRectangle(cornerRadius: 3).fill(Theme.warning.opacity(0.28))
+                            .frame(width: max(0, (evEnd - evStart) * w), height: 14)
+                            .offset(x: evStart * w)
+                        Capsule().fill(Theme.accent).frame(width: progress * w, height: 4)
+                        Circle().fill(.white).frame(width: 16, height: 16)
+                            .offset(x: progress * w - 8)
+                    }
                 }
                 .frame(height: 28)
                 .contentShape(Rectangle())
@@ -297,32 +300,41 @@ struct EventDetailView: View {
                     .onEnded { v in player.endScrub(at: max(0, min(1, v.location.x / w)) * total) })
             }
             .frame(height: 28)
+            // Larger on iPad and Mac, where these sit under a big video and the pointer
+            // needs bigger targets than a finger does on the phone.
+            let wide = horizontalSizeClass == .regular
             HStack {
                 Text(FrigateFormat.duration(player.currentTime)).monospacedDigit()
                 Spacer()
-                HStack(spacing: 4) {
+                HStack(spacing: wide ? 12 : 4) {
                     Button { player.skip(-10) } label: {
-                        Image(systemName: "gobackward.10").font(.system(size: 16, weight: .medium))
-                            .frame(minWidth: 36, minHeight: 32)
+                        Image(systemName: "gobackward.10").font(.system(size: wide ? 24 : 16, weight: .medium))
+                            .frame(minWidth: wide ? 48 : 36, minHeight: wide ? 44 : 32)
+                            .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Back 10 seconds")
                     ForEach([Float(1), 2], id: \.self) { r in
-                        Button("\(Int(r))x") { player.setRate(r) }
-                            .font(.system(size: 12, weight: player.rate == r ? .bold : .regular))
-                            .foregroundStyle(player.rate == r ? Theme.accent : Theme.textSecondary)
-                            .frame(minWidth: 32, minHeight: 28)
+                        Button { player.setRate(r) } label: {
+                            Text("\(Int(r))x")
+                                .font(.system(size: wide ? 17 : 12, weight: player.rate == r ? .bold : .regular))
+                                .foregroundStyle(player.rate == r ? Theme.accent : Theme.textSecondary)
+                                .frame(minWidth: wide ? 48 : 32, minHeight: wide ? 44 : 28)
+                                .contentShape(Rectangle())
+                        }
                     }
                     Button { player.skip(10) } label: {
-                        Image(systemName: "goforward.10").font(.system(size: 16, weight: .medium))
-                            .frame(minWidth: 36, minHeight: 32)
+                        Image(systemName: "goforward.10").font(.system(size: wide ? 24 : 16, weight: .medium))
+                            .frame(minWidth: wide ? 48 : 36, minHeight: wide ? 44 : 32)
+                            .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Forward 10 seconds")
                 }
+                .buttonStyle(.plain)
                 .foregroundStyle(Theme.text)
                 Spacer()
                 Text(FrigateFormat.duration(player.duration)).monospacedDigit()
             }
-            .font(.system(size: 12))
+            .font(.system(size: wide ? 14 : 12))
             .foregroundStyle(Theme.textSecondary)
         }
         .padding(.horizontal, 16)

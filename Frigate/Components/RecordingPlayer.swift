@@ -135,6 +135,14 @@ final class RecordingPlayer {
     }
 
 
+    /// Position for a playhead that moves every frame: the player's own clock while it
+    /// plays, `currentTime` (updated four times a second) otherwise.
+    var liveTime: Double {
+        guard isPlaying, !isScrubbing, pendingStart == nil, seeksInFlight == 0 else { return currentTime }
+        let t = player.currentTime().seconds
+        return t.isFinite ? t : currentTime
+    }
+
     // MARK: Scrubbing
 
     private var scrubTarget: Double?
@@ -196,23 +204,38 @@ final class RecordingPlayer {
 struct PlayerLayerView: UIViewRepresentable {
     let player: AVPlayer
     var gravity: AVLayerVideoGravity = .resizeAspect
+    /// Called with whether the layer has a frame to show. The player's clock can run
+    /// while the layer is still (or again, after the app was in the background) empty.
+    var onReadyForDisplay: ((Bool) -> Void)? = nil
 
     func makeUIView(context: Context) -> PlayerUIView {
         let v = PlayerUIView()
         v.backgroundColor = .black
         v.playerLayer.player = player
         v.playerLayer.videoGravity = gravity
+        v.onReady = onReadyForDisplay
         return v
     }
 
     func updateUIView(_ v: PlayerUIView, context: Context) {
         v.playerLayer.player = player
         v.playerLayer.videoGravity = gravity
+        v.onReady = onReadyForDisplay
     }
 
     final class PlayerUIView: UIView {
         override class var layerClass: AnyClass { AVPlayerLayer.self }
         var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+        private var observation: NSKeyValueObservation?
+        var onReady: ((Bool) -> Void)? {
+            didSet {
+                guard (onReady == nil) != (observation == nil) else { return }
+                observation = onReady == nil ? nil : playerLayer.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak self] layer, _ in
+                    let ready = layer.isReadyForDisplay
+                    DispatchQueue.main.async { self?.onReady?(ready) }
+                }
+            }
+        }
     }
 }
 

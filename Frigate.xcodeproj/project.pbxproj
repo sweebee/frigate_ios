@@ -199,7 +199,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Frigate/Support/Info.plist;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Frigate/Support/Frigate-Mac.entitlements";
 				INFOPLIST_KEY_CFBundleDisplayName = Tender;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Tender looks for Frigate NVR servers on your local network and connects to them.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk through cameras that have a speaker.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save camera snapshots and video clips to your photo library.";
@@ -234,7 +236,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Frigate/Support/Info.plist;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Frigate/Support/Frigate-Mac.entitlements";
 				INFOPLIST_KEY_CFBundleDisplayName = Tender;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Tender looks for Frigate NVR servers on your local network and connects to them.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk through cameras that have a speaker.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save camera snapshots and video clips to your photo library.";
