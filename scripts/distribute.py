@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gives an uploaded build to the external TestFlight group and submits it for beta review.
+"""Gives an uploaded build (iOS and Mac) to the external TestFlight group and submits it for beta review.
 
 Usage: scripts/distribute.py <build number> [what to test]
 
@@ -64,29 +64,26 @@ def what_to_test() -> str:
     return log or "Bug fixes and improvements."
 
 
-def main():
-    if len(sys.argv) < 2:
-        sys.exit(__doc__)
-    version = sys.argv[1]
-    text = sys.argv[2] if len(sys.argv) > 2 else what_to_test()
-    text = text[:4000]
+PLATFORMS = ("IOS", "MAC_OS")
 
-    app = must(api("GET", f"/v1/apps?filter[bundleId]={BUNDLE_ID}"), "Find app")["data"][0]["id"]
 
-    print(f"Waiting for build {version} to finish processing…", flush=True)
+def submit(app, version, text, platform):
+    """Waits for the build to be processed, fills in What to Test and submits it for beta review."""
+    print(f"Waiting for {platform} build {version} to finish processing…", flush=True)
     build = None
     for _ in range(90):
-        data = must(api("GET", f"/v1/builds?filter[app]={app}&filter[version]={version}"), "Find build")["data"]
+        data = must(api("GET", f"/v1/builds?filter[app]={app}&filter[version]={version}"
+                               f"&filter[preReleaseVersion.platform]={platform}"), "Find build")["data"]
         if data:
             state = data[0]["attributes"]["processingState"]
             if state == "VALID":
                 build = data[0]
                 break
             if state in ("FAILED", "INVALID"):
-                sys.exit(f"Build {version} is {state}")
+                sys.exit(f"{platform} build {version} is {state}")
         time.sleep(20)
     if not build:
-        sys.exit("Build did not finish processing in 30 minutes")
+        sys.exit(f"{platform} build did not finish processing in 30 minutes")
     build_id = build["id"]
 
     if build["attributes"].get("usesNonExemptEncryption") is None:
@@ -104,10 +101,6 @@ def main():
                 "type": "betaBuildLocalizations", "attributes": {"locale": locale, "whatsNew": text},
                 "relationships": {"build": {"data": {"type": "builds", "id": build_id}}}}}), "Set What to Test")
 
-    groups = must(api("GET", f"/v1/apps/{app}/betaGroups"), "Find groups")["data"]
-    group = next((g for g in groups if g["attributes"]["name"] == GROUP and not g["attributes"]["isInternalGroup"]), None)
-    if not group:
-        sys.exit(f'No external TestFlight group named "{GROUP}"')
     # Submit first: adding a build to an external group before it is submitted often answers
     # 404 ("no resource of type builds") for a long time; afterwards it works right away.
     status, data = api("POST", "/v1/betaAppReviewSubmissions",
@@ -116,24 +109,28 @@ def main():
     if status >= 300:
         codes = " ".join(e.get("code", "") + " " + e.get("detail", "") for e in data.get("errors", []))
         if "already" not in codes.lower():
-            sys.exit(f"Submit for beta review failed ({status}): {codes[:600]}")
-        print("Already submitted for beta review.")
+            sys.exit(f"Submit {platform} build for beta review failed ({status}): {codes[:600]}")
+        print(f"{platform}: already submitted for beta review.")
     else:
-        print("Submitted for beta review.")
+        print(f"{platform}: submitted for beta review.")
+    return build_id
 
+
+def add_to_group(build_id, group, platform):
+    """Waits for beta review approval, then gives the build to the external group."""
     # The group accepts the build only once Apple approved the beta review (usually within
     # minutes for later builds of an approved app).
-    print("Waiting for beta review approval…", flush=True)
+    print(f"{platform}: waiting for beta review approval…", flush=True)
     for _ in range(240):
         status, data = api("GET", f"/v1/betaAppReviewSubmissions/{build_id}")
         state = data.get("data", {}).get("attributes", {}).get("betaReviewState") if status < 300 else None
         if state == "APPROVED":
             break
         if state == "REJECTED":
-            sys.exit("Beta review rejected; see App Store Connect.")
+            sys.exit(f"{platform} beta review rejected; see App Store Connect.")
         time.sleep(30)
     else:
-        sys.exit("Beta review not approved within 2 hours; run this script again later.")
+        sys.exit(f"{platform} beta review not approved within 2 hours; run this script again later.")
 
     # Even after approval the group can answer 404 for a while (seen up to ~15 minutes).
     for attempt in range(60):
@@ -147,10 +144,30 @@ def main():
             break
         time.sleep(30)
     else:
-        sys.exit(f"Add build to group failed ({status}): {json.dumps(data.get('errors', data))[:600]}")
+        sys.exit(f"Add {platform} build to group failed ({status}): {json.dumps(data.get('errors', data))[:600]}")
+    print(f'{platform}: in group "{GROUP}".', flush=True)
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    version = sys.argv[1]
+    text = sys.argv[2] if len(sys.argv) > 2 else what_to_test()
+    text = text[:4000]
+
+    app = must(api("GET", f"/v1/apps?filter[bundleId]={BUNDLE_ID}"), "Find app")["data"][0]["id"]
+    groups = must(api("GET", f"/v1/apps/{app}/betaGroups"), "Find groups")["data"]
+    group = next((g for g in groups if g["attributes"]["name"] == GROUP and not g["attributes"]["isInternalGroup"]), None)
+    if not group:
+        sys.exit(f'No external TestFlight group named "{GROUP}"')
+
+    # The iOS and the Mac build share the build number; submit both, then wait for each.
+    submitted = [(p, submit(app, version, text, p)) for p in PLATFORMS]
+    for platform, build_id in submitted:
+        add_to_group(build_id, group, platform)
 
     subprocess.run(["git", "tag", "-f", TAG, "HEAD"], capture_output=True)
-    print(f'Build {version} is in group "{GROUP}". Testers get it once Apple approves the beta review.')
+    print(f'Build {version} (iOS and Mac) is in group "{GROUP}".')
 
 
 if __name__ == "__main__":
