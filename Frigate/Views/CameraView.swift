@@ -160,11 +160,7 @@ struct CameraView: View {
 
     private var moreMenu: some View {
             Menu {
-                if streams.count > 1 {
-                    Picker("Stream", selection: streamChoice) {
-                        ForEach(streams, id: \.name) { s in Text(s.title).tag(s.name) }
-                    }
-                }
+                // The stream is picked on the video itself (streamChip).
                 Picker("Playback", selection: $player.preferred) {
                     Text("Automatic").tag(LivePlayerState.Mode.auto)
                     Text("MSE").tag(LivePlayerState.Mode.mse)
@@ -321,6 +317,7 @@ struct CameraView: View {
                         }
                         Spacer()
                         recBadge
+                        streamChip.simultaneousGesture(TapGesture().onEnded { menuOpen = true; keepOverlay() })
                         ClockLabel()
                             .font(.system(size: 13, weight: .semibold).monospacedDigit())
                             .padding(.horizontal, 10).padding(.vertical, 5)
