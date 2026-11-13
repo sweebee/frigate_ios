@@ -486,12 +486,20 @@ struct CameraView: View {
 
     private func today(conn: ServerConnection) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack {
                 Text("Today").font(.system(size: 20, weight: .bold))
                 Spacer()
                 NavigationLink(value: PlaybackRoute(serverID: route.serverID, camera: route.camera, day: Calendar.current.startOfDay(for: Date()))) {
-                    Text("Playback").font(.system(size: 15, weight: .medium)).frame(minHeight: 44)
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock.arrow.circlepath").font(.system(size: 14, weight: .semibold))
+                        Text("Playback").font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundStyle(Theme.onColor)
+                    .padding(.horizontal, 14).frame(height: 36)
+                    .background(Theme.accent, in: Capsule())
+                    .frame(minHeight: 44)
                 }
+                .buttonStyle(.plain)
             }
             if loadingReviews && reviews.isEmpty {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 80)
