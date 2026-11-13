@@ -215,9 +215,11 @@ struct PlaybackView: View {
             case .events: eventsList
             case .timeline:
                 PlaybackTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion, reviews: visibleReviews,
-                                 map: map, isFollowing: scrubTime == nil,
+                                 map: map, isFollowing: scrubTime == nil, annotationOffset: annotationOffset,
+                                 onSelect: { jump(toWall: $0.startTime - 1 + annotationOffset, autoplay: true, earlier: 2) },
                                  onScrub: { heldTime = nil; scrubTime = $0; preview.show($0 - annotationOffset) },
-                                 onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) })
+                                 onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) },
+                                 onScrubCancel: { scrubTime = nil; preview.hide() })
             }
         }
         .screenBackground()
@@ -350,7 +352,7 @@ struct PlaybackView: View {
             PlayerLayerView(player: player.player)
                 .zoomable()
                 .overlay { if gapTime != nil && !preview.showing { gapPlaceholder } }
-                .overlay { if preview.showing { PlayerLayerView(player: preview.player) } }
+                .overlay { if preview.showing { PreviewSurface(preview: preview) } }
                 .onTapGesture { toggleOverlay() }
             if loading {
                 ProgressView().tint(.white)
@@ -660,13 +662,22 @@ struct PlaybackTimeline: View {
     let reviews: [ReviewItem]
     let map: RecordingMap
     let isFollowing: Bool
+    /// Seconds from event times to the recording (the camera's annotation offset).
+    var annotationOffset: Double = 0
+    /// A tap on an event in the strip or on its label.
+    var onSelect: (ReviewItem) -> Void = { _ in }
     let onScrub: (Double) -> Void
     /// Release time plus a snap window in seconds (about 24 points at the current zoom).
     let onScrubEnd: (Double, Double) -> Void
+    /// A drag that turned out to be part of a tap on an event: drop it without seeking.
+    var onScrubCancel: () -> Void = {}
 
     /// Seconds per row.
     @State private var zoomIndex = 2
     @State private var dragStartTime: Double?
+    /// When an event was last tapped. A tap that moves a little also ends a drag, which must
+    /// not then seek back to where the finger started.
+    @State private var lastTap = Date.distantPast
     private let zooms: [Double] = [10, 30, 60, 120, 300]
     private let rowHeight: CGFloat = 5
 
@@ -678,7 +689,13 @@ struct PlaybackTimeline: View {
             ZStack(alignment: .bottomTrailing) {
                 Canvas { ctx, size in draw(ctx, size: size) }
                     .contentShape(Rectangle())
-                    .gesture(DragGesture(minimumDistance: 2)
+                    .simultaneousGesture(SpatialTapGesture().onEnded { tap in
+                        if let r = review(at: tap.location, size: geo.size) {
+                            lastTap = Date()
+                            onSelect(r)
+                        }
+                    })
+                    .gesture(DragGesture(minimumDistance: 10)
                         .onChanged { v in
                             let base = dragStartTime ?? wallTime
                             if dragStartTime == nil { dragStartTime = base }
@@ -688,6 +705,7 @@ struct PlaybackTimeline: View {
                         .onEnded { v in
                             let base = dragStartTime ?? wallTime
                             dragStartTime = nil
+                            if Date().timeIntervalSince(lastTap) < 0.5 { onScrubCancel(); return }
                             onScrubEnd(clamp(base + Double(v.translation.height) * secondsPerPoint), secondsPerPoint * 24)
                         })
 
@@ -730,10 +748,66 @@ struct PlaybackTimeline: View {
         .accessibilityLabel(label)
     }
 
-    private func draw(_ ctx: GraphicsContext, size: CGSize) {
-        let gutter: CGFloat = 64
+    // MARK: Event strip
+
+    private let gutter: CGFloat = 64
+    /// The strip of event blocks just right of the time labels; motion bars start after it.
+    private let stripWidth: CGFloat = 18
+    private var barsStart: CGFloat { gutter + stripWidth + 6 }
+
+    /// Where an event sits on screen, newest on top: from its end down to its start.
+    private func span(of r: ReviewItem, center: CGFloat) -> (top: CGFloat, bottom: CGFloat) {
+        let start = r.startTime + annotationOffset
+        let end = (r.endTime ?? dayEnd) + annotationOffset
+        let top = center + CGFloat((wallTime - end) / secondsPerPoint)
+        let bottom = center + CGFloat((wallTime - start) / secondsPerPoint)
+        // Short events still get a block big enough for their icon and a finger.
+        return bottom - top < stripWidth ? (bottom - stripWidth, bottom) : (top, bottom)
+    }
+
+    /// The event under a tap on the strip.
+    private func review(at p: CGPoint, size: CGSize) -> ReviewItem? {
+        guard p.x >= gutter - 10, p.x <= barsStart + 4 else { return nil }
         let center = size.height / 2
-        let barAreaWidth = size.width - gutter * 2
+        return reviews
+            .map { (r: $0, s: span(of: $0, center: center)) }
+            .filter { p.y >= $0.s.top - 6 && p.y <= $0.s.bottom + 6 }
+            .min { abs(($0.s.top + $0.s.bottom) / 2 - p.y) < abs(($1.s.top + $1.s.bottom) / 2 - p.y) }?.r
+    }
+
+    /// Event blocks in the strip, as long as the event lasted, with the label icon on top.
+    private func drawEvents(_ ctx: GraphicsContext, size: CGSize) {
+        let center = size.height / 2
+        var lastIconY = -CGFloat.infinity
+        // Top (newest) first, so an icon that would overlap the one above is left out.
+        for r in reviews.sorted(by: { $0.startTime > $1.startTime }) {
+            let s = span(of: r, center: center)
+            guard s.bottom > 0, s.top < size.height else { continue }
+            let label = r.labels.first ?? ""
+            let color = Theme.labelColor(label)
+            let block = CGRect(x: gutter, y: s.top, width: stripWidth, height: s.bottom - s.top)
+            ctx.fill(Path(roundedRect: block, cornerRadius: 5), with: .color(color.opacity(r.severity == .alert ? 1 : 0.8)))
+            guard s.top - lastIconY >= stripWidth + 2 else { continue }
+            lastIconY = s.top
+            let box = CGRect(x: gutter, y: s.top, width: stripWidth, height: stripWidth)
+            if let symbol = LabelIcon.symbol(for: label) {
+                var img = ctx.resolve(Image(systemName: symbol))
+                img.shading = .color(Theme.onLabel)
+                let scale = 11 / max(img.size.width, img.size.height)
+                let w = img.size.width * scale, h = img.size.height * scale
+                ctx.draw(img, in: CGRect(x: box.midX - w / 2, y: box.midY - h / 2, width: w, height: h))
+            } else {
+                // No icon for this label: its first letter.
+                let letter = ctx.resolve(Text(String(FrigateFormat.labelName(label).prefix(1)).uppercased())
+                    .font(.system(size: 11, weight: .bold)).foregroundColor(Theme.onLabel))
+                ctx.draw(letter, at: CGPoint(x: box.midX, y: box.midY))
+            }
+        }
+    }
+
+    private func draw(_ ctx: GraphicsContext, size: CGSize) {
+        let center = size.height / 2
+        let barAreaWidth = size.width - gutter - barsStart
         let rows = Int(size.height / rowHeight) + 2
         // Align rows to bucket boundaries so they do not shimmer while playing.
         let topTime = wallTime + Double(center) * secondsPerPoint
@@ -763,13 +837,13 @@ struct PlaybackTimeline: View {
             let motionWidth = CGFloat(level / maxMotion) * barAreaWidth * 0.9
             if let r = reviews.first(where: { rowEnd > $0.startTime && rowStart < ($0.endTime ?? dayEnd) }) {
                 let color = Theme.labelColor(r.labels.first ?? "")
-                row.fill(Path(CGRect(x: gutter, y: rowY, width: barAreaWidth, height: rowHeight)), with: .color(color.opacity(0.14)))
+                row.fill(Path(CGRect(x: barsStart, y: rowY, width: barAreaWidth, height: rowHeight)), with: .color(color.opacity(0.08)))
                 let w = max(motionWidth, 14)
-                row.fill(Path(roundedRect: CGRect(x: gutter + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
+                row.fill(Path(roundedRect: CGRect(x: barsStart + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
                          with: .color(color))
             } else if map.hasRecording(from: rowStart, to: rowEnd) {
                 let w = max(4, motionWidth)
-                row.fill(Path(roundedRect: CGRect(x: gutter + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
+                row.fill(Path(roundedRect: CGRect(x: barsStart + (barAreaWidth - w) / 2, y: rowY + 1, width: w, height: 3), cornerRadius: 1.5),
                          with: .color(level > 0 ? Theme.motion : Theme.controlBorder))
             }
 
@@ -785,6 +859,7 @@ struct PlaybackTimeline: View {
                 row.fill(Path(CGRect(x: 0, y: rowY + 2, width: 7, height: 1)), with: .color(Color(hex: 0x6B7480)))
             }
         }
+        drawEvents(ctx, size: size)
     }
 
     /// Seconds between labeled ticks for the current zoom.
@@ -810,7 +885,7 @@ extension PlaybackView {
             PlayerLayerView(player: player.player)
                 .zoomable()
                 .overlay { if gapTime != nil && !preview.showing { gapPlaceholder } }
-                .overlay { if preview.showing { PlayerLayerView(player: preview.player) } }
+                .overlay { if preview.showing { PreviewSurface(preview: preview) } }
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
             if loading {
