@@ -26,6 +26,9 @@ struct FrigateApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // The biggest iPhones report a regular width in landscape; the iPad and Mac
+                // layouts are not meant for them, so a phone is always compact.
+                .modifier(PhoneIsCompact())
                 .environment(model)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
@@ -120,5 +123,16 @@ private struct BorderlessButtonsOnMac: ViewModifier {
         #else
         content
         #endif
+    }
+}
+
+/// On a phone, the horizontal size class is always compact; elsewhere it is left alone.
+private struct PhoneIsCompact: ViewModifier {
+    func body(content: Content) -> some View {
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            content.environment(\.horizontalSizeClass, .compact)
+        } else {
+            content
+        }
     }
 }
