@@ -23,6 +23,8 @@ struct HorizontalTimeline: View {
     @State private var pinchBase: Double?
     @State private var dragStartTime: Double?
     @State private var fling = TimelineFling()
+    /// Where a trackpad scroll has got to.
+    @State private var scrollTime: Double?
 
     private let barWidth: CGFloat = 3
     private let barArea: CGFloat = 30
@@ -34,6 +36,28 @@ struct HorizontalTimeline: View {
         Canvas { ctx, size in draw(ctx, size: size) }
             .frame(height: barArea + 22 + iconRow)
             .contentShape(Rectangle())
+            // Two fingers on a trackpad: the same as dragging, with the same follow-through.
+            .overlay {
+                TrackpadScroll(
+                    onBegan: { onInteract(); fling.cancel(); dragStartTime = wallTime; scrollTime = wallTime },
+                    onChanged: { p in
+                        let t = clamp((dragStartTime ?? wallTime) - Double(p.x) * scale)
+                        scrollTime = t
+                        onScrub(t)
+                    },
+                    onEnded: { v in
+                        let released = scrollTime ?? wallTime
+                        dragStartTime = nil
+                        scrollTime = nil
+                        let snap = scale * 24
+                        if abs(v.x) > TimelineFling.minimumSpeed {
+                            fling.start(from: released, velocity: -Double(v.x) * scale, clamp: clamp,
+                                        step: onScrub, end: { onScrubEnd($0, snap) })
+                        } else {
+                            onScrubEnd(released, snap)
+                        }
+                    })
+            }
             .gesture(DragGesture(minimumDistance: 2)
                 .onChanged { v in
                     onInteract()
@@ -233,5 +257,57 @@ final class TimelineFling {
     func cancel() {
         task?.cancel()
         task = nil
+    }
+}
+
+/// Catches two-finger trackpad scrolling (and a mouse wheel) over a timeline, which SwiftUI's
+/// drag gestures never see. Touches and clicks pass straight through to the views below.
+struct TrackpadScroll: UIViewRepresentable {
+    var onBegan: () -> Void
+    var onChanged: (CGPoint) -> Void
+    /// Velocity in points per second at release.
+    var onEnded: (CGPoint) -> Void
+
+    func makeUIView(context: Context) -> ScrollView {
+        let view = ScrollView()
+        view.backgroundColor = .clear
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.pan(_:)))
+        pan.allowedScrollTypesMask = .all
+        pan.allowedTouchTypes = []
+        pan.delegate = context.coordinator
+        view.addGestureRecognizer(pan)
+        return view
+    }
+
+    func updateUIView(_ view: ScrollView, context: Context) { context.coordinator.parent = self }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    final class ScrollView: UIView {
+        // Only scroll events land here; everything else goes to what is underneath.
+        override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+            event?.type == .scroll && bounds.contains(point) ? self : nil
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: TrackpadScroll
+        init(parent: TrackpadScroll) { self.parent = parent }
+
+        // Scrolling the timeline wins: the navigation's swipe back (two fingers sideways)
+        // and scroll views around it wait for this one to fail.
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool { true }
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { false }
+
+        @objc func pan(_ g: UIPanGestureRecognizer) {
+            switch g.state {
+            case .began: parent.onBegan(); parent.onChanged(g.translation(in: g.view))
+            case .changed: parent.onChanged(g.translation(in: g.view))
+            case .ended: parent.onEnded(g.velocity(in: g.view))
+            case .cancelled, .failed: parent.onEnded(.zero)
+            default: break
+            }
+        }
     }
 }

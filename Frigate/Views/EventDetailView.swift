@@ -136,20 +136,6 @@ struct EventDetailView: View {
             playerStatus(showPlay: !overlayVisible)
             if overlayVisible {
                 landscapeOverlay.transition(.opacity)
-            } else {
-                VStack {
-                    Spacer()
-                    GeometryReader { geo in
-                        let p = min(1, player.currentTime / max(player.duration, 0.1))
-                        ZStack(alignment: .leading) {
-                            Rectangle().fill(Color.white.opacity(0.15))
-                            Rectangle().fill(Theme.accent).frame(width: geo.size.width * p)
-                        }
-                    }
-                    .frame(height: 3)
-                }
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
             }
         }
         .statusBarHidden(true)

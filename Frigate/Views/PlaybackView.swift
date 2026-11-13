@@ -808,6 +808,8 @@ struct PlaybackTimeline: View {
     @State private var zoomIndex = 2
     @State private var dragStartTime: Double?
     @State private var fling = TimelineFling()
+    /// Where a trackpad scroll has got to.
+    @State private var scrollTime: Double?
     /// When an event was last tapped. A tap that moves a little also ends a drag, which must
     /// not then seek back to where the finger started.
     @State private var lastTap = Date.distantPast
@@ -827,6 +829,28 @@ struct PlaybackTimeline: View {
             ZStack(alignment: .bottomTrailing) {
                 Canvas { ctx, size in draw(ctx, size: size) }
                     .contentShape(Rectangle())
+                    // Two fingers on a trackpad: the same as dragging, with the same follow-through.
+                    .overlay {
+                        TrackpadScroll(
+                            onBegan: { fling.cancel(); dragStartTime = wallTime; scrollTime = wallTime },
+                            onChanged: { p in
+                                let t = clamp((dragStartTime ?? wallTime) + Double(p.y) * secondsPerPoint)
+                                scrollTime = t
+                                onScrub(t)
+                            },
+                            onEnded: { v in
+                                let released = scrollTime ?? wallTime
+                                dragStartTime = nil
+                                scrollTime = nil
+                                let snap = secondsPerPoint * 24
+                                if abs(v.y) > TimelineFling.minimumSpeed {
+                                    fling.start(from: released, velocity: Double(v.y) * secondsPerPoint, clamp: clamp,
+                                                step: onScrub, end: { onScrubEnd($0, snap) })
+                                } else {
+                                    onScrubEnd(released, snap)
+                                }
+                            })
+                    }
                     .simultaneousGesture(SpatialTapGesture().onEnded { tap in
                         fling.cancel()
                         if let r = review(at: tap.location, size: geo.size) {
@@ -1097,20 +1121,6 @@ extension PlaybackView {
             }
             if overlayVisible {
                 landscapeOverlay.transition(.opacity)
-            } else {
-                VStack {
-                    Spacer()
-                    GeometryReader { geo in
-                        let p = max(0, min(1, (wallTime - dayStart) / max(dayEnd - dayStart, 1)))
-                        ZStack(alignment: .leading) {
-                            Rectangle().fill(Color.white.opacity(0.15))
-                            Rectangle().fill(Theme.accent).frame(width: geo.size.width * p)
-                        }
-                    }
-                    .frame(height: 3)
-                }
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
             }
             if showEventsPanel {
                 HStack(spacing: 0) {
