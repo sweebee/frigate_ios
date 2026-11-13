@@ -93,6 +93,7 @@ struct SidebarRoot: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .handCursor()
         .help(Text(title))
         .accessibilityLabel(Text(title))
     }

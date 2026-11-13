@@ -275,6 +275,7 @@ struct PlaybackOverlayControls: View {
                     .frame(width: size, height: size)
                     .background(.black.opacity(0.6), in: Circle())
             }
+            .handCursor()
             .accessibilityLabel("Playback speed")
         }
         .padding(large ? 16 : 10)
@@ -296,6 +297,7 @@ struct FullscreenButton: View {
                 .background(.black.opacity(0.6), in: Circle())
         }
         .buttonStyle(.plain)
+        .handCursor()
         .accessibilityLabel(isOn ? "Exit full screen" : "Full screen")
         .help(Text(isOn ? "Exit full screen" : "Full screen"))
     }
@@ -316,6 +318,7 @@ struct OverlayButton: View {
                 .frame(width: size, height: size)
                 .background(.black.opacity(0.6), in: Circle())
         }
+        .handCursor()
         .accessibilityLabel(label)
     }
 }

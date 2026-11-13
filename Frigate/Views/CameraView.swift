@@ -557,6 +557,7 @@ struct CameraView: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
+        .handCursor()
         .help(Text(label))
         .accessibilityLabel(label)
     }

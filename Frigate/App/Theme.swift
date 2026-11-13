@@ -373,6 +373,7 @@ struct BackButtonLabel: View {
                 // No extra width: the square's edge lines up with the content below.
                 .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
+                .handCursor()
         } else {
             // On the content's edge, like the titles below it.
             Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
@@ -398,6 +399,7 @@ struct HeaderIconLabel: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.controlBorder, lineWidth: 1))
                 .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
+                .handCursor()
         } else {
             Image(systemName: systemName).font(.system(size: 19, weight: .medium))
                 .foregroundStyle(Theme.text)
@@ -417,17 +419,55 @@ extension View {
     /// Fades controls in and out. They stay in the view tree while hidden: removing them
     /// skipped the fade-out (the video under them redraws every frame).
     /// `pointerOver` is set while the pointer rests on them, so they are not hidden then.
+    @ViewBuilder
     func fadingControls(_ visible: Bool, pointerOver: Binding<Bool>? = nil) -> some View {
-        opacity(visible ? 1 : 0)
+        let faded = opacity(visible ? 1 : 0)
             .allowsHitTesting(visible)
+            // Hidden buttons are off, so they neither take the pointer nor show a hand cursor.
+            .disabled(!visible)
             .accessibilityHidden(!visible)
             .animation(.easeOut(duration: 0.25), value: visible)
-            .onHover { inside in pointerOver?.wrappedValue = inside && visible }
+        // Only with a binding: a hover handler takes the pointer even while hidden, and the
+        // video under a full-screen overlay then never hears the mouse move.
+        if let pointerOver {
+            faded.onHover { inside in pointerOver.wrappedValue = inside && visible }
+        } else {
+            faded
+        }
     }
 
     /// Reports when the pointer rests on this part of a full-screen overlay (its own frame,
     /// not the whole screen the overlay covers).
     func pointerOver(_ flag: Binding<Bool>) -> some View {
         onHover { flag.wrappedValue = $0 }
+    }
+}
+
+extension View {
+    /// The pointing-hand cursor over a button on the Mac. Not on hidden or disabled buttons.
+    func handCursor() -> some View { modifier(HandCursor()) }
+}
+
+private struct HandCursor: ViewModifier {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func body(content: Content) -> some View {
+        #if targetEnvironment(macCatalyst)
+        if isEnabled {
+            content.onHover { Self.set(hand: $0) }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+
+    /// AppKit's NSCursor, which a Catalyst app can reach at run time.
+    static func set(hand: Bool) {
+        guard let cls = NSClassFromString("NSCursor") as? NSObject.Type,
+              let cursor = cls.perform(NSSelectorFromString(hand ? "pointingHandCursor" : "arrowCursor"))?
+                .takeUnretainedValue() as? NSObject else { return }
+        cursor.perform(NSSelectorFromString("set"))
     }
 }
