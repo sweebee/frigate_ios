@@ -177,10 +177,10 @@ def main():
     if not group:
         sys.exit(f'No external TestFlight group named "{GROUP}"')
 
-    # The iOS and the Mac build share the build number; submit both, then wait for each.
-    submitted = [(p, submit(app, version, text, p)) for p in PLATFORMS]
-    for platform, build_id in submitted:
-        add_to_group(build_id, group, platform)
+    # The iOS and the Mac build share the build number. One platform at a time, iOS first, so
+    # a Mac build waiting behind another one in review does not hold up the iOS testers.
+    for platform in PLATFORMS:
+        add_to_group(submit(app, version, text, platform), group, platform)
 
     subprocess.run(["git", "tag", "-f", TAG, "HEAD"], capture_output=True)
     print(f'Build {version} (iOS and Mac) is in group "{GROUP}".')
