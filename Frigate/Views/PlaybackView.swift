@@ -392,7 +392,7 @@ struct PlaybackView: View {
                     OverlayButton(systemImage: player.wantsToPlay ? "pause.fill" : "play.fill", label: player.wantsToPlay ? "Pause" : "Play") { togglePlay(); keepOverlay() }
                     OverlayButton(systemImage: "goforward.10", label: "Forward 10 seconds") { player.skip(10); keepOverlay() }
                     Menu {
-                        ForEach([Float(0.5), 1, 2, 4, 8], id: \.self) { r in
+                        ForEach([Float(0.5), 1, 2], id: \.self) { r in
                             Button { player.setRate(r) } label: {
                                 if player.rate == r { Label(rateTitle(r), systemImage: "checkmark") } else { Text(rateTitle(r)) }
                             }
@@ -413,7 +413,7 @@ struct PlaybackView: View {
 
     private var speedMenu: some View {
         Menu {
-            ForEach([Float(0.5), 1, 2, 4, 8], id: \.self) { r in
+            ForEach([Float(0.5), 1, 2], id: \.self) { r in
                 Button { player.setRate(r) } label: {
                     if player.rate == r { Label(rateTitle(r), systemImage: "checkmark") } else { Text(rateTitle(r)) }
                 }

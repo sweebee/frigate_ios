@@ -274,14 +274,8 @@ struct EventDetailView: View {
                 .frame(height: 28)
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0)
-                    .onChanged { v in
-                        player.isScrubbing = true
-                        player.currentTime = max(0, min(1, v.location.x / w)) * total
-                    }
-                    .onEnded { v in
-                        player.isScrubbing = false
-                        player.seek(to: max(0, min(1, v.location.x / w)) * total, precise: true)
-                    })
+                    .onChanged { v in player.scrub(to: max(0, min(1, v.location.x / w)) * total) }
+                    .onEnded { v in player.endScrub(at: max(0, min(1, v.location.x / w)) * total) })
             }
             .frame(height: 28)
             HStack {
@@ -293,7 +287,7 @@ struct EventDetailView: View {
                             .frame(minWidth: 36, minHeight: 32)
                     }
                     .accessibilityLabel("Back 10 seconds")
-                    ForEach([Float(1), 2, 4], id: \.self) { r in
+                    ForEach([Float(1), 2], id: \.self) { r in
                         Button("\(Int(r))x") { player.setRate(r) }
                             .font(.system(size: 12, weight: player.rate == r ? .bold : .regular))
                             .foregroundStyle(player.rate == r ? Theme.accent : Theme.textSecondary)

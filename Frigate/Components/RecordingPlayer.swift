@@ -85,7 +85,7 @@ final class RecordingPlayer {
         stallObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemPlaybackStalled, object: item, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 // Keep going once enough has loaded; play() waits for the buffer.
-                if let self, self.wantsToPlay, !self.stepping { self.player.play() }
+                if let self, self.wantsToPlay, !self.isScrubbing { self.player.play() }
             }
         }
         player.replaceCurrentItem(with: item)
@@ -104,12 +104,10 @@ final class RecordingPlayer {
         // itself after a stall, instead of stopping when the buffer runs dry on slow links.
         player.defaultRate = rate
         player.play()
-        watchFastPlayback()
     }
 
     func pause() {
         wantsToPlay = false
-        watchFastPlayback()
         player.pause()
     }
 
@@ -133,74 +131,59 @@ final class RecordingPlayer {
     }
 
 
-    // MARK: Fast playback
+    // MARK: Scrubbing
 
-    /// Stepping through the recording instead of playing it, for rates the player cannot reach.
-    private var stepTask: Task<Void, Never>?
-    private(set) var stepping = false
+    private var scrubTarget: Double?
+    private var scrubSeeking = false
 
-    /// Above 2x AVPlayer has to decode every frame of a Frigate recording (its HLS has no
-    /// I-frame playlist to skip with), which a heavy stream cannot keep up with: 4x stood still.
-    /// Try it, and when the position hardly moves, step through keyframes instead: one second
-    /// forward every 1/rate seconds, so the speed holds, only less smooth.
-    private func watchFastPlayback() {
-        stepTask?.cancel()
-        stepTask = nil
-        stepping = false
-        guard rate > 2, wantsToPlay else { return }
-        stepTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            let before = currentTime
-            try? await Task.sleep(for: .milliseconds(1200))
-            guard !Task.isCancelled, wantsToPlay, rate > 2 else { return }
-            if currentTime - before >= 1.2 * 1.5 { return }  // native playback keeps up
-            stepping = true
+    /// Follows a finger on a scrub bar: the picture jumps along, one seek at a time and always
+    /// to the latest position, so seeks never pile up behind the finger. Playback holds until
+    /// `endScrub`.
+    func scrub(to seconds: Double) {
+        if !isScrubbing {
+            isScrubbing = true
             player.pause()
-            // Each jump waits for the previous one (a new seek cancels one in flight, and then
-            // no frame ever shows); the target follows the clock so the speed holds.
-            var basePos = currentTime
-            var baseClock = Date()
-            var lastTarget = currentTime
-            while !Task.isCancelled, wantsToPlay, rate > 2 {
-                // Dragging the scrubber or skipping moves the position: continue from there.
-                if isScrubbing || abs(currentTime - lastTarget) > 2 {
-                    try? await Task.sleep(for: .milliseconds(100))
-                    basePos = currentTime
-                    baseClock = Date()
-                    lastTarget = currentTime
-                    continue
-                }
-                let target = basePos + -baseClock.timeIntervalSinceNow * Double(rate)
-                if duration > 0, target >= duration - 0.3 {
-                    seek(to: duration)
-                    wantsToPlay = false
-                    finishedCount += 1
-                    break
-                }
-                currentTime = target
-                lastTarget = target
-                _ = await player.seek(to: CMTime(seconds: target, preferredTimescale: 600),
-                                      toleranceBefore: CMTime(seconds: 1, preferredTimescale: 600), toleranceAfter: .zero)
-                currentTime = lastTarget
-                try? await Task.sleep(for: .milliseconds(30))
+        }
+        currentTime = max(0, duration > 0 ? min(seconds, duration) : seconds)
+        scrubTarget = currentTime
+        scrubNext()
+    }
+
+    private func scrubNext() {
+        guard !scrubSeeking, let t = scrubTarget else { return }
+        scrubTarget = nil
+        scrubSeeking = true
+        let tol = CMTime(seconds: 0.25, preferredTimescale: 600)
+        player.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: tol, toleranceAfter: tol) { [weak self] _ in
+            Task { @MainActor in
+                self?.scrubSeeking = false
+                self?.scrubNext()
             }
-            stepping = false
-            if !Task.isCancelled, wantsToPlay { player.rate = rate }
         }
     }
 
-    func skip(_ delta: Double) { seek(to: currentTime + delta) }
+    /// Lets go of the scrub bar: lands exactly there and plays on if it was playing.
+    func endScrub(at seconds: Double) {
+        scrubTarget = nil
+        isScrubbing = false
+        seek(to: seconds, precise: true)
+        if wantsToPlay {
+            player.defaultRate = rate
+            player.play()
+        }
+    }
+
+    /// Exact, so the position does not snap back to a nearby keyframe once the seek lands.
+    func skip(_ delta: Double) { seek(to: currentTime + delta, precise: true) }
 
     func setRate(_ r: Float) {
         rate = r
         player.defaultRate = r
         if wantsToPlay { player.rate = r }
-        watchFastPlayback()
     }
 
     func stop() {
         wantsToPlay = false
-        watchFastPlayback()
         player.pause()
         player.replaceCurrentItem(with: nil)
     }
