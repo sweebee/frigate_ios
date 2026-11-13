@@ -88,6 +88,8 @@ struct LivePlayerView: View {
         // A new stream or a retry gets another native attempt.
         .onChange(of: state.stream) { _, _ in state.nativeFailed = false }
         .onChange(of: state.reloadToken) { _, _ in state.nativeFailed = false }
+        // Back on screen (or in the foreground): try native again.
+        .onChange(of: state.suspended) { _, suspended in if !suspended { state.nativeFailed = false } }
     }
 }
 

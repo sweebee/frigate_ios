@@ -69,7 +69,8 @@ struct CameraView: View {
         .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
-        .task { await loadReviews() }
+        // Again once the server is connected: opened from a link at launch, it is not yet.
+        .task(id: conn?.client == nil) { await loadReviews() }
         .task { await watchRecording() }
         .onDisappear { player.suspended = true; player.talking = false }
         .task(id: player.stream) {

@@ -81,10 +81,15 @@ struct NativeLivePlayer: UIViewRepresentable {
                 while !Task.isCancelled {
                     let message: URLSessionWebSocketTask.Message
                     do { message = try await task.receive() } catch {
-                        await MainActor.run { self?.fail("connection closed: \(error.localizedDescription)") }
+                        // A socket closed by stop() (leaving the screen, reconnecting) also
+                        // ends up here; only a failure of the current connection counts.
+                        await MainActor.run {
+                            guard let self, self.task === task else { return }
+                            self.fail("connection closed: \(error.localizedDescription)")
+                        }
                         return
                     }
-                    guard let self else { return }
+                    guard let self, self.task === task else { return }
                     switch message {
                     case .data(let data): self.handle(data)
                     case .string(let text):
@@ -122,6 +127,9 @@ struct NativeLivePlayer: UIViewRepresentable {
         private func fail(_ reason: String) {
             guard !failed else { return }
             failed = true
+            #if DEBUG
+            NSLog("[native] %@ failed: %@", stream, reason)
+            #endif
             stop()
             onFailure(reason)
         }
