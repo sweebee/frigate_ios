@@ -90,6 +90,24 @@ final class ServerConnection: Identifiable {
 
     // MARK: Connecting
 
+    /// A server address that answered and accepted the login.
+    private struct Attempt {
+        let client: FrigateClient
+        let remote: Bool
+        let version: String
+        let config: FrigateConfig
+    }
+
+    private enum Outcome {
+        case answered(Attempt)
+        case failed(Bool, Error)
+        case graceOver
+    }
+
+    /// Connects through the home address or the remote one. Both are tried at once: the home
+    /// address wins when it answers, and the remote one is taken as soon as the home address
+    /// fails, or has not answered within a moment after the remote one did. Away from home a
+    /// LAN address often just times out, which used to delay the switch by 20 seconds or more.
     func connect() async {
         if client == nil { status = .connecting }
         var candidates: [(URL, Bool)] = []
@@ -97,27 +115,68 @@ final class ServerConnection: Identifiable {
         if let r = server.remoteURL, let u = ServerConfig.normalizedURL(r) { candidates.append((u, true)) }
         guard !candidates.isEmpty else { status = .offline(FrigateError.invalidURL.localizedDescription); return }
 
+        let server = self.server
         var lastError: Error = FrigateError.notFrigate
-        for (url, remote) in candidates {
-            let c = FrigateClient(baseURL: url)
-            do {
-                let v = try await Self.authenticate(client: c, server: server, password: server.password)
-                client = c
-                usingRemote = remote
-                version = v
-                config = try await c.config()
-                configLoaded = Date()
-                go2rtcStreams = try? await c.go2rtcStreams()
-                status = .online
-                lastSeen = Date()
-                await refresh()
-                return
-            } catch {
-                if Task.isCancelled { return }
-                lastError = error
+        let picked: Attempt? = await withTaskGroup(of: Outcome.self) { group in
+            for (url, remote) in candidates {
+                group.addTask {
+                    do { return .answered(try await Self.attempt(url, remote: remote, server: server)) }
+                    catch { return .failed(remote, error) }
+                }
             }
+            var pending = candidates.count
+            var remoteHit: Attempt?
+            var homeFailed = !candidates.contains { !$0.1 }
+            while let outcome = await group.next() {
+                switch outcome {
+                case .answered(let a) where !a.remote:
+                    group.cancelAll()
+                    return a
+                case .answered(let a):
+                    pending -= 1
+                    if homeFailed { group.cancelAll(); return a }
+                    remoteHit = a
+                    group.addTask {
+                        try? await Task.sleep(for: .milliseconds(1500))
+                        return .graceOver
+                    }
+                case .failed(let remote, let error):
+                    pending -= 1
+                    lastError = error
+                    if !remote {
+                        homeFailed = true
+                        if let remoteHit { group.cancelAll(); return remoteHit }
+                    }
+                    if pending == 0 && remoteHit == nil { group.cancelAll(); return nil }
+                case .graceOver:
+                    if let remoteHit { group.cancelAll(); return remoteHit }
+                }
+            }
+            return remoteHit
         }
-        status = .offline(lastError.localizedDescription)
+        if Task.isCancelled { return }
+        guard let a = picked else {
+            status = .offline(lastError.localizedDescription)
+            return
+        }
+        // Another address than before: the event feed must follow it.
+        if let old = client, old.baseURL != a.client.baseURL { stopActivityFeed() }
+        client = a.client
+        usingRemote = a.remote
+        version = a.version
+        config = a.config
+        configLoaded = Date()
+        go2rtcStreams = try? await a.client.go2rtcStreams()
+        status = .online
+        lastSeen = Date()
+        await refresh()
+    }
+
+    private nonisolated static func attempt(_ url: URL, remote: Bool, server: ServerConfig) async throws -> Attempt {
+        let c = FrigateClient(baseURL: url)
+        let v = try await authenticate(client: c, server: server, password: server.password)
+        let config = try await c.config()
+        return Attempt(client: c, remote: remote, version: v, config: config)
     }
 
     /// Checks the server responds, logging in first when credentials are set. Returns the version.
@@ -346,6 +405,24 @@ final class AppModel {
     func connectAll() async {
         await withTaskGroup(of: Void.self) { group in
             for c in orderedConnections { group.addTask { await c.connect() } }
+        }
+    }
+
+    private var networkTask: Task<Void, Never>?
+
+    /// The network changed (Wi-Fi to mobile data, another Wi-Fi network): servers with a
+    /// remote address pick the home or the remote one again, offline servers retry.
+    func networkChanged() {
+        networkTask?.cancel()
+        networkTask = Task {
+            // A change arrives in several steps; act once it has settled.
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            await withTaskGroup(of: Void.self) { group in
+                for c in orderedConnections where !(c.server.remoteURL ?? "").isEmpty || !c.isOnline {
+                    group.addTask { @MainActor in await c.connect() }
+                }
+            }
         }
     }
 
