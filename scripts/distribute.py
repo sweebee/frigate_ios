@@ -41,13 +41,19 @@ def api(method: str, path: str, body=None):
     req = urllib.request.Request("https://api.appstoreconnect.apple.com" + path, method=method,
                                  data=json.dumps(body).encode() if body else None,
                                  headers={"Authorization": "Bearer " + token(), "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req) as r:
-            raw = r.read()
-            return r.status, (json.loads(raw) if raw else {})
-    except urllib.error.HTTPError as e:
-        raw = e.read()
-        return e.code, (json.loads(raw) if raw else {})
+    for attempt in range(10):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                raw = r.read()
+                return r.status, (json.loads(raw) if raw else {})
+        except urllib.error.HTTPError as e:
+            raw = e.read()
+            return e.code, (json.loads(raw) if raw else {})
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            # Network hiccup (DNS, Wi-Fi switch): wait and try again.
+            if attempt == 9:
+                raise
+            time.sleep(15)
 
 
 def must(result, what):
@@ -103,9 +109,15 @@ def submit(app, version, text, platform):
 
     # Submit first: adding a build to an external group before it is submitted often answers
     # 404 ("no resource of type builds") for a long time; afterwards it works right away.
-    status, data = api("POST", "/v1/betaAppReviewSubmissions",
-                       {"data": {"type": "betaAppReviewSubmissions",
-                                 "relationships": {"build": {"data": {"type": "builds", "id": build_id}}}}})
+    # Only one build per platform can be in beta review; wait (up to a day) for the one before.
+    for _ in range(288):
+        status, data = api("POST", "/v1/betaAppReviewSubmissions",
+                           {"data": {"type": "betaAppReviewSubmissions",
+                                     "relationships": {"build": {"data": {"type": "builds", "id": build_id}}}}})
+        if not any("ANOTHER_BUILD_IN_REVIEW" in e.get("code", "") for e in data.get("errors", [])):
+            break
+        print(f"{platform}: another build is still in beta review; waiting…", flush=True)
+        time.sleep(300)
     if status >= 300:
         codes = " ".join(e.get("code", "") + " " + e.get("detail", "") for e in data.get("errors", []))
         if "already" not in codes.lower():
