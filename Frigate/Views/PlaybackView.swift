@@ -240,6 +240,7 @@ struct PlaybackView: View {
                     VStack(spacing: 10) {
                         videoPlayer
                             .frame(width: videoHeight * 16 / 9, height: videoHeight)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                             .frame(maxWidth: .infinity)
                         horizontalTimeline
                             .frame(width: videoWidth)
