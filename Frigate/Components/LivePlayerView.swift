@@ -23,6 +23,8 @@ final class LivePlayerState {
     var talking = false
     /// Set when the microphone could not be used.
     var micError: String?
+    /// The native player could not play this stream; the web player takes over without MSE.
+    var nativeFailed = false
 
     fileprivate weak var webView: WKWebView?
 
@@ -58,9 +60,40 @@ struct LivePoster: View {
     }
 }
 
-/// Plays a go2rtc stream through Frigate's proxy: MSE over websocket first, then WebRTC,
-/// then MJPEG from the Frigate API as the last fallback.
-struct LivePlayerView: UIViewRepresentable {
+/// Live video of a camera: the native player (MSE stream decoded in the app) first, and the
+/// web player (WebRTC, then MJPEG snapshots) when that fails or a mode needs it.
+struct LivePlayerView: View {
+    let client: FrigateClient
+    let camera: String
+    @Bindable var state: LivePlayerState
+    var fill: Bool = false
+
+    private var stream: String { state.stream.isEmpty ? camera : state.stream }
+    /// Native for MSE; talking needs WebRTC, and WebRTC or MJPEG picked by hand use the web.
+    private var useNative: Bool {
+        !state.suspended && !state.talking && !state.nativeFailed && (state.preferred == .auto || state.preferred == .mse)
+    }
+
+    var body: some View {
+        Group {
+            if useNative {
+                NativeLivePlayer(client: client, stream: stream, state: state, fill: fill) { reason in
+                    state.nativeFailed = true
+                }
+                .id("\(stream)|\(state.reloadToken)")
+            } else {
+                WebLivePlayerView(client: client, camera: camera, state: state, fill: fill)
+            }
+        }
+        // A new stream or a retry gets another native attempt.
+        .onChange(of: state.stream) { _, _ in state.nativeFailed = false }
+        .onChange(of: state.reloadToken) { _, _ in state.nativeFailed = false }
+    }
+}
+
+/// Plays a go2rtc stream through Frigate's proxy in a web view: MSE over websocket first,
+/// then WebRTC, then MJPEG from the Frigate API as the last fallback.
+struct WebLivePlayerView: UIViewRepresentable {
     let client: FrigateClient
     let camera: String
     @Bindable var state: LivePlayerState
@@ -96,7 +129,7 @@ struct LivePlayerView: UIViewRepresentable {
     }
 
     private var loadKey: String {
-        "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)|\(state.suspended)|\(state.talking)"
+        "\(state.stream)|\(state.preferred.rawValue)|\(state.reloadToken)|\(state.suspended)|\(state.talking)|\(state.nativeFailed)"
     }
 
     static func dismantleUIView(_ web: WKWebView, coordinator: Coordinator) {
@@ -128,6 +161,8 @@ struct LivePlayerView: UIViewRepresentable {
         case .mjpeg: modes = ["mjpeg"]
         }
         if fill { modes = ["mse"] }
+        // MSE already failed in the native player.
+        if state.nativeFailed && modes.count > 1 { modes.removeAll { $0 == "mse" } }
         // Talking needs WebRTC (the only transport that sends audio back).
         if state.talking { modes = ["webrtc"] }
         let params: [String: Any] = [
