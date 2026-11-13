@@ -217,6 +217,7 @@ struct PlaybackView: View {
                 PlaybackTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion, reviews: visibleReviews,
                                  map: map, isFollowing: scrubTime == nil, annotationOffset: annotationOffset,
                                  onSelect: { jump(toWall: $0.startTime - 1 + annotationOffset, autoplay: true, earlier: 2) },
+                                 segments: segments,
                                  onScrub: { heldTime = nil; scrubTime = $0; preview.show($0 - annotationOffset) },
                                  onScrubEnd: { t, snap in finishScrub(at: t, snap: snap) },
                                  onScrubCancel: { scrubTime = nil; preview.hide() })
@@ -520,7 +521,7 @@ struct PlaybackView: View {
         async let mot = try? client.motionActivity(cameras: [camera], after: Date(timeIntervalSince1970: start), before: Date(timeIntervalSince1970: end), scale: 30)
         let (s, r, m) = await (segs, revs, mot)
         reviews = (r ?? []).sorted { $0.startTime > $1.startTime }
-        motion = m ?? []
+        motion = (m ?? []).sorted { $0.startTime < $1.startTime }
         segments = (s ?? []).sorted { $0.startTime < $1.startTime }
         map = RecordingMap(segments: segments, from: start, to: end)
         await preview.prepare(client: client, camera: camera, start: start, end: end)
@@ -666,6 +667,10 @@ struct PlaybackTimeline: View {
     var annotationOffset: Double = 0
     /// A tap on an event in the strip or on its label.
     var onSelect: (ReviewItem) -> Void = { _ in }
+    /// Recording segments, sorted by start. Zoomed in, motion comes from these: each carries
+    /// its own motion at its exact time, where Frigate's activity buckets round a segment
+    /// down to the bucket it starts in and so drew motion up to ten seconds early.
+    var segments: [RecordingSegment] = []
     let onScrub: (Double) -> Void
     /// Release time plus a snap window in seconds (about 24 points at the current zoom).
     let onScrubEnd: (Double, Double) -> Void
@@ -678,7 +683,12 @@ struct PlaybackTimeline: View {
     /// When an event was last tapped. A tap that moves a little also ends a drag, which must
     /// not then seek back to where the finger started.
     @State private var lastTap = Date.distantPast
-    private let zooms: [Double] = [10, 30, 60, 120, 300]
+
+    /// Zoomed in far enough that rows are shorter than the activity buckets.
+    private var usesSegments: Bool { secondsPerRow <= 30 && !segments.isEmpty }
+
+    /// Seconds per row; at the widest about three hours fit on screen.
+    private let zooms: [Double] = [10, 30, 60, 120]
     private let rowHeight: CGFloat = 5
 
     private var secondsPerRow: Double { zooms[zoomIndex] }
@@ -731,9 +741,49 @@ struct PlaybackTimeline: View {
             }
         }
         .clipped()
+
     }
 
     private func clamp(_ t: Double) -> Double { min(max(t, dayStart), dayEnd) }
+
+    /// The most motion in buckets that overlap `from..<to`; buckets are sorted by start time.
+    private func maxMotion(in buckets: [MotionActivity], scale: Double, from: Double, to: Double) -> Double {
+        var lo = 0, hi = buckets.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if buckets[mid].startTime > from - scale { hi = mid } else { lo = mid + 1 }
+        }
+        var best = 0.0
+        var i = lo
+        while i < buckets.count, buckets[i].startTime < to {
+            best = max(best, buckets[i].motion ?? 0)
+            i += 1
+        }
+        return best
+    }
+
+    /// Motion for one row: from the segments when zoomed in, else the day-wide buckets.
+    /// `segmentFactor` scales segment values to the buckets on screen.
+    private func motionLevel(from: Double, to: Double, segmentFactor: Double = 1) -> Double {
+        guard usesSegments else { return maxMotion(in: motion, scale: 30, from: from, to: to) }
+        return segmentMotion(from: from, to: to) * segmentFactor
+    }
+
+    private func segmentMotion(from: Double, to: Double) -> Double {
+        // First segment that may end after `from` (segments last up to about ten seconds).
+        var lo = 0, hi = segments.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if segments[mid].startTime > from - 20 { hi = mid } else { lo = mid + 1 }
+        }
+        var best = 0.0
+        var i = lo
+        while i < segments.count, segments[i].startTime < to {
+            if segments[i].endTime > from { best = max(best, segments[i].motion ?? 0) }
+            i += 1
+        }
+        return best
+    }
 
     private func zoomButton(_ icon: String, _ label: LocalizedStringKey, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -812,7 +862,17 @@ struct PlaybackTimeline: View {
         // Align rows to bucket boundaries so they do not shimmer while playing.
         let topTime = wallTime + Double(center) * secondsPerPoint
         let topRowTime = (topTime / secondsPerRow).rounded(.up) * secondsPerRow
-        let maxMotion = max(motion.map { $0.motion ?? 0 }.max() ?? 1, 1)
+        let dayMax = max(motion.map { $0.motion ?? 0 }.max() ?? 1, 1)
+        // Segment and bucket motion use different units: match the busiest segment on screen
+        // to the busiest bucket on screen, so zooming in keeps the bars about as wide.
+        let visibleFrom = wallTime - Double(size.height - center) * secondsPerPoint
+        let visibleTo = wallTime + Double(center) * secondsPerPoint
+        var segmentFactor = 1.0
+        if usesSegments {
+            let seg = segmentMotion(from: visibleFrom, to: visibleTo)
+            let coarse = maxMotion(in: motion, scale: 30, from: visibleFrom, to: visibleTo)
+            segmentFactor = seg > 0 && coarse > 0 ? coarse / seg : 1
+        }
         let labelEvery = labelInterval()
 
         for i in 0..<rows {
@@ -833,8 +893,8 @@ struct PlaybackTimeline: View {
                 row.fill(Path(CGRect(x: gutter - 7, y: rowY, width: 3, height: rowHeight)), with: .color(Theme.accent.opacity(0.7)))
             }
             // Bar width follows the motion in this row; events add their label color and a tint.
-            let level = motion.filter { $0.startTime >= rowStart - 15 && $0.startTime < rowEnd }.map { $0.motion ?? 0 }.max() ?? 0
-            let motionWidth = CGFloat(level / maxMotion) * barAreaWidth * 0.9
+            let level = motionLevel(from: rowStart, to: rowEnd, segmentFactor: segmentFactor)
+            let motionWidth = CGFloat(min(1, level / dayMax)) * barAreaWidth * 0.9
             if let r = reviews.first(where: { rowEnd > $0.startTime && rowStart < ($0.endTime ?? dayEnd) }) {
                 let color = Theme.labelColor(r.labels.first ?? "")
                 row.fill(Path(CGRect(x: barsStart, y: rowY, width: barAreaWidth, height: rowHeight)), with: .color(color.opacity(0.08)))
