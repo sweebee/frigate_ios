@@ -373,7 +373,6 @@ struct BackButtonLabel: View {
                 // No extra width: the square's edge lines up with the content below.
                 .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
-                .handCursor()
         } else {
             // On the content's edge, like the titles below it.
             Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
@@ -399,7 +398,6 @@ struct HeaderIconLabel: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.controlBorder, lineWidth: 1))
                 .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
-                .handCursor()
         } else {
             Image(systemName: systemName).font(.system(size: 19, weight: .medium))
                 .foregroundStyle(Theme.text)
@@ -440,34 +438,5 @@ extension View {
     /// not the whole screen the overlay covers).
     func pointerOver(_ flag: Binding<Bool>) -> some View {
         onHover { flag.wrappedValue = $0 }
-    }
-}
-
-extension View {
-    /// The pointing-hand cursor over a button on the Mac. Not on hidden or disabled buttons.
-    func handCursor() -> some View { modifier(HandCursor()) }
-}
-
-private struct HandCursor: ViewModifier {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func body(content: Content) -> some View {
-        #if targetEnvironment(macCatalyst)
-        if isEnabled {
-            content.onHover { Self.set(hand: $0) }
-        } else {
-            content
-        }
-        #else
-        content
-        #endif
-    }
-
-    /// AppKit's NSCursor, which a Catalyst app can reach at run time.
-    static func set(hand: Bool) {
-        guard let cls = NSClassFromString("NSCursor") as? NSObject.Type,
-              let cursor = cls.perform(NSSelectorFromString(hand ? "pointingHandCursor" : "arrowCursor"))?
-                .takeUnretainedValue() as? NSObject else { return }
-        cursor.perform(NSSelectorFromString("set"))
     }
 }
