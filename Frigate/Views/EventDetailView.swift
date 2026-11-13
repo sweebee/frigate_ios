@@ -57,7 +57,7 @@ struct EventDetailView: View {
 
     var body: some View {
         Group {
-            if isLandscape || fullscreen { landscapeBody } else { portraitBody }
+            if isLandscape || fullscreen { landscapeBody.transition(.opacity) } else { portraitBody.transition(.opacity) }
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
@@ -137,7 +137,7 @@ struct EventDetailView: View {
                 // moves over the video; a click or tap toggles them as on a touch screen.
                 .onContinuousHover { phase in
                     guard case .active = phase else { return }
-                    if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+                    if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
                     keepOverlay()
                 }
             playerStatus(showPlay: !overlayVisible)
@@ -152,7 +152,7 @@ struct EventDetailView: View {
     private func keepOverlay() { overlayToken += 1 }
 
     private func setFullscreen(_ on: Bool) {
-        withAnimation(.easeOut(duration: 0.2)) { fullscreen = on; model.immersive = on }
+        withAnimation(.easeInOut(duration: 0.3)) { fullscreen = on; model.immersive = on }
         keepOverlay()
     }
 
@@ -278,7 +278,7 @@ struct EventDetailView: View {
         }
         .onContinuousHover { phase in
             guard case .active = phase else { return }
-            if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+            if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
             keepOverlay()
         }
     }

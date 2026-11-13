@@ -141,7 +141,7 @@ struct CameraView: View {
                                     // With a mouse the controls show while the pointer moves over the video.
                                     .onContinuousHover { phase in
                                         guard case .active = phase else { return }
-                                        if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+                                        if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
                                         keepOverlay()
                                     }
                                     .animation(.easeOut(duration: 0.2), value: showOverlayControls)
@@ -513,7 +513,7 @@ struct CameraView: View {
     }
 
     private func setFilling(_ on: Bool) {
-        withAnimation(.easeOut(duration: 0.2)) { filling = on; model.immersive = on }
+        withAnimation(.easeInOut(duration: 0.3)) { filling = on; model.immersive = on }
         keepOverlay()
     }
 

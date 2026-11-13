@@ -203,7 +203,8 @@ struct PlaybackView: View {
 
     var body: some View {
         Group {
-            if isWide && fullscreen { landscapeBody } else if isWide { wideBody } else if isLandscape { landscapeBody } else { portraitBody }
+            // Into and out of full screen with a cross-fade.
+            if isWide && fullscreen { landscapeBody.transition(.opacity) } else if isWide { wideBody.transition(.opacity) } else if isLandscape { landscapeBody } else { portraitBody }
         }
         .overlay(alignment: .top) { ExportToast(state: exporter.state) }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
@@ -524,7 +525,7 @@ struct PlaybackView: View {
         // over the video, like any video player; they hide again after a few seconds.
         .onContinuousHover { phase in
             guard case .active = phase else { return }
-            if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+            if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
             keepOverlay()
         }
     }
@@ -1121,7 +1122,7 @@ extension PlaybackView {
                 // moves over the video; a click or tap toggles them as on a touch screen.
                 .onContinuousHover { phase in
                     guard case .active = phase else { return }
-                    if !overlayVisible { withAnimation(.easeOut(duration: 0.15)) { overlayVisible = true } }
+                    if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
                     keepOverlay()
                 }
             if loading {
@@ -1179,7 +1180,7 @@ extension PlaybackView {
             keepOverlay()
             return
         }
-        withAnimation(.easeOut(duration: 0.2)) { fullscreen = on; model.immersive = on }
+        withAnimation(.easeInOut(duration: 0.3)) { fullscreen = on; model.immersive = on }
         keepOverlay()
     }
 
