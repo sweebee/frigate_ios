@@ -58,8 +58,8 @@ struct MotionReviewView: View {
             PlaybackTimeline(dayStart: rangeStart, dayEnd: rangeEnd, wallTime: wallTime, motion: combined, reviews: [],
                              map: fullMap, isFollowing: !playing,
                              onScrub: { t in playing = false; move(to: t) },
-                             onScrubEnd: { t, _ in move(to: t) })
-                .frame(width: isWide ? 220 : 150)
+                             onScrubEnd: { t, _ in move(to: t) }, compact: !isWide)
+                .frame(width: isWide ? 220 : 136)
                 .background(Theme.card.opacity(0.5))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.trailing, isWide ? 16 : 8)
@@ -178,6 +178,21 @@ struct MotionReviewView: View {
         }
     }
 
+    /// One bucket per moment for the timeline: the strongest motion of any camera, each
+    /// camera measured against its own busiest moment. Otherwise one camera that always
+    /// moves (trees, a road) would make every other camera's motion a thin line.
+    private static func combine(_ activity: [String: [MotionActivity]]) -> [MotionActivity] {
+        var byTime: [Double: Double] = [:]
+        for list in activity.values {
+            let peak = list.map { $0.motion ?? 0 }.max() ?? 0
+            guard peak > 0 else { continue }
+            for a in list where (a.motion ?? 0) > 0 {
+                byTime[a.startTime] = max(byTime[a.startTime] ?? 0, (a.motion ?? 0) / peak)
+            }
+        }
+        return byTime.keys.sorted().map { MotionActivity(startTime: $0, motion: byTime[$0], camera: nil) }
+    }
+
     // MARK: Loading
 
     private func load() async {
@@ -213,7 +228,7 @@ struct MotionReviewView: View {
                 }
             }
         }
-        combined = activity.values.flatMap { $0 }.sorted { $0.startTime < $1.startTime }
+        combined = Self.combine(activity)
         loading = false
         move(to: wallTime)
     }

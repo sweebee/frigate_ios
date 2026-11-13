@@ -790,6 +790,9 @@ struct PlaybackTimeline: View {
     let onScrubEnd: (Double, Double) -> Void
     /// A drag that turned out to be part of a tap on an event: drop it without seeking.
     var onScrubCancel: () -> Void = {}
+    /// Narrow column without events (motion review on the phone): no event strip, the bars
+    /// use the full width right of the labels, and a short time on the playhead.
+    var compact = false
 
     /// Seconds per row.
     @State private var zoomIndex = 2
@@ -836,14 +839,15 @@ struct PlaybackTimeline: View {
                 // Playhead
                 HStack(spacing: 6) {
                     Rectangle().fill(Theme.accent).frame(height: 2)
-                    Text(FrigateFormat.time(Date(timeIntervalSince1970: wallTime), seconds: true))
+                    Text(FrigateFormat.time(Date(timeIntervalSince1970: wallTime), seconds: !compact))
                         .font(.system(size: 11, weight: .bold).monospacedDigit())
+                        .lineLimit(1).fixedSize()
                         .foregroundStyle(Theme.onColor)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Theme.accent, in: RoundedRectangle(cornerRadius: 5))
                         .padding(.trailing, 8)
                 }
-                .padding(.leading, 64)
+                .padding(.leading, gutter)
                 .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 .allowsHitTesting(false)
 
@@ -914,10 +918,10 @@ struct PlaybackTimeline: View {
 
     // MARK: Event strip
 
-    private let gutter: CGFloat = 64
+    private var gutter: CGFloat { compact ? 60 : 64 }
     /// The strip of event blocks just right of the time labels; motion bars start after it.
     private let stripWidth: CGFloat = 18
-    private var barsStart: CGFloat { gutter + stripWidth + 6 }
+    private var barsStart: CGFloat { compact ? gutter + 2 : gutter + stripWidth + 6 }
 
     /// Where an event sits on screen, newest on top: from its end down to its start.
     private func span(of r: ReviewItem, center: CGFloat) -> (top: CGFloat, bottom: CGFloat) {
@@ -971,7 +975,7 @@ struct PlaybackTimeline: View {
 
     private func draw(_ ctx: GraphicsContext, size: CGSize) {
         let center = size.height / 2
-        let barAreaWidth = size.width - gutter - barsStart
+        let barAreaWidth = compact ? size.width - barsStart - 6 : size.width - gutter - barsStart
         let rows = Int(size.height / rowHeight) + 2
         // Align rows to bucket boundaries so they do not shimmer while playing.
         let topTime = wallTime + Double(center) * secondsPerPoint
