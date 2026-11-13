@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Handles `frigate://` links:
 ///   frigate://add?url=http://host:8971&name=Home      add a server (asks nothing, tests on connect)
-///   frigate://live | review | explore | history | settings      switch tab (history: recordings overview)
+///   frigate://live | review | explore | settings      switch tab
 ///   frigate://camera/<camera>[?server=<name>]         open a camera's live view
 ///   frigate://playback/<camera>[?day=yyyy-MM-dd&view=timeline]  open playback
 ///   frigate://event/<review id>[?server=<name>]       open a review item
@@ -31,7 +31,6 @@ extension AppModel {
             reviewPath = NavigationPath()
             if let v = q("view") { reviewKindRequest = v }
         case "explore": tab = .explore; explorePath = NavigationPath()
-        case "history": tab = .explore; explorePath = NavigationPath(); explorePath.append(HistoryRoute())
         case "settings": tab = .settings
         case "chat": tab = .chat
         case "camera":

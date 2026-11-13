@@ -499,60 +499,6 @@ struct ReviewRow: View {
     }
 }
 
-/// Motion tab: motion activity per camera over the last 24 hours.
-struct MotionOverview: View {
-    let connections: [ServerConnection]
-    let cameraFilter: Set<String>
-    @State private var activity: [String: [MotionActivity]] = [:]
-    @State private var loading = true
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(text: L("Last 24 hours")).padding(.top, 6)
-            if loading && activity.isEmpty {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 160)
-            }
-            ForEach(connections) { conn in
-                ForEach(conn.cameras.filter { cameraFilter.isEmpty || cameraFilter.contains($0.name) }, id: \.name) { cam in
-                    let key = "\(conn.server.id)/\(cam.name)"
-                    NavigationLink(value: PlaybackRoute(serverID: conn.server.id, camera: cam.name, day: Calendar.current.startOfDay(for: Date()))) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 6) {
-                                if connections.count > 1 { ServerBadge(initial: conn.server.initial, tint: conn.server.tint) }
-                                Text(cam.displayName).font(.system(size: 15, weight: .semibold))
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.textSecondary)
-                            }
-                            ActivityStrip(start: Date().addingTimeInterval(-86400), end: Date(), buckets: 72,
-                                          motion: activity[key] ?? [], reviews: [])
-                            HStack {
-                                Text("24 h ago"); Spacer(); Text("12 h ago"); Spacer(); Text("Now")
-                            }
-                            .font(.system(size: 10)).foregroundStyle(Theme.textSecondary)
-                        }
-                        .padding(.horizontal, 12).padding(.vertical, 10)
-                        .card(radius: 12)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .task(id: connections.map(\.id)) { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        let end = Date(), start = end.addingTimeInterval(-86400)
-        for conn in connections {
-            guard let client = conn.client else { continue }
-            let names = conn.cameras.map(\.name)
-            let byCamera = await client.motionActivityByCamera(names, after: start, before: end, scale: 1200)
-            for (cam, items) in byCamera { activity["\(conn.server.id)/\(cam)"] = items }
-        }
-        loading = false
-    }
-}
-
 /// The period Review shows: like Frigate, the last 24 hours by default, or one day.
 enum ReviewRange: Hashable, CustomStringConvertible {
     case last24Hours

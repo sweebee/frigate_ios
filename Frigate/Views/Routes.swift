@@ -16,9 +16,6 @@ struct ObjectRoute: Hashable {
     let event: FrigateEvent
 }
 
-/// The per-camera recordings overview (formerly the History tab).
-struct HistoryRoute: Hashable {}
-
 struct PlaybackRoute: Hashable {
     let serverID: UUID
     let camera: String
@@ -39,7 +36,6 @@ struct AppDestinations: ViewModifier {
             .navigationDestination(for: EventRoute.self) { EventDetailView(route: $0).id($0) }
             .navigationDestination(for: PlaybackRoute.self) { PlaybackView(route: $0).id($0) }
             .navigationDestination(for: ObjectRoute.self) { ObjectDetailView(route: $0).id($0) }
-            .navigationDestination(for: HistoryRoute.self) { _ in HistoryOverviewView() }
     }
 }
 
