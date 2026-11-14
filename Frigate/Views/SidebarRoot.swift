@@ -33,13 +33,18 @@ struct SidebarRoot: View {
         .onAppear(perform: hideWindowTitle)
         // Mac: a video filling the window also takes the screen, as the full-screen button
         // suggests; leaving the window's full screen (green button, Esc) ends it too.
-        .onChange(of: model.immersive) { _, on in if isMac { MacWindow.setFullScreen(on) } }
+        .onChange(of: model.immersive) { _, on in
+            guard isMac else { return }
+            if MacWindow.isFullScreen { MacWindow.applyTitleBarInset(fullScreen: true, videoFills: on) }
+            MacWindow.setFullScreen(on)
+        }
         .onReceive(NotificationCenter.default.publisher(for: MacWindow.didExitFullScreen)) { _ in
-            MacWindow.applyTitleBarInset(fullScreen: false)
+            MacWindow.fullScreenEnded()
+            MacWindow.applyTitleBarInset(fullScreen: false, videoFills: false)
             if model.immersive { model.immersive = false }
         }
         .onReceive(NotificationCenter.default.publisher(for: MacWindow.willEnterFullScreen)) { _ in
-            MacWindow.applyTitleBarInset(fullScreen: true)
+            MacWindow.applyTitleBarInset(fullScreen: true, videoFills: model.immersive)
         }
     }
 
@@ -71,7 +76,7 @@ struct SidebarRoot: View {
             // The hidden title bar still keeps its 28 pt at the top as safe area. The window
             // buttons sit over the rail, so give 18 of it back: screens start 10 pt down.
         }
-        MacWindow.applyTitleBarInset(fullScreen: MacWindow.isFullScreen)
+        MacWindow.applyTitleBarInset(fullScreen: MacWindow.isFullScreen, videoFills: model.immersive)
         #endif
     }
 

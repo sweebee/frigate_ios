@@ -537,21 +537,32 @@ enum MacWindow {
         return mask & (1 << 14) != 0   // NSWindowStyleMaskFullScreen
     }
 
+    /// Full screen that a video's button started; only that one is ended with the video. A
+    /// window put in full screen with the green button stays there.
+    private static var startedByVideo = false
+
     static func setFullScreen(_ on: Bool) {
+        if !on && !startedByVideo { return }
         guard let window = keyWindow, on != isFullScreen else { return }
+        startedByVideo = on
         let toggle = NSSelectorFromString("toggleFullScreen:")
         if window.responds(to: toggle) { window.perform(toggle, with: nil) }
     }
+
+    static func fullScreenEnded() { startedByVideo = false }
 
     /// Posted by AppKit when a window leaves full screen (green button, Esc, the menu).
     static let didExitFullScreen = Notification.Name("NSWindowDidExitFullScreenNotification")
     static let willEnterFullScreen = Notification.Name("NSWindowWillEnterFullScreenNotification")
 
-    /// The top inset the root view gives back from the hidden title bar: 18 pt in a window, none
-    /// in full screen, where there is no title bar (it would push the picture off the top).
-    static func applyTitleBarInset(fullScreen: Bool) {
+    /// The top inset of the root view. In a window the hidden title bar keeps 28 pt; 18 of it is
+    /// given back so screens start 10 pt down. In full screen there is no title bar: a video that
+    /// fills the screen starts right under the top edge (or notch), other screens 10 pt below
+    /// it, as in a window.
+    static func applyTitleBarInset(fullScreen: Bool, videoFills: Bool) {
+        let top: CGFloat = fullScreen ? (videoFills ? 0 : 10) : -18
         for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
-            for window in scene.windows { window.rootViewController?.additionalSafeAreaInsets.top = fullScreen ? 0 : -18 }
+            for window in scene.windows { window.rootViewController?.additionalSafeAreaInsets.top = top }
         }
     }
 }
