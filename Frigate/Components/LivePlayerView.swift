@@ -34,6 +34,11 @@ final class LivePlayerState {
     var pipPossible = false
     /// The video is in the picture-in-picture window; the stream keeps running in the background.
     var pipActive = false
+    /// The player offers picture in picture (the device supports it): the button stays, rather
+    /// than coming and going as the system's "possible" flag changes while the stream connects.
+    var pipSupported = false
+    /// Why picture in picture did not start, to show the user.
+    var pipError: String?
     /// Starts or stops picture in picture; set by the native player.
     @ObservationIgnored var togglePiP: (() -> Void)?
 

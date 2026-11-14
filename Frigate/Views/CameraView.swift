@@ -106,6 +106,9 @@ struct CameraView: View {
         } message: {
             Text("Allow Tender to use the microphone in Settings to talk through the camera.")
         }
+        .alert("Picture in picture", isPresented: Binding(get: { player.pipError != nil }, set: { if !$0 { player.pipError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(player.pipError ?? "") }
         .onChange(of: player.micError) { _, err in
             if err != nil { player.talking = false; player.micError = nil; micDenied = true }
         }
@@ -302,7 +305,7 @@ struct CameraView: View {
         }
         // Phone: picture in picture on the video itself (the row under it is full).
         .overlay(alignment: .topTrailing) {
-            if !isWide && (player.pipPossible || player.pipActive) {
+            if !isWide && (player.pipSupported || player.pipActive) {
                 Button { player.togglePiP?() } label: {
                     Image(systemName: "pip.enter").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                         .frame(width: 32, height: VideoChip.height + 6)
@@ -457,7 +460,7 @@ struct CameraView: View {
                                 Task { await toggleManualRecording() }; keepOverlay()
                             }
                             .overlay(Circle().stroke(manualEventID != nil ? Theme.recording : .clear, lineWidth: 2))
-                            if player.pipPossible || player.pipActive {
+                            if player.pipSupported || player.pipActive {
                                 OverlayButton(systemImage: "pip.enter", label: "Picture in picture") {
                                     player.togglePiP?(); keepOverlay()
                                 }
@@ -592,7 +595,7 @@ struct CameraView: View {
             if camera.hasOnvif {
                 overlayButton("arrow.up.and.down.and.arrow.left.and.right", "PTZ") { showPTZ = true }
             }
-            if player.pipPossible || player.pipActive {
+            if player.pipSupported || player.pipActive {
                 overlayButton("pip.enter", "Picture in picture", active: player.pipActive) { player.togglePiP?() }
             }
             overlayButton(filling ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",

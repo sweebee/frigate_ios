@@ -2353,6 +2353,26 @@
         }
       }
     },
+    "Picture in picture did not start.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beeld-in-beeld is niet gestart."
+          }
+        }
+      }
+    },
+    "Picture in picture is possible once the video plays.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beeld-in-beeld kan zodra de video speelt."
+          }
+        }
+      }
+    },
     "Play": {
       "localizations": {
         "nl": {

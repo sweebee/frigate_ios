@@ -84,6 +84,7 @@ struct NativeLivePlayer: UIViewRepresentable {
             pip = nil
             state.pipPossible = false
             state.pipActive = false
+            state.pipSupported = false
             state.togglePiP = nil
         }
 
@@ -253,6 +254,8 @@ struct NativeLivePlayer: UIViewRepresentable {
                     CMTimebaseSetTime(timebase, time: syncWithoutDelay ? pts : pts - Self.latency)
                     needsClockSync = false
                     syncWithoutDelay = false
+                    // The clock jumped (another stream, a stall): picture in picture checks again.
+                    if state.playing { pip?.videoStarted() }
                 }
             }
             layer.enqueue(sample)
@@ -687,6 +690,7 @@ final class LivePiP: NSObject, AVPictureInPictureControllerDelegate {
             Task { @MainActor in self?.state?.pipPossible = possible }
         }
         state.togglePiP = { [weak self] in self?.toggle() }
+        state.pipSupported = true
     }
 
     func toggle() {
@@ -696,8 +700,19 @@ final class LivePiP: NSObject, AVPictureInPictureControllerDelegate {
             // The system needs an active playback session for the window to keep running.
             let session = AVAudioSession.sharedInstance()
             if session.category != .playAndRecord { try? session.setCategory(.playback, mode: .moviePlayback) }
-            try? session.setActive(true)
+            do { try session.setActive(true) } catch { NSLog("Tender PiP audio session: \(error.localizedDescription)") }
+            guard controller.isPictureInPicturePossible else {
+                // Usually while the stream is still connecting: once it plays, it is possible.
+                state?.pipError = L("Picture in picture is possible once the video plays.")
+                return
+            }
             controller.startPictureInPicture()
+            // Nothing happened (no start, no error): say so instead of a button that seems dead.
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, !self.controller.isPictureInPictureActive, self.state?.pipActive != true else { return }
+                self.state?.pipError = L("Picture in picture did not start.")
+            }
         }
     }
 
@@ -721,7 +736,11 @@ final class LivePiP: NSObject, AVPictureInPictureControllerDelegate {
 
     nonisolated func pictureInPictureController(_ c: AVPictureInPictureController, failedToStartPictureInPictureWithError error: Error) {
         NSLog("Tender PiP failed: \(error.localizedDescription)")
-        Task { @MainActor in self.state?.pipActive = false }
+        let message = error.localizedDescription
+        Task { @MainActor in
+            self.state?.pipActive = false
+            self.state?.pipError = message
+        }
     }
 
     nonisolated func pictureInPictureController(_ c: AVPictureInPictureController,
