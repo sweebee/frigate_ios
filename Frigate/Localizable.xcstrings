@@ -2223,6 +2223,16 @@
         }
       }
     },
+    "Preparing clip…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clip voorbereiden…"
+          }
+        }
+      }
+    },
     "Preparing video…": {
       "localizations": {
         "nl": {

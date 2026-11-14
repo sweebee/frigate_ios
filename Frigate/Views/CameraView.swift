@@ -19,6 +19,8 @@ struct CameraView: View {
     @State private var canTalk = false
     @State private var micDenied = false
     @State private var reviews: [ReviewItem] = []
+    /// Long-press actions on today's events.
+    @State private var reviewActions = ReviewActions()
     @State private var loadingReviews = true
     @State private var share: ShareItem?
     @State private var fullscreen = false
@@ -197,6 +199,8 @@ struct CameraView: View {
             }
         }
         .screenBackground()
+        .reviewActionsHost(reviewActions)
+        .onChange(of: reviewActions.deletedIDs) { _, ids in reviews.removeAll { ids.contains($0.id) } }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
     }
@@ -644,6 +648,7 @@ struct CameraView: View {
                 Text("No activity today").font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 60)
             } else if vertical {
+                Stable(key: reviews.map(\.id)) {
                 LazyVStack(spacing: 8) {
                     ForEach(reviews) { r in
                         NavigationLink(value: EventRoute(serverID: route.serverID, review: r)) {
@@ -662,9 +667,15 @@ struct CameraView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .contextMenu { ReviewItemMenu(item: r, serverID: route.serverID, actions: reviewActions) }
                     }
                 }
+                }
+                .stable()
             } else {
+                // Kept apart from the live player, which redraws this screen often: a long-press
+                // menu that is rebuilt while open closes again (or flickers).
+                Stable(key: reviews.map(\.id) + [isWide ? "wide" : "phone"]) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
                         ForEach(reviews) { r in
@@ -681,12 +692,15 @@ struct CameraView: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .contextMenu { ReviewItemMenu(item: r, serverID: route.serverID, actions: reviewActions) }
                         }
                     }
                 }
                 // Only as tall as the thumbnails: under the big video on wide screens the
                 // row would otherwise take all the height that is left.
                 .fixedSize(horizontal: false, vertical: true)
+                }
+                .stable()
             }
         }
         // Beside the video (vertical) the column already has its margins; its top lines up

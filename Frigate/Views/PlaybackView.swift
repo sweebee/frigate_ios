@@ -675,6 +675,9 @@ struct PlaybackView: View {
                             Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                                 Label("Save video to Photos", systemImage: "square.and.arrow.down")
                             }
+                            Button { saveToFrigate(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3, label: r.labels.first) } label: {
+                                Label("Save to Frigate", systemImage: "externaldrive")
+                            }
                             Button { shareClip(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                                 Label("Share video", systemImage: "square.and.arrow.up")
                             }
@@ -1393,6 +1396,9 @@ extension PlaybackView {
                             .buttonStyle(.plain)
                             .id(r.id)
                             .contextMenu {
+                                Button { saveToFrigate(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3, label: r.labels.first); keepOverlay() } label: {
+                                    Label("Save to Frigate", systemImage: "externaldrive")
+                                }
                                 Button(role: .destructive) { deletingReview = r; keepOverlay() } label: {
                                     Label("Delete", systemImage: "trash")
                                 }

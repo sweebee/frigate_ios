@@ -25,6 +25,8 @@ struct ReviewView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Items on screen, for the timeline beside the grid.
     @State private var visibility = ReviewVisibility()
+    /// Long-press actions: save, export, share, delete.
+    @State private var reviewActions = ReviewActions()
 
     private let pageSize = 60
 
@@ -71,6 +73,8 @@ struct ReviewView: View {
             }
             .refreshable { await reload() }
             .screenBackground()
+            .reviewActionsHost(reviewActions)
+            .onChange(of: reviewActions.deletedIDs) { _, ids in entries.removeAll { ids.contains($0.item.id) } }
             .toolbar(.hidden, for: .navigationBar)
             .appDestinations()
             .sheet(isPresented: $pickingDay) {
@@ -318,6 +322,7 @@ struct ReviewView: View {
         if !entry.item.hasBeenReviewed {
             Button { Task { await markReviewed([entry]) } } label: { Label("Mark reviewed", systemImage: "checkmark") }
         }
+        ReviewItemMenu(item: entry.item, serverID: entry.serverID, actions: reviewActions)
     }
 
     private var isWide: Bool { sizeClass == .regular }
