@@ -97,11 +97,14 @@ enum ExportActions {
         try await client.deleteExport(entry.export.id)
     }
 
-    /// The export as a local file, for sharing or Photos.
-    static func download(_ entry: ExportEntry, model: AppModel) async throws -> URL {
+    /// The export as a local file, for sharing or Photos; with progress in `exporter`'s pill.
+    static func download(_ entry: ExportEntry, model: AppModel, exporter: ClipExporter? = nil) async throws -> URL {
         guard let client = model.connection(for: entry.serverID)?.client else { throw FrigateError.invalidURL }
         let base = entry.export.name.isEmpty ? entry.export.id : entry.export.name
         let safe = base.components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>")).joined(separator: "-")
+        if let exporter {
+            return try await exporter.downloadFile(client: client, url: client.exportFileURL(entry.export), fileName: "\(safe).mp4")
+        }
         return try await client.download(client.exportFileURL(entry.export), fileName: "\(safe).mp4")
     }
 }
@@ -277,7 +280,7 @@ struct ExportPlayerView: View {
         .screenBackground()
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
-        .overlay(alignment: .top) { ExportToast(state: exporter.state) }
+        .overlay(alignment: .top) { ExportToast(exporter: exporter) }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
         .task {
             guard let client = conn?.client else { return }
@@ -421,8 +424,15 @@ struct ExportPlayerView: View {
     private func shareFile() async {
         working = true
         defer { working = false }
-        do { share = ShareItem(items: [try await ExportActions.download(entry, model: model)]) }
-        catch { errorMessage = error.localizedDescription }
+        exporter.state = .working(L("Preparing clip…"))
+        do {
+            let file = try await ExportActions.download(entry, model: model, exporter: exporter)
+            exporter.state = .idle
+            share = ShareItem(items: [file])
+        } catch {
+            exporter.state = .idle
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func saveToPhotos() async {
@@ -433,7 +443,7 @@ struct ExportPlayerView: View {
                 exporter.state = .failed(L("Allow Tender to add photos in Settings to save clips."))
                 return
             }
-            let file = try await ExportActions.download(entry, model: model)
+            let file = try await ExportActions.download(entry, model: model, exporter: exporter)
             try await PHPhotoLibrary.shared().performChanges {
                 PHAssetCreationRequest.creationRequestForAssetFromVideo(atFileURL: file)
             }

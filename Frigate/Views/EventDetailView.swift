@@ -67,7 +67,7 @@ struct EventDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
-        .overlay(alignment: .top) { ExportToast(state: exporter.state) }
+        .overlay(alignment: .top) { ExportToast(exporter: exporter) }
         .confirmationDialog("Delete this review item and its recordings?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { Task { await delete() } }
         }
@@ -623,13 +623,13 @@ struct EventDetailView: View {
         guard let client else { return }
         downloading = true
         defer { downloading = false }
+        exporter.state = .working(L("Preparing clip…"))
         do {
-            let url = client.clipURL(camera: item.camera, start: clipStart, end: clipEnd)
-            let f = DateFormatter()
-            f.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-            let file = try await client.download(url, fileName: "\(item.camera)_\(f.string(from: item.start)).mp4")
+            let file = try await exporter.download(client: client, camera: item.camera, start: clipStart, end: clipEnd)
+            exporter.state = .idle
             share = ShareItem(items: [file])
         } catch {
+            exporter.state = .idle
             errorMessage = error.localizedDescription
         }
     }

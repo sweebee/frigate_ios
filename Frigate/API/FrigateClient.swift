@@ -397,9 +397,11 @@ final class FrigateClient: @unchecked Sendable {
         return comps.url!
     }
 
-    /// Downloads a file to a temporary location with the given name.
-    func download(_ url: URL, fileName: String) async throws -> URL {
-        let (tmp, response) = try await session.download(from: url)
+    /// Downloads a file to a temporary location with the given name. `progress` gets the bytes
+    /// received and expected (0 when the server does not say) as they come in.
+    func download(_ url: URL, fileName: String, progress: (@Sendable (Int64, Int64) -> Void)? = nil) async throws -> URL {
+        let delegate = progress.map { DownloadProgress(report: $0) }
+        let (tmp, response) = try await session.download(from: url, delegate: delegate)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw FrigateError.http(http.statusCode, nil)
         }
@@ -408,5 +410,20 @@ final class FrigateClient: @unchecked Sendable {
         try FileManager.default.moveItem(at: tmp, to: dest)
         if dest.pathExtension == "mp4" { MP4Patch.patchFile(at: dest) }
         return dest
+    }
+}
+
+
+/// Reports a download's progress from its task's byte counts.
+final class DownloadProgress: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let report: @Sendable (Int64, Int64) -> Void
+    private var observation: NSKeyValueObservation?
+
+    init(report: @escaping @Sendable (Int64, Int64) -> Void) { self.report = report }
+
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        observation = task.observe(\.countOfBytesReceived, options: [.new]) { [report] task, _ in
+            report(task.countOfBytesReceived, max(0, task.countOfBytesExpectedToReceive))
+        }
     }
 }

@@ -12,6 +12,11 @@ final class ClipExporter {
     }
 
     var state: State = .idle
+    /// Of the download in progress: bytes received and expected (0 when unknown).
+    var received: Int64 = 0
+    var expected: Int64 = 0
+    /// 0...1 when the size is known.
+    var fraction: Double? { expected > 0 ? min(1, Double(received) / Double(expected)) : nil }
     var isWorking: Bool { if case .working = state { return true } else { return false } }
 
     /// Fetches `start...end` of `camera` as MP4. Returns the local file.
@@ -19,7 +24,21 @@ final class ClipExporter {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         let name = "\(camera)_\(f.string(from: Date(timeIntervalSince1970: start))).mp4"
-        return try await client.download(client.clipURL(camera: camera, start: start, end: end), fileName: name)
+        return try await downloadFile(client: client, url: client.clipURL(camera: camera, start: start, end: end), fileName: name)
+    }
+
+    /// Downloads with the progress shown in the pill.
+    func downloadFile(client: FrigateClient, url: URL, fileName: String) async throws -> URL {
+        received = 0
+        expected = 0
+        defer { received = 0; expected = 0 }
+        return try await client.download(url, fileName: fileName) { got, total in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                // Only forward: a late report must not move the bar back.
+                if got >= self.received { self.received = got; self.expected = total }
+            }
+        }
     }
 
     func saveToPhotos(client: FrigateClient, camera: String, start: Double, end: Double) async {
@@ -70,9 +89,13 @@ extension ClipExporter {
     }
 }
 
-/// Small status pill shown while exporting and after it finishes.
+/// Small status pill shown while exporting and after it finishes; with a download's progress.
 struct ExportToast: View {
     let state: ClipExporter.State
+    var exporter: ClipExporter? = nil
+
+    init(state: ClipExporter.State) { self.state = state }
+    init(exporter: ClipExporter) { self.state = exporter.state; self.exporter = exporter }
 
     var body: some View {
         Group {
@@ -87,14 +110,36 @@ struct ExportToast: View {
     }
 
     private func pill(_ text: String, icon: String?) -> some View {
-        HStack(spacing: 8) {
-            if let icon { Image(systemName: icon) } else { ProgressView().tint(.white) }
-            Text(text).font(.system(size: 14, weight: .semibold)).lineLimit(2)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                if let icon { Image(systemName: icon) } else { ProgressView().tint(.white) }
+                Text(text).font(.system(size: 14, weight: .semibold)).lineLimit(2)
+                if icon == nil, let exporter, exporter.received > 0 {
+                    Text(amount(exporter)).font(.system(size: 13, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+            }
+            // A bar while downloading (Frigate first builds the clip, so it starts after a moment).
+            if icon == nil, let exporter, exporter.received > 0 {
+                if let f = exporter.fraction {
+                    ProgressView(value: f).tint(Theme.accent).frame(width: 220)
+                } else {
+                    ProgressView().progressViewStyle(.linear).tint(Theme.accent).frame(width: 220)
+                }
+            }
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(.black.opacity(0.8), in: Capsule())
+        .background(.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 20))
         .padding(.top, 8)
         .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private func amount(_ e: ClipExporter) -> String {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        f.allowedUnits = [.useMB]
+        if let fraction = e.fraction { return "\(Int((fraction * 100).rounded()))%" }
+        return f.string(fromByteCount: e.received)
     }
 }

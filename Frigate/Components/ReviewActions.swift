@@ -98,7 +98,7 @@ private struct ReviewActionsHost: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .overlay(alignment: .top) { ExportToast(state: actions.exporter.state) }
+            .overlay(alignment: .top) { ExportToast(exporter: actions.exporter) }
             .sheet(item: $actions.share) { ShareSheet(items: $0.items) }
             .alert("Delete this review item and its recordings?",
                    isPresented: Binding(get: { actions.pendingDelete != nil }, set: { if !$0 { actions.pendingDelete = nil } })) {

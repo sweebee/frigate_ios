@@ -213,7 +213,7 @@ struct PlaybackView: View {
             // Into and out of full screen with a cross-fade.
             if isWide && fullscreen { landscapeBody.transition(.opacity) } else if isWide { wideBody.transition(.opacity) } else if isLandscape { landscapeBody } else { portraitBody }
         }
-        .overlay(alignment: .top) { ExportToast(state: exporter.state) }
+        .overlay(alignment: .top) { ExportToast(exporter: exporter) }
         .reviewActionsHost(reviewActions)
         .onChange(of: reviewActions.deletedIDs) { _, ids in
             withAnimation(.easeOut(duration: 0.2)) { reviews.removeAll { ids.contains($0.id) } }
