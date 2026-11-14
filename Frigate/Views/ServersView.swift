@@ -15,22 +15,10 @@ struct ServersView: View {
     /// Inside another navigation stack (the phone's More tab): no stack of its own, and a
     /// back button.
     var embedded = false
-    @Environment(\.dismiss) private var dismissEmbedded
 
     var body: some View {
         if embedded {
-            VStack(spacing: 0) {
-                HStack {
-                    Button { dismissEmbedded() } label: { BackButtonLabel() }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Back")
-                    Spacer()
-                }
-                .headerBarPadding()
-                content
-            }
-            .screenBackground()
-            .toolbar(.hidden, for: .navigationBar)
+            content
         } else {
             NavigationStack { content }
         }
@@ -42,7 +30,7 @@ struct ServersView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        LargeTitle(text: L("Servers"))
+                        ScreenTitle(text: L("Servers"), showsBack: embedded)
                         Spacer()
                         Button { model.showAddServer = true } label: {
                             Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
@@ -231,13 +219,7 @@ struct LiveSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 4) {
-                    Button { dismiss() } label: {
-                        BackButtonLabel()
-                    }
-                    .accessibilityLabel("Back")
-                    Text("Live view").font(.system(size: 28, weight: .bold)).kerning(-0.4)
-                }
+                ScreenTitle(text: L("Live view"), showsBack: true)
                 .padding(.top, 8)
                 .padding(.bottom, 4)
 

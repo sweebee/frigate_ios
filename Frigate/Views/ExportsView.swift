@@ -155,18 +155,9 @@ struct ExportsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !isSection {
-                HStack {
-                    Button { dismiss() } label: { BackButtonLabel() }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Back")
-                    Spacer()
-                }
-                .headerBarPadding()
-            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    LargeTitle(text: L("Exports")).padding(.top, isSection ? 8 : 0)
+                    ScreenTitle(text: L("Exports"), showsBack: !isSection).padding(.top, 8)
                     if loading && entries.isEmpty {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 200)
                     } else if entries.isEmpty {
@@ -261,7 +252,6 @@ struct ExportPlayerView: View {
         VStack(spacing: 0) {
             HStack {
                 Button { dismiss() } label: { BackButtonLabel() }
-                    .buttonStyle(.plain)
                     .accessibilityLabel("Back")
                 Spacer()
                 Button { Task { await shareFile() } } label: {

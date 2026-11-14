@@ -121,22 +121,10 @@ struct ChatView: View {
     /// Inside another navigation stack (the phone's More tab): no stack of its own, and a
     /// back button.
     var embedded = false
-    @Environment(\.dismiss) private var dismissEmbedded
 
     var body: some View {
         if embedded {
-            VStack(spacing: 0) {
-                HStack {
-                    Button { dismissEmbedded() } label: { BackButtonLabel() }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Back")
-                    Spacer()
-                }
-                .headerBarPadding()
-                content
-            }
-            .screenBackground()
-            .toolbar(.hidden, for: .navigationBar)
+            content
         } else {
             NavigationStack { content }
         }
@@ -167,7 +155,7 @@ struct ChatView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                LargeTitle(text: L("Chat"))
+                ScreenTitle(text: L("Chat"), showsBack: embedded)
                 Spacer()
                 if let session, !session.isEmpty {
                     Button { session.reset() } label: {

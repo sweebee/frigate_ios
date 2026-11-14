@@ -253,6 +253,27 @@ struct SegmentedBar<T: Hashable>: View {
     }
 }
 
+/// A screen's title. Pushed screens (settings, More) put the back button in front of it on
+/// the same line, like Live view's settings; top-level screens show the large title alone.
+struct ScreenTitle: View {
+    let text: String
+    var showsBack = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        if showsBack {
+            HStack(spacing: 4) {
+                // Default button style: the arrow takes the accent color, like on other screens.
+                Button { dismiss() } label: { BackButtonLabel() }
+                    .accessibilityLabel("Back")
+                Text(text).font(.system(size: 28, weight: .bold)).kerning(-0.4).foregroundStyle(Theme.text)
+            }
+        } else {
+            LargeTitle(text: text)
+        }
+    }
+}
+
 struct LargeTitle: View {
     let text: String
     var body: some View {
