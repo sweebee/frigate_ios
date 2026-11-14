@@ -892,8 +892,9 @@ struct PlaybackTimeline: View {
     /// use the full width right of the labels, and a short time on the playhead.
     var compact = false
 
-    /// Seconds per row.
-    @State private var zoomIndex = 2
+    /// Seconds per row: the zoom, set by the buttons or by pinching (trackpad on the Mac).
+    @State private var secondsPerRow: Double = 60
+    @State private var pinchBase: Double?
     @State private var dragStartTime: Double?
     @State private var fling = TimelineFling()
     /// Where a trackpad scroll has got to.
@@ -905,12 +906,22 @@ struct PlaybackTimeline: View {
     /// Zoomed in far enough that rows are shorter than the activity buckets.
     private var usesSegments: Bool { secondsPerRow <= 30 && !segments.isEmpty }
 
-    /// Seconds per row; at the widest about three hours fit on screen.
+    /// The buttons' steps; pinching goes anywhere between the first and last. At the widest
+    /// about three hours fit on screen.
     private let zooms: [Double] = [10, 30, 60, 120]
     private let rowHeight: CGFloat = 5
 
-    private var secondsPerRow: Double { zooms[zoomIndex] }
     private var secondsPerPoint: Double { secondsPerRow / Double(rowHeight) }
+    private var canZoomIn: Bool { secondsPerRow > zooms.first! + 0.5 }
+    private var canZoomOut: Bool { secondsPerRow < zooms.last! - 0.5 }
+
+    private func zoomIn() {
+        withAnimation(.easeOut(duration: 0.2)) { secondsPerRow = zooms.last { $0 < secondsPerRow - 0.5 } ?? zooms.first! }
+    }
+
+    private func zoomOut() {
+        withAnimation(.easeOut(duration: 0.2)) { secondsPerRow = zooms.first { $0 > secondsPerRow + 0.5 } ?? zooms.last! }
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -946,8 +957,18 @@ struct PlaybackTimeline: View {
                             onSelect(r)
                         }
                     })
+                    // Pinch (or a trackpad pinch) zooms between the buttons' outer steps.
+                    .simultaneousGesture(MagnifyGesture()
+                        .onChanged { v in
+                            let base = pinchBase ?? secondsPerRow
+                            if pinchBase == nil { pinchBase = base; fling.cancel() }
+                            secondsPerRow = min(max(base / v.magnification, zooms.first!), zooms.last!)
+                        }
+                        .onEnded { _ in pinchBase = nil })
                     .gesture(DragGesture(minimumDistance: 10)
                         .onChanged { v in
+                            // Two fingers pinching also move: no scrubbing while pinching.
+                            if pinchBase != nil { return }
                             if dragStartTime == nil { fling.cancel() }
                             let base = dragStartTime ?? wallTime
                             if dragStartTime == nil { dragStartTime = base }
@@ -955,7 +976,8 @@ struct PlaybackTimeline: View {
                             onScrub(clamp(base + Double(v.translation.height) * secondsPerPoint))
                         }
                         .onEnded { v in
-                            let base = dragStartTime ?? wallTime
+                            // Only a drag that scrubbed: not the movement of a pinch.
+                            guard let base = dragStartTime else { onScrubCancel(); return }
                             dragStartTime = nil
                             if Date().timeIntervalSince(lastTap) < 0.5 { onScrubCancel(); return }
                             let released = clamp(base + Double(v.translation.height) * secondsPerPoint)
@@ -985,8 +1007,8 @@ struct PlaybackTimeline: View {
                 .allowsHitTesting(false)
 
                 VStack(spacing: 8) {
-                    zoomButton("plus.magnifyingglass", "Zoom in", enabled: zoomIndex > 0) { zoomIndex -= 1 }
-                    zoomButton("minus.magnifyingglass", "Zoom out", enabled: zoomIndex < zooms.count - 1) { zoomIndex += 1 }
+                    zoomButton("plus.magnifyingglass", "Zoom in", enabled: canZoomIn) { zoomIn() }
+                    zoomButton("minus.magnifyingglass", "Zoom out", enabled: canZoomOut) { zoomOut() }
                 }
                 .padding(12)
             }
