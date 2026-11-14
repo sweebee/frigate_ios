@@ -82,7 +82,7 @@ struct ReviewItemMenu: View {
         }
         Divider()
         Button(role: .destructive) { actions.pendingDelete = (item, serverID) } label: {
-            Label("Delete", systemImage: "trash")
+            DestructiveMenuLabel(title: "Delete")
         }
     }
 }

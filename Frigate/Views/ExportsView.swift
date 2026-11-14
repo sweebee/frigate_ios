@@ -173,7 +173,7 @@ struct ExportsView: View {
                                 .disabled(entry.export.inProgress)
                                 .contextMenu {
                                     Button { newName = entry.export.name; renaming = entry } label: { Label("Rename", systemImage: "pencil") }
-                                    Button(role: .destructive) { deleting = entry } label: { Label("Delete", systemImage: "trash") }
+                                    Button(role: .destructive) { deleting = entry } label: { DestructiveMenuLabel(title: "Delete") }
                                 }
                             }
                         }

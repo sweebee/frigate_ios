@@ -403,7 +403,7 @@ struct PlaybackView: View {
                         Label("Share event", systemImage: "square.and.arrow.up")
                     }
                     Button(role: .destructive) { deletingReview = r } label: {
-                        Label("Delete event", systemImage: "trash")
+                        DestructiveMenuLabel(title: "Delete event")
                     }
                 }
             }

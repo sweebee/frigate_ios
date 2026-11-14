@@ -471,3 +471,19 @@ struct RelativeTimeText: View {
         TimelineView(.everyMinute) { _ in Text(FrigateFormat.relative(date)) }
     }
 }
+
+
+/// A delete item in a menu: red icon as well as red text. The app-wide accent tint otherwise
+/// colours the icon blue next to the red title.
+struct DestructiveMenuLabel: View {
+    let title: LocalizedStringKey
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: "trash").foregroundStyle(Theme.destructive)
+        }
+        .tint(Theme.destructive)
+    }
+}
