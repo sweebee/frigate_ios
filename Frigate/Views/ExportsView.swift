@@ -213,8 +213,11 @@ struct ExportsView: View {
                                     // Drop exports on a case to file them there; a case on
                                     // another server shows that it cannot take them.
                                     .onDrop(of: [.text], delegate: CaseDropDelegate(
-                                        id: c.id, accepts: accepts(c), target: $dropTarget,
-                                        perform: { if let d = dragging { drop(d, on: c) } }))
+                                        id: c.id, accepts: { accepts(c) }, target: $dropTarget,
+                                        perform: { id in
+                                            guard let e = entries.first(where: { $0.id == id }) ?? dragging else { return }
+                                            drop(e, on: c)
+                                        }))
                                 }
                             }
                             if !visible.isEmpty { SectionLabel(text: L("Not in a case")).padding(.top, 8) }
@@ -772,20 +775,26 @@ struct MoreView: View {
 }
 
 /// A case as a drop target: takes the dragged export when `accepts`, and otherwise shows the
-/// system's "not allowed" sign over it.
+/// system's "not allowed" sign over it. SwiftUI may keep the delegate it got when the drag
+/// began, so whether it accepts is asked anew each time rather than stored.
 private struct CaseDropDelegate: DropDelegate {
     let id: String
-    let accepts: Bool
+    let accepts: () -> Bool
     @Binding var target: String?
-    let perform: () -> Void
+    /// Called with the dragged export's id.
+    let perform: (String) -> Void
 
     func dropEntered(info: DropInfo) { target = id }
     func dropExited(info: DropInfo) { if target == id { target = nil } }
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: accepts ? .move : .forbidden) }
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: accepts() ? .move : .forbidden) }
     func performDrop(info: DropInfo) -> Bool {
         target = nil
-        guard accepts else { return false }
-        perform()
+        guard accepts(), let provider = info.itemProviders(for: [.text]).first else { return false }
+        let perform = perform
+        _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let id = object as? String else { return }
+            Task { @MainActor in perform(id) }
+        }
         return true
     }
 }
