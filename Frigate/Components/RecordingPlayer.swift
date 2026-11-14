@@ -40,11 +40,17 @@ final class RecordingPlayer {
             Task { @MainActor in
                 self?.isPlaying = status == .playing
                 self?.isBuffering = status == .waitingToPlayAtSpecifiedRate
+                if status == .playing { self?.reloads = 0 }
             }
         }
     }
 
     func load(_ url: URL, startAt: Double = 0, autoplay: Bool = true) {
+        reloads = 0
+        replaceItem(url, startAt: startAt, autoplay: autoplay)
+    }
+
+    private func replaceItem(_ url: URL, startAt: Double, autoplay: Bool) {
         self.url = url
         error = nil
         currentTime = startAt
@@ -92,12 +98,85 @@ final class RecordingPlayer {
         pendingStart = startAt > 0 ? startAt : nil
         if startAt > 0 { seek(to: startAt, precise: true) }
         if autoplay { play() }
+        startWatchdog()
+    }
+
+    // MARK: Stall recovery
+
+    private var watchdog: Task<Void, Never>?
+    /// Reloads since playback last ran; reset by every new `load`.
+    private var reloads = 0
+    private var stuckSince: Date?
+    private var lastProgress = (time: 0.0, buffered: 0.0)
+
+    /// AVPlayer sometimes never finishes loading a recording, or keeps waiting with a full
+    /// buffer, until the same URL is opened again. This does that by itself.
+    private func startWatchdog() {
+        watchdog?.cancel()
+        stuckSince = nil
+        watchdog = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let self else { return }
+                self.checkProgress()
+            }
+        }
+    }
+
+    private func checkProgress() {
+        guard let item = player.currentItem, let url, error == nil, !isScrubbing else { stuckSince = nil; return }
+        let ready = item.status == .readyToPlay
+        // Only a wait the user sees: the item not loading, or play that does not start.
+        guard !ready || (wantsToPlay && player.timeControlStatus == .waitingToPlayAtSpecifiedRate) else {
+            stuckSince = nil
+            return
+        }
+        let t = player.currentTime().seconds.isFinite ? player.currentTime().seconds : 0
+        let ranges = item.loadedTimeRanges.map(\.timeRangeValue)
+        let buffered = ranges.reduce(0.0) { $0 + ($1.duration.seconds.isFinite ? $1.duration.seconds : 0) }
+        // Anything still arriving or moving is a slow connection, not a hang.
+        if stuckSince == nil || abs(t - lastProgress.time) > 0.05 || abs(buffered - lastProgress.buffered) > 0.05 {
+            lastProgress = (t, buffered)
+            stuckSince = Date()
+            return
+        }
+        let stuck = Date().timeIntervalSince(stuckSince!)
+
+        // Enough video is there but the player keeps waiting: start it.
+        if ready, seeksInFlight == 0, stuck >= 2, let range = ranges.first(where: { $0.containsTime(player.currentTime()) }) {
+            let ahead = range.end.seconds - t
+            if ahead >= 2 || (duration > 0 && range.end.seconds >= duration - 0.5) {
+                player.playImmediately(atRate: rate)
+                stuckSince = nil
+                return
+            }
+        }
+
+        // Nothing arrives at all: open the recording again where the user wanted to be.
+        // Exact seeks on cameras with few keyframes can take seven seconds; stay above that.
+        let limit = Double(ready ? 10 : 12) + Double(reloads) * 5
+        guard stuck >= limit else { return }
+        guard reloads < 3 else {
+            error = L("Playback failed")
+            return
+        }
+        let attempts = reloads + 1
+        replaceItem(url, startAt: currentTime, autoplay: wantsToPlay)
+        reloads = attempts
+    }
+
+    /// After a failure, the next play or seek opens the recording again.
+    private func reloadIfFailed(at seconds: Double, autoplay: Bool) -> Bool {
+        guard error != nil, let url else { return false }
+        load(url, startAt: seconds, autoplay: autoplay)
+        return true
     }
 
     /// Whether the user wants playback running. A stall must not count as pausing.
     private(set) var wantsToPlay = false
 
     func play() {
+        if reloadIfFailed(at: currentTime, autoplay: true) { return }
         if duration > 0, currentTime >= duration - 0.3 { seek(to: 0) }
         wantsToPlay = true
         // play() (unlike playImmediately) waits for enough buffered video and resumes by
@@ -117,6 +196,7 @@ final class RecordingPlayer {
     /// sooner; it never lands later than asked.
     func seek(to seconds: Double, precise: Bool = false, earlier: Double = 0) {
         let t = max(0, duration > 0 ? min(seconds, duration) : seconds)
+        if reloadIfFailed(at: t, autoplay: wantsToPlay) { return }
         currentTime = t
         seeksInFlight += 1
         let tol = precise ? CMTime.zero : CMTime(seconds: 0.5, preferredTimescale: 600)
@@ -195,6 +275,8 @@ final class RecordingPlayer {
     }
 
     func stop() {
+        watchdog?.cancel()
+        watchdog = nil
         wantsToPlay = false
         player.pause()
         player.replaceCurrentItem(with: nil)
