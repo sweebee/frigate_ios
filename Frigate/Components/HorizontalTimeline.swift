@@ -195,9 +195,14 @@ struct HorizontalTimeline: View {
                 ctx.fill(Path(CGRect(x: x, y: baseline - 2, width: barWidth, height: 2)), with: .color(Theme.accent.opacity(0.7)))
             }
             if let r = reviews.first(where: { t + step > $0.startTime && t < ($0.endTime ?? dayEnd) }) {
-                let h = barArea
+                // As in Frigate: the event as a tinted band, the motion in it still as a waveform
+                // (in the event's color). Full bars hid how much was going on.
+                let color = Theme.labelColor(r.labels.first ?? "")
+                ctx.fill(Path(CGRect(x: x, y: barBase - barArea, width: barWidth, height: barArea)), with: .color(color.opacity(0.14)))
+                let level = motionLevel(from: t - 15, to: t + step)
+                let h = max(4, CGFloat(level / maxMotion) * barArea * 0.8)
                 ctx.fill(Path(roundedRect: CGRect(x: x, y: barBase - h, width: barWidth - 1, height: h), cornerRadius: 1),
-                         with: .color(Theme.labelColor(r.labels.first ?? "")))
+                         with: .color(color))
             } else if map.hasRecording(from: t, to: t + step) {
                 let level = motionLevel(from: t - 15, to: t + step)
                 let h = max(3, CGFloat(level / maxMotion) * barArea * 0.8)
