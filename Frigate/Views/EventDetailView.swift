@@ -439,10 +439,10 @@ struct EventDetailView: View {
     }
 
     private var tiles: some View {
-        let score = events.compactMap(\.bestScore).max()
+        let score = infoEvents.compactMap(\.bestScore).max()
         let zones = (focus.map { $0.zones ?? [] } ?? item.data.zones ?? []).map(FrigateFormat.prettyName)
-        let subLabels = (focus == nil ? item.data.subLabels ?? [] : []) + events.compactMap { $0.subLabel?.name }.filter { !$0.isEmpty }
-        let plates = events.compactMap(\.recognizedPlate)
+        let subLabels = (focus == nil ? item.data.subLabels ?? [] : []) + infoEvents.compactMap { $0.subLabel?.name }.filter { !$0.isEmpty }
+        let plates = infoEvents.compactMap(\.recognizedPlate)
         let third: (String, String) = {
             if !plates.isEmpty {
                 var seen = Set<String>()
@@ -465,9 +465,22 @@ struct EventDetailView: View {
 
     // MARK: Objects
 
-    /// The tracked objects in this event with their snapshots; the one opened from Explore first.
+    /// What the score, sub label and plate tiles describe: the object opened from Explore, or all.
+    private var infoEvents: [FrigateEvent] { focus.map { [$0] } ?? events }
+
+    /// Opened on one object, other objects of the event show when they were tracked within this
+    /// many seconds of it: the video's own margin, so each one shown is in the video.
+    private var nearbySeconds: Double { padding }
+
+    /// The tracked objects in this event with their snapshots; the one opened from Explore first,
+    /// then only those near it in time.
     private var objectEvents: [FrigateEvent] {
-        let list = events.sorted { $0.startTime < $1.startTime }
+        var list = events.sorted { $0.startTime < $1.startTime }
+        if let focus {
+            let from = focus.startTime - nearbySeconds
+            let to = (focus.endTime ?? Date().timeIntervalSince1970) + nearbySeconds
+            list = list.filter { $0.id == focus.id || ($0.startTime <= to && ($0.endTime ?? .infinity) >= from) }
+        }
         guard let id = route.focusEvent?.id, let i = list.firstIndex(where: { $0.id == id }) else { return list }
         var out = list
         out.insert(out.remove(at: i), at: 0)
@@ -631,8 +644,8 @@ struct EventDetailView: View {
         }
         // The tracked objects and whether there is a recording, both at once: on a remote
         // connection every round trip before the video shows is felt.
-        // Opened on one object from Explore: only that object, as Frigate's tracking details.
-        let ids = route.focusEvent.map { [$0.id] } ?? item.data.detections ?? []
+        // All the event's objects; opened on one from Explore, the screen shows those near it.
+        let ids = item.data.detections ?? []
         let needsVideo = player.url == nil
         let (start, end) = (clipStart, clipEnd)
         async let loadedEvents = (try? await client.events(ids: ids)) ?? []
@@ -666,7 +679,8 @@ struct EventDetailView: View {
         }
         var entries: [TimelineEntry] = []
         await withTaskGroup(of: [TimelineEntry].self) { group in
-            for id in ids.prefix(10) {
+            // The lifecycle of the object opened from Explore only, as Frigate's tracking details.
+            for id in (route.focusEvent.map { [$0.id] } ?? Array(ids.prefix(10))) {
                 group.addTask { (try? await client.timeline(sourceId: id)) ?? [] }
             }
             for await part in group { entries += part }
