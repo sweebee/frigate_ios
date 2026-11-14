@@ -33,6 +33,12 @@ struct CameraView: View {
     @State private var snapshotBusy = false
     /// The phone was turned to landscape by the full-screen button (not by hand).
     @State private var turnedForFullscreen = false
+    /// Screens on the navigation stacks when this one appeared: more when it disappears means a
+    /// screen was opened on top of it, fewer that this one was closed.
+    @State private var depthOnAppear = 0
+    private var navigationDepth: Int {
+        model.livePath.count + model.reviewPath.count + model.explorePath.count + model.morePath.count + model.exportsPath.count
+    }
     /// Manual ("on demand") recording, as in Frigate's live view: its event id while it runs.
     @State private var manualEventID: String?
     @State private var manualStart: Date?
@@ -91,6 +97,11 @@ struct CameraView: View {
         // The window left full screen on the Mac (green button, Esc): the video stops filling it.
         .onChange(of: model.immersive) { _, on in if !on && filling { setFilling(false) } }
         .onDisappear {
+            // Turned sideways by the full-screen button: turn back when this screen is left for
+            // where it came from (Live), or the app stays in landscape with the phone held
+            // upright. Opening playback from here keeps landscape; back from it, this screen is
+            // still in full screen.
+            if turnedForFullscreen && navigationDepth <= depthOnAppear { setPhoneFullscreen(false) }
             player.suspended = true; player.talking = false
             // Like Frigate's web view: leaving the camera ends a manual recording.
             stopManualRecording()
@@ -130,6 +141,7 @@ struct CameraView: View {
             if phase == .background { stopManualRecording() }
         }
         .onAppear {
+            depthOnAppear = navigationDepth
             player.suspended = false
             // Sound as the user last left it on a camera (the overview always stays silent).
             if UserDefaults.standard.bool(forKey: LivePlayerState.soundKey) && player.muted { player.setMuted(false) }

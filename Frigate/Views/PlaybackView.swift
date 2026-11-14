@@ -250,7 +250,12 @@ struct PlaybackView: View {
                 overlayToken += 1
             }
         }
-        .onDisappear { player.stop(); if fullscreen { model.immersive = false } }
+        .onDisappear {
+            player.stop()
+            if fullscreen { model.immersive = false }
+            // Turned sideways by its full-screen button: turn back on leaving.
+            if fullscreen && !isWide { setFullscreen(false) }
+        }
         .onChange(of: model.immersive) { _, on in if !on && fullscreen && isWide { setFullscreen(false) } }
         .onChange(of: isLandscape) { _, landscape in if !landscape && !isWide { fullscreen = false } }
         .onChange(of: player.finishedCount) { _, _ in
