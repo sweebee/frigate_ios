@@ -391,10 +391,14 @@ final class AppModel {
 
     /// Connections in the current Live/History scope.
     var scopedConnections: [ServerConnection] {
+        let list: [ServerConnection]
         switch scope {
-        case .all: return orderedConnections
-        case .server(let id): return connections[id].map { [$0] } ?? []
+        case .all: list = orderedConnections
+        case .server(let id): list = connections[id].map { [$0] } ?? []
         }
+        // Screenshots: only servers with one of the chosen cameras.
+        guard ScreenshotMode.cameras != nil else { return list }
+        return list.filter { c in c.config.map { $0.cameras.keys.contains(where: ScreenshotMode.allows) } ?? true }
     }
 
     /// Connections used for Review, which may combine all servers.

@@ -19,7 +19,7 @@ struct RecentAlertsStrip: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 8) {
                         ForEach(entries) { entry in
-                            NavigationLink(value: EventRoute(serverID: entry.serverID, review: entry.item)) {
+                            Button { open(entry) } label: {
                                 AlertPreviewTile(entry: entry)
                             }
                             .buttonStyle(.plain)
@@ -36,12 +36,29 @@ struct RecentAlertsStrip: View {
         .padding(.bottom, entries.isEmpty ? -14 : 0)
         .reviewActionsHost(actions)
         .onChange(of: actions.deletedIDs) { _, ids in entries.removeAll { ids.contains($0.item.id) } }
+        // Marked reviewed anywhere (here, in Review, on the event screen): out of the row.
+        .onChange(of: model.reviewedIDs) { _, ids in
+            withAnimation(.easeOut(duration: 0.2)) { entries.removeAll { ids.contains($0.item.id) } }
+        }
         .task(id: loadKey) {
             // Refresh while Live is visible; reviewed items drop out.
             while !Task.isCancelled {
                 await load()
                 try? await Task.sleep(for: .seconds(30))
             }
+        }
+    }
+
+    /// Opens the alert and marks it reviewed, as opening it in Review does: seen, so it leaves
+    /// this row of unreviewed alerts (once the event screen is closed, not while opening it).
+    private func open(_ entry: ReviewEntry) {
+        model.livePath.append(EventRoute(serverID: entry.serverID, review: entry.item))
+        guard !entry.item.hasBeenReviewed, let conn = model.connection(for: entry.serverID), let client = conn.client else { return }
+        Task {
+            guard (try? await client.markViewed([entry.item.id])) != nil else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            model.reviewedIDs.insert(entry.item.id)
+            await conn.refresh()
         }
     }
 
