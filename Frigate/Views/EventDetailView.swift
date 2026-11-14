@@ -198,6 +198,12 @@ struct EventDetailView: View {
                 .lineLimit(1)
                 ForEach(shownLabels, id: \.self) { LabelTag(label: $0, size: 12) }
                 Spacer()
+                if videoShowing {
+                    timeLabel
+                        .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(.black.opacity(0.55), in: Capsule())
+                }
                 Button { Task { await markReviewed() }; keepOverlay() } label: {
                     HStack(spacing: 5) {
                         Image(systemName: isReviewed ? "checkmark.circle.fill" : "checkmark.circle")
@@ -298,6 +304,17 @@ struct EventDetailView: View {
                     .fadingControls(overlayVisible, pointerOver: $pointerOnControls)
             }
         }
+        // Date and time at the playhead, as on the playback screen.
+        .overlay(alignment: .topLeading) {
+            if videoShowing {
+                timeLabel
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .padding(.horizontal, 8).frame(height: VideoChip.height)
+                    .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                    .padding(10)
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .topTrailing) {
             if horizontalSizeClass == .regular && !noRecording {
                 FullscreenButton(isOn: false) { setFullscreen(true) }.padding(10).fadingControls(overlayVisible, pointerOver: $pointerOnControls)
@@ -329,6 +346,16 @@ struct EventDetailView: View {
     /// Once frames are on screen the still goes, and stays gone when paused.
     private var videoShowing: Bool { videoAppeared }
     @State private var videoAppeared = false
+
+    /// Date and time at the playhead, with a pause icon while paused, as on the playback screen.
+    private var timeLabel: some View {
+        let t = Date(timeIntervalSince1970: origin + player.currentTime)
+        return HStack(spacing: 5) {
+            if !player.wantsToPlay { Image(systemName: "pause.fill").font(.system(size: 10, weight: .bold)) }
+            Text("\(FrigateFormat.dayTitle(t)) · \(FrigateFormat.time(t, seconds: true))")
+        }
+        .foregroundStyle(.white)
+    }
 
     /// Whether there is something to control: a loaded recording, not an error or a spinner.
     private var canPlay: Bool {
