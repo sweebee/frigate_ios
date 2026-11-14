@@ -617,7 +617,9 @@ struct PlaybackView: View {
                 Stable(key: EventsListKey(ids: shown.map(\.id), total: reviews.count, playing: playingID,
                                           loading: loading, recorded: map.spans.count, filtered: filter.isActive, day: day)) {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    SectionLabel(text: filter.isActive
+                    // No count while loading: "0 events" read as if the day were empty.
+                    SectionLabel(text: loading && reviews.isEmpty ? FrigateFormat.dayTitle(day)
+                                 : filter.isActive
                                  ? L("\(FrigateFormat.dayTitle(day)) · \(shown.count) of \(reviews.count) events")
                                  : L("\(FrigateFormat.dayTitle(day)) · \(shown.count) events"))
                         .padding(.top, 2)
@@ -1364,7 +1366,7 @@ extension PlaybackView {
     private var landscapeEventsPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                SectionLabel(text: L("\(visibleReviews.count) events")).lineLimit(1)
+                SectionLabel(text: loading && reviews.isEmpty ? L("Events") : L("\(visibleReviews.count) events")).lineLimit(1)
                 Button { withAnimation(.easeOut(duration: 0.2)) { showEventsPanel = false } } label: {
                     Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32)
                 }
