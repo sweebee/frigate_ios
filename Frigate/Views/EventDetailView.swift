@@ -523,8 +523,7 @@ struct EventDetailView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(list) { e in
-                            Button { snapshotEvent = e } label: { objectCard(e) }
-                                .buttonStyle(.plain)
+                            objectCard(e)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -539,12 +538,35 @@ struct EventDetailView: View {
         }
     }
 
+    /// A tap on the picture shows it large; the time on it plays the video from that object.
     private func objectCard(_ e: FrigateEvent) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             RemoteImage(url: e.hasSnapshot == true ? client?.snapshotURL(for: e) : client?.thumbnailURL(for: e),
                         session: client?.session ?? .shared)
                 .frame(width: 180, height: 101)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+                .onTapGesture { snapshotEvent = e }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Show snapshot")
+                .overlay(alignment: .bottomLeading) {
+                    if canPlay {
+                        Button { playFrom(e) } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "play.fill").font(.system(size: 9, weight: .bold))
+                                Text(FrigateFormat.time(Date(timeIntervalSince1970: e.startTime), seconds: true))
+                                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7).frame(height: VideoChip.height)
+                            .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 6))
+                            .padding(6)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L("Play from \(FrigateFormat.time(Date(timeIntervalSince1970: e.startTime), seconds: true))"))
+                    }
+                }
             HStack {
                 LabelTag(label: e.label, size: 12)
                 Spacer()
@@ -556,6 +578,13 @@ struct EventDetailView: View {
         .padding(8)
         .frame(width: 196)
         .card(border: e.id == route.focusEvent?.id ? Theme.accent : Theme.cardBorder, radius: 12)
+    }
+
+    /// Plays the video from a moment before the object appeared (the clip's start if earlier).
+    private func playFrom(_ e: FrigateEvent) {
+        player.seek(to: max(0, e.startTime + offset - origin - 1), precise: true)
+        player.play()
+        keepOverlay()
     }
 
     /// How long the review item lasted, or the object it was opened on: what the video covers.
