@@ -75,7 +75,9 @@ struct AlertPreviewTile: View {
             .padding(5)
         }
         .overlay(alignment: .bottomLeading) {
-            Text(entry.item.inProgress ? "LIVE" : FrigateFormat.relative(entry.item.start))
+            Group {
+                if entry.item.inProgress { Text("LIVE") } else { RelativeTimeText(date: entry.item.start) }
+            }
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 6).padding(.vertical, 2)
