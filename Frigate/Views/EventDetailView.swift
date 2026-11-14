@@ -584,8 +584,8 @@ struct EventDetailView: View {
         Task {
             if let fresh = try? await client.review(id: item.id), fresh.hasBeenReviewed { item.hasBeenReviewed = true }
         }
-        // The tracked objects (where to start) and whether there is a recording, both at once:
-        // on a remote connection every round trip before the video shows is felt.
+        // The tracked objects and whether there is a recording, both at once: on a remote
+        // connection every round trip before the video shows is felt.
         let ids = item.data.detections ?? []
         let needsVideo = player.url == nil
         let (start, end) = (clipStart, clipEnd)
@@ -596,14 +596,13 @@ struct EventDetailView: View {
             : []
         events = await loadedEvents
         if needsVideo {
-            // Opened on one object: start a moment before it appeared.
-            let focus = route.focusEventID.flatMap { id in events.first { $0.id == id } }
-            let startAt = focus.map { max(0, $0.startTime + offset - 1 - clipStart) } ?? 0
+            // Always from the start, also when opened on one object: jumping ahead first loads
+            // the beginning and then that spot, which on a remote connection takes seconds.
             let segs = await loadedSegments
             if segs.isEmpty {
                 noRecording = true
             } else {
-                player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd), startAt: startAt)
+                player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd))
             }
         }
         var entries: [TimelineEntry] = []
