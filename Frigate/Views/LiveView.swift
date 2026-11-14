@@ -312,22 +312,9 @@ struct TileLivePlayer: View {
                 state.preferred = .mse
                 state.suspended = false
             }
-            .onDisappear {
-                visible = false
-                // The camera opened from this tile follows its stream until it has a keyframe
-                // of its own: keep playing until then (at most a few seconds), or the picture
-                // there would stand still in between.
-                let key = LiveSampleHub.key(client: client, stream: stream)
-                Task {
-                    try? await Task.sleep(for: .milliseconds(500))
-                    for _ in 0..<40 {
-                        if visible { return }
-                        if !LiveSampleHub.shared.hasSubscribers(key) { break }
-                        try? await Task.sleep(for: .milliseconds(250))
-                    }
-                    if !visible { state.suspended = true }
-                }
-            }
+            // The stream's connection is shared (LiveConnection): a camera opened from this tile
+            // keeps it, so the tile can stop at once.
+            .onDisappear { visible = false; state.suspended = true }
             .onChange(of: scenePhase) { _, phase in state.suspended = phase != .active }
     }
 }

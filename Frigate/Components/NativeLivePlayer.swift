@@ -51,25 +51,16 @@ struct NativeLivePlayer: UIViewRepresentable {
         var onFailure: (String) -> Void
         weak var view: SampleView?
         private(set) var stream = ""
-        private var task: URLSessionWebSocketTask?
-        private var parser = FMP4Parser()
-        private var receiving: Task<Void, Never>?
-        private var watchdog: Task<Void, Never>?
-        private var lastSample = Date.distantPast
-        private var gotKeyframe = false
         private var failed = false
-        private var retries = 0
         /// Live audio: AAC from the stream through a renderer on its own clock. The picture
-        /// shows each frame as it arrives, so the audio is not synced to it, as in any live view.
+        /// runs on its own clock too, so the audio is not synced to it, as in any live view.
         private var audioRenderer: AVSampleBufferAudioRenderer?
         private var synchronizer: AVSampleBufferRenderSynchronizer?
         private var pip: LivePiP?
-        /// This stream in the shared hub: samples go there, and a player that opens the same
-        /// stream (a tile's camera opened full) starts from them instead of waiting.
-        private var hubKey: String?
-        private let hubID = UUID()
-        /// Showing another player's samples until this one's own stream reaches a keyframe.
-        private var borrowing = false
+        /// The stream's connection, shared with every other player of the same stream: a camera
+        /// opened from its overview tile carries on with the tile's connection, picture and all.
+        private var connection: LiveConnection?
+        private let id = UUID()
         /// Set the clock again from the next frame shown (a new stream, or a jump).
         private var needsClockSync = true
         /// How far behind the stream the picture runs, to even out the network's bursts.
@@ -98,81 +89,19 @@ struct NativeLivePlayer: UIViewRepresentable {
             stop()
             needsClockSync = true
             self.stream = stream
-            let key = LiveSampleHub.key(client: client, stream: stream)
-            hubKey = key
             failed = false
-            gotKeyframe = false
-            parser = FMP4Parser()
             state.status = "Connecting"
             state.activeMode = "mse"
             state.playing = false
             state.hasAudio = false
-            let task = client.session.webSocketTask(with: client.liveSocketURL(stream: stream, mode: "mse"))
-            // A keyframe fragment of a high-resolution stream can exceed the 1 MB default.
-            task.maximumMessageSize = 32 * 1024 * 1024
-            self.task = task
-            task.resume()
-            task.send(.string(Self.request)) { _ in }
-            // The same stream already plays elsewhere (the overview tile): show its picture
-            // right away and follow it until this connection has a keyframe of its own.
-            if let (gop, size) = LiveSampleHub.shared.subscribe(key, id: hubID, handler: { [weak self] sample in
-                self?.enqueue(sample)
-            }) {
-                borrowing = true
-                if size.width > 0 { state.videoSize = size }
-                // Decode the frames since the keyframe, but show only the latest: shown one by
-                // one they flashed by as a fast-forward.
-                for (i, sample) in gop.enumerated() {
-                    let last = i == gop.count - 1
-                    enqueue(last ? sample : Self.hidden(sample) ?? sample, shown: last)
-                }
-            }
-            let started = Date()
-            receiving = Task { [weak self] in
-                while !Task.isCancelled {
-                    let message: URLSessionWebSocketTask.Message
-                    do { message = try await task.receive() } catch {
-                        // A socket closed by stop() (leaving the screen, reconnecting) also
-                        // ends up here; only a failure of the current connection counts.
-                        await MainActor.run {
-                            guard let self, self.task === task else { return }
-                            self.fail("connection closed: \(error.localizedDescription)")
-                        }
-                        return
-                    }
-                    guard let self, self.task === task else { return }
-                    switch message {
-                    case .data(let data): self.handle(data)
-                    case .string(let text):
-                        if text.contains("\"error\"") { self.fail(text) }
-                    @unknown default: break
-                    }
-                }
-            }
-            watchdog = Task { [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(2))
-                    guard let self, !Task.isCancelled else { return }
-                    if !self.state.playing {
-                        if Date().timeIntervalSince(started) > 10 { self.fail("no video"); return }
-                    } else if Date().timeIntervalSince(self.lastSample) > 6 {
-                        // Stalled: reconnect, a few times before giving up.
-                        self.retries += 1
-                        if self.retries > 3 { self.fail("stalled"); return }
-                        self.state.status = "Reconnecting"
-                        self.start(client: client, stream: stream)
-                        return
-                    }
-                }
-            }
+            let connection = LiveConnection.connection(client: client, stream: stream)
+            self.connection = connection
+            connection.subscribe(id) { [weak self] event in self?.handle(event) }
         }
 
         func stop() {
-            if let hubKey {
-                LiveSampleHub.shared.unsubscribe(hubKey, id: hubID)
-                LiveSampleHub.shared.publisherStopped(hubKey, id: hubID)
-            }
-            borrowing = false
+            connection?.unsubscribe(id)
+            connection = nil
             if let sync = synchronizer, let renderer = audioRenderer {
                 sync.setRate(0, time: .zero)
                 renderer.flush()
@@ -180,10 +109,6 @@ struct NativeLivePlayer: UIViewRepresentable {
             }
             audioRenderer = nil
             synchronizer = nil
-            receiving?.cancel()
-            watchdog?.cancel()
-            task?.cancel(with: .goingAway, reason: nil)
-            task = nil
             view?.displayLayer.flushAndRemoveImage()
         }
 
@@ -197,32 +122,22 @@ struct NativeLivePlayer: UIViewRepresentable {
             onFailure(reason)
         }
 
-        private func handle(_ data: Data) {
-            let output = parser.feed(data)
-            for item in output {
-                switch item {
-                case .format(_, let size):
-                    if size.width > 0 { state.videoSize = size }
-                    if let hubKey { LiveSampleHub.shared.setSize(hubKey, size) }
-                case .audioFormat:
-                    setUpAudio()
-                case .audio(let sample):
-                    enqueueAudio(sample)
-                case .sample(let sample, let keyframe):
-                    if !gotKeyframe {
-                        guard keyframe else { continue }
-                        gotKeyframe = true
-                        // Its own stream from here on.
-                        if borrowing, let hubKey {
-                            LiveSampleHub.shared.unsubscribe(hubKey, id: hubID)
-                            borrowing = false
-                            // Its own stream has its own timestamps.
-                            needsClockSync = true
-                        }
-                    }
-                    enqueue(sample)
-                    if let hubKey { LiveSampleHub.shared.publish(hubKey, id: hubID, sample: sample, keyframe: keyframe) }
-                }
+        private func handle(_ event: LiveConnection.Event) {
+            switch event {
+            case .size(let size):
+                if size.width > 0 { state.videoSize = size }
+            case .audioFormat:
+                setUpAudio()
+            case .audio(let sample):
+                enqueueAudio(sample)
+            case .video(let sample, let shown):
+                enqueue(sample, shown: shown)
+            case .restarted:
+                // A new connection after a stall: its own timestamps.
+                needsClockSync = true
+                if state.playing { state.status = "Reconnecting" }
+            case .failed(let reason):
+                fail(reason)
             }
         }
 
@@ -290,39 +205,13 @@ struct NativeLivePlayer: UIViewRepresentable {
                 }
             }
             layer.enqueue(sample)
-            lastSample = Date()
-            if !state.playing {
-                pip?.videoStarted()
+            if !state.playing || state.status != "Live" {
+                if !state.playing { pip?.videoStarted() }
                 state.playing = true
                 state.status = "Live"
-                retries = 0
             }
         }
 
-        /// A copy of `sample` that the layer decodes but does not show.
-        private static func hidden(_ sample: CMSampleBuffer) -> CMSampleBuffer? {
-            var copy: CMSampleBuffer?
-            guard CMSampleBufferCreateCopy(allocator: kCFAllocatorDefault, sampleBuffer: sample, sampleBufferOut: &copy) == noErr,
-                  let copy, let attachments = CMSampleBufferGetSampleAttachmentsArray(copy, createIfNecessary: true),
-                  CFArrayGetCount(attachments) > 0 else { return nil }
-            let dict = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
-            CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DoNotDisplay).toOpaque(),
-                                 Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
-            CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
-                                 Unmanaged.passUnretained(kCFBooleanFalse).toOpaque())
-            return copy
-        }
-
-        /// The codecs we can decode, as go2rtc expects them. Without audio codecs go2rtc
-        /// sends video only.
-        private static var request: String {
-            var codecs = ["avc1.640029", "avc1.64002A", "avc1.640033"]
-            // HEVC also decodes in software (the simulator); a decoder failure falls back to the web.
-            codecs.append("hvc1.1.6.L153.B0")
-            // AAC, the audio most cameras send; go2rtc adds an audio track when there is one.
-            codecs += ["mp4a.40.2", "mp4a.40.5"]
-            return #"{"type":"mse","value":"\#(codecs.joined(separator: ","))"}"#
-        }
     }
 }
 
@@ -796,74 +685,210 @@ final class PiPPlayback: NSObject, AVPictureInPictureSampleBufferPlaybackDelegat
 
 // MARK: - Sharing a stream between players
 
-/// The video samples of each live stream that plays, since its last keyframe, so a second
-/// player of the same stream (the camera opened from its overview tile) shows the picture at
-/// once and follows along, instead of waiting a few seconds for the next keyframe.
+/// One go2rtc MSE connection per stream, shared by every player that shows it: the overview
+/// tile and the camera opened from it use the same connection, so the camera shows the picture
+/// at once and plays on without waiting for a keyframe of its own (with a long keyframe
+/// interval that took up to 17 s). A new player first gets the frames since the last keyframe;
+/// the connection stays open a few seconds after its last player leaves, so going back and
+/// forth is instant too.
 @MainActor
-final class LiveSampleHub {
-    static let shared = LiveSampleHub()
+final class LiveConnection {
+    enum Event {
+        case size(CGSize)
+        case audioFormat
+        case audio(CMSampleBuffer)
+        /// `shown`: false for catch-up frames a new player decodes without showing.
+        case video(CMSampleBuffer, shown: Bool)
+        /// Reconnected after a stall.
+        case restarted
+        case failed(String)
+    }
+
+    private static var all: [String: LiveConnection] = [:]
 
     static func key(client: FrigateClient, stream: String) -> String {
         client.baseURL.absoluteString + "|" + stream
     }
 
-    private final class Feed {
-        var gop: [CMSampleBuffer] = []
-        var size: CGSize = .zero
-        var updated = Date.distantPast
-        var publishers: Set<UUID> = []
-        var subscribers: [UUID: (CMSampleBuffer) -> Void] = [:]
+    static func connection(client: FrigateClient, stream: String) -> LiveConnection {
+        let key = key(client: client, stream: stream)
+        if let c = all[key] { return c }
+        let c = LiveConnection(key: key, client: client, stream: stream)
+        all[key] = c
+        return c
     }
 
-    private var feeds: [String: Feed] = [:]
-
-    private func feed(_ key: String) -> Feed {
-        if let f = feeds[key] { return f }
-        let f = Feed()
-        feeds[key] = f
-        return f
+    /// Whether this stream is playing in some player right now (or just was).
+    static func isPlaying(client: FrigateClient, stream: String) -> Bool {
+        guard let c = all[key(client: client, stream: stream)] else { return false }
+        return !c.gop.isEmpty && Date().timeIntervalSince(c.lastSample) < 1.5
     }
 
-    func publish(_ key: String, id: UUID, sample: CMSampleBuffer, keyframe: Bool) {
-        let f = feed(key)
-        f.publishers.insert(id)
-        if keyframe { f.gop = [] }
-        f.gop.append(sample)
-        // A camera with a long keyframe interval: keep it bounded (about 10 s at 30 fps).
-        if f.gop.count > 300 { f.gop = [] }
-        f.updated = Date()
-        for (sub, handler) in f.subscribers where sub != id { handler(sample) }
+    private let key: String
+    private let client: FrigateClient
+    private let stream: String
+    private var subscribers: [UUID: (Event) -> Void] = [:]
+    private var task: URLSessionWebSocketTask?
+    private var parser = FMP4Parser()
+    private var receiving: Task<Void, Never>?
+    private var watchdog: Task<Void, Never>?
+    private var linger: Task<Void, Never>?
+    private var gotKeyframe = false
+    private var hasAudio = false
+    private var size: CGSize = .zero
+    /// Video samples since the last keyframe, for a player that joins.
+    private var gop: [CMSampleBuffer] = []
+    private var lastSample = Date.distantPast
+    private var retries = 0
+
+    private init(key: String, client: FrigateClient, stream: String) {
+        self.key = key
+        self.client = client
+        self.stream = stream
     }
 
-    func setSize(_ key: String, _ size: CGSize) {
-        if size.width > 0 { feed(key).size = size }
+    func subscribe(_ id: UUID, handler: @escaping (Event) -> Void) {
+        linger?.cancel()
+        linger = nil
+        subscribers[id] = handler
+        if task == nil { open() }
+        // Catch up: the size, the audio, and the frames since the keyframe (only the last shown).
+        if size.width > 0 { handler(.size(size)) }
+        if hasAudio { handler(.audioFormat) }
+        for (i, sample) in gop.enumerated() {
+            let last = i == gop.count - 1
+            handler(.video(last ? sample : LiveConnection.hidden(sample) ?? sample, shown: last))
+        }
     }
 
-    /// The samples since the last keyframe and the picture size, when another player is
-    /// showing this stream now; from then on `handler` gets each new sample.
-    func subscribe(_ key: String, id: UUID, handler: @escaping (CMSampleBuffer) -> Void) -> ([CMSampleBuffer], CGSize)? {
-        guard let f = feeds[key], !f.publishers.subtracting([id]).isEmpty, !f.gop.isEmpty,
-              Date().timeIntervalSince(f.updated) < 1.5 else { return nil }
-        f.subscribers[id] = handler
-        return (f.gop, f.size)
+    func unsubscribe(_ id: UUID) {
+        guard subscribers.removeValue(forKey: id) != nil, subscribers.isEmpty else { return }
+        linger = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard let self, !Task.isCancelled, self.subscribers.isEmpty else { return }
+            self.close()
+        }
     }
 
-    /// Whether some player shows this stream right now.
-    func isPlaying(_ key: String) -> Bool {
-        guard let f = feeds[key] else { return false }
-        return !f.publishers.isEmpty && !f.gop.isEmpty && Date().timeIntervalSince(f.updated) < 1.5
+    private func send(_ event: Event) {
+        for handler in Array(subscribers.values) { handler(event) }
     }
 
-    /// Whether another player follows this stream (a camera opened from its tile).
-    func hasSubscribers(_ key: String) -> Bool { !(feeds[key]?.subscribers.isEmpty ?? true) }
-
-    func unsubscribe(_ key: String, id: UUID) {
-        feeds[key]?.subscribers[id] = nil
+    private func open() {
+        gotKeyframe = false
+        gop = []
+        parser = FMP4Parser()
+        let task = client.session.webSocketTask(with: client.liveSocketURL(stream: stream, mode: "mse"))
+        // A keyframe fragment of a high-resolution stream can exceed the 1 MB default.
+        task.maximumMessageSize = 32 * 1024 * 1024
+        self.task = task
+        task.resume()
+        task.send(.string(Self.request)) { _ in }
+        let started = Date()
+        receiving = Task { [weak self] in
+            while !Task.isCancelled {
+                let message: URLSessionWebSocketTask.Message
+                do { message = try await task.receive() } catch {
+                    // A socket closed on purpose also ends up here; only the current one counts.
+                    await MainActor.run {
+                        guard let self, self.task === task else { return }
+                        self.fail("connection closed: \(error.localizedDescription)")
+                    }
+                    return
+                }
+                guard let self, self.task === task else { return }
+                switch message {
+                case .data(let data): self.handle(data)
+                case .string(let text):
+                    if text.contains("\"error\"") { self.fail(text) }
+                @unknown default: break
+                }
+            }
+        }
+        watchdog = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, !Task.isCancelled else { return }
+                if !self.gotKeyframe {
+                    // Some cameras send a keyframe only every 10 seconds or more.
+                    if Date().timeIntervalSince(started) > 20 { self.fail("no video"); return }
+                } else if Date().timeIntervalSince(self.lastSample) > 6 {
+                    // Stalled: reconnect, a few times before giving up.
+                    self.retries += 1
+                    if self.retries > 3 { self.fail("stalled"); return }
+                    self.closeSocket()
+                    self.send(.restarted)
+                    self.open()
+                    return
+                }
+            }
+        }
     }
 
-    func publisherStopped(_ key: String, id: UUID) {
-        guard let f = feeds[key] else { return }
-        f.publishers.remove(id)
-        if f.publishers.isEmpty && f.subscribers.isEmpty { feeds[key] = nil }
+    private func closeSocket() {
+        receiving?.cancel()
+        watchdog?.cancel()
+        task?.cancel(with: .goingAway, reason: nil)
+        task = nil
+    }
+
+    private func close() {
+        closeSocket()
+        if LiveConnection.all[key] === self { LiveConnection.all[key] = nil }
+    }
+
+    private func fail(_ reason: String) {
+        close()
+        send(.failed(reason))
+        subscribers = [:]
+    }
+
+    private func handle(_ data: Data) {
+        for item in parser.feed(data) {
+            switch item {
+            case .format(_, let size):
+                if size.width > 0 { self.size = size; send(.size(size)) }
+            case .audioFormat:
+                hasAudio = true
+                send(.audioFormat)
+            case .audio(let sample):
+                send(.audio(sample))
+            case .sample(let sample, let keyframe):
+                if !gotKeyframe {
+                    guard keyframe else { continue }
+                    gotKeyframe = true
+                }
+                if keyframe { gop = [] }
+                gop.append(sample)
+                // A camera with a very long keyframe interval: keep it bounded.
+                if gop.count > 600 { gop = [] }
+                lastSample = Date()
+                retries = 0
+                send(.video(sample, shown: true))
+            }
+        }
+    }
+
+    /// A copy of `sample` that the layer decodes but does not show.
+    private static func hidden(_ sample: CMSampleBuffer) -> CMSampleBuffer? {
+        var copy: CMSampleBuffer?
+        guard CMSampleBufferCreateCopy(allocator: kCFAllocatorDefault, sampleBuffer: sample, sampleBufferOut: &copy) == noErr,
+              let copy, let attachments = CMSampleBufferGetSampleAttachmentsArray(copy, createIfNecessary: true),
+              CFArrayGetCount(attachments) > 0 else { return nil }
+        let dict = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
+        CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DoNotDisplay).toOpaque(),
+                             Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
+        return copy
+    }
+
+    /// The codecs we can decode, as go2rtc expects them. Without audio codecs go2rtc
+    /// sends video only.
+    private static var request: String {
+        var codecs = ["avc1.640029", "avc1.64002A", "avc1.640033"]
+        // HEVC also decodes in software (the simulator); a decoder failure falls back to the web.
+        codecs.append("hvc1.1.6.L153.B0")
+        // AAC, the audio most cameras send; go2rtc adds an audio track when there is one.
+        codecs += ["mp4a.40.2", "mp4a.40.5"]
+        return #"{"type":"mse","value":"\#(codecs.joined(separator: ","))"}"#
     }
 }

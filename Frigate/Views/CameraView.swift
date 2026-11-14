@@ -128,7 +128,7 @@ struct CameraView: View {
                     player.preferred = .mjpeg
                 }
                 if let client = conn?.client,
-                   let playing = streams.first(where: { LiveSampleHub.shared.isPlaying(LiveSampleHub.key(client: client, stream: $0.name)) }) {
+                   let playing = streams.first(where: { LiveConnection.isPlaying(client: client, stream: $0.name) }) {
                     // Opened from its overview tile: carry on with the stream the tile plays, so
                     // the picture is there at once. The stream chip switches to another one.
                     player.stream = playing.name
