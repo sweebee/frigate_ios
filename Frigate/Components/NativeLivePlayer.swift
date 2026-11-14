@@ -78,13 +78,19 @@ struct NativeLivePlayer: UIViewRepresentable {
 
         /// Picture in picture for this player's video layer, where the device supports it.
         func setUpPiP() {
-            guard pip == nil, let layer = view?.displayLayer, AVPictureInPictureController.isPictureInPictureSupported() else { return }
+            // Not on the Mac: there the system does not take this kind of video layer.
+            guard pip == nil, !ProcessInfo.processInfo.isMacCatalystApp, let layer = view?.displayLayer,
+                  AVPictureInPictureController.isPictureInPictureSupported() else { return }
             pip = LivePiP(layer: layer, state: state)
         }
 
         func tearDownPiP() {
-            pip?.stop()
-            pip = nil
+            guard let pip else { return }
+            pip.stop()
+            self.pip = nil
+            // Only when the button is still ours: a newer player of this screen may own it.
+            guard state.pipOwner == ObjectIdentifier(pip) else { return }
+            state.pipOwner = nil
             state.pipPossible = false
             state.pipActive = false
             state.pipSupported = false
@@ -701,10 +707,14 @@ final class LivePiP: NSObject, AVPictureInPictureControllerDelegate {
         #endif
         possibleObservation = controller.observe(\.isPictureInPicturePossible, options: [.initial, .new]) { [weak self] c, _ in
             let possible = c.isPictureInPicturePossible
-            Task { @MainActor in self?.state?.pipPossible = possible }
+            Task { @MainActor in
+                guard let self, self.state?.pipOwner == ObjectIdentifier(self) else { return }
+                self.state?.pipPossible = possible
+            }
         }
         state.togglePiP = { [weak self] in self?.toggle() }
         state.pipSupported = true
+        state.pipOwner = ObjectIdentifier(self)
     }
 
     func toggle() {

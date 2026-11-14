@@ -37,6 +37,9 @@ final class LivePlayerState {
     /// The player offers picture in picture (the device supports it): the button stays, rather
     /// than coming and going as the system's "possible" flag changes while the stream connects.
     var pipSupported = false
+    /// The player whose picture in picture the button drives: when the player view is rebuilt,
+    /// the old one goes away after the new one came, and must not switch the button off.
+    @ObservationIgnored var pipOwner: ObjectIdentifier?
     /// Why picture in picture did not start, to show the user.
     var pipError: String?
     /// Starts or stops picture in picture; set by the native player.
