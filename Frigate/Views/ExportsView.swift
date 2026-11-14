@@ -164,6 +164,8 @@ struct ExportsView: View {
     @State private var caseName = ""
     @State private var renamingCase: ExportCaseEntry?
     @State private var deletingCase: ExportCaseEntry?
+    /// The case an export is being dragged over.
+    @State private var dropTarget: String?
 
     private var connections: [ServerConnection] { model.scopedConnections.filter(\.isOnline) }
     /// Servers that have cases (Frigate 0.18 and later).
@@ -201,9 +203,22 @@ struct ExportsView: View {
                                 ForEach(cases) { c in
                                     NavigationLink(value: ExportCaseRoute(serverID: c.serverID, exportCase: c.exportCase)) {
                                         ExportCaseTile(entry: c, exports: exports(in: c))
+                                            .overlay(alignment: .top) {
+                                                // Lit while an export is dragged over it.
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .stroke(Theme.accent, lineWidth: 3)
+                                                    .aspectRatio(16 / 9, contentMode: .fit)
+                                                    .opacity(dropTarget == c.id ? 1 : 0)
+                                            }
                                     }
                                     .buttonStyle(.plain)
                                     .contextMenu { caseMenu(c) }
+                                    // Drop exports on a case to file them there.
+                                    .dropDestination(for: String.self) { ids, _ in
+                                        drop(ids, on: c)
+                                    } isTargeted: { on in
+                                        if on { dropTarget = c.id } else if dropTarget == c.id { dropTarget = nil }
+                                    }
                                 }
                             }
                             if !visible.isEmpty { SectionLabel(text: L("Not in a case")).padding(.top, 8) }
@@ -223,6 +238,9 @@ struct ExportsView: View {
                                     .buttonStyle(.plain)
                                     .disabled(entry.export.inProgress)
                                     .contextMenu { exportMenu(entry) }
+                                    .draggable(entry.id) {
+                                        ExportTile(entry: entry).frame(width: 180)
+                                    }
                                 }
                             }
                         }
@@ -272,8 +290,13 @@ struct ExportsView: View {
         }
         .alert("Delete this case?", isPresented: Binding(get: { deletingCase != nil }, set: { if !$0 { deletingCase = nil } })) {
             Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) { deleteCase() }
-        } message: { Text("Its exports stay, outside a case.") }
+            Button("Delete case only") { deleteCase(withExports: false) }
+            Button("Delete case and exports", role: .destructive) { deleteCase(withExports: true) }
+        } message: {
+            let n = deletingCase.map { exports(in: $0).count } ?? 0
+            Text(n == 0 ? L("The case is empty.")
+                        : L("Its \(n) exports stay available outside a case, unless you delete them too."))
+        }
         .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
@@ -371,15 +394,29 @@ struct ExportsView: View {
         }
     }
 
-    private func deleteCase() {
+    private func deleteCase(withExports: Bool) {
         guard let c = deletingCase, let client = client(c.serverID) else { return }
+        let gone = withExports ? exports(in: c).map(\.id) : []
         Task {
             do {
-                try await client.deleteExportCase(c.exportCase.id)
+                try await client.deleteExportCase(c.exportCase.id, deletingExports: withExports)
+                model.deletedExports.formUnion(gone)
                 // Inside the case that is gone: back to all exports.
                 if caseRoute != nil { closePresented(dismiss) } else { await load() }
             } catch { errorMessage = error.localizedDescription }
         }
+    }
+
+    /// Exports dropped on a case; only those of the case's own server can go in.
+    private func drop(_ ids: [String], on c: ExportCaseEntry) -> Bool {
+        dropTarget = nil
+        let moving = entries.filter { ids.contains($0.id) && $0.serverID == c.serverID && $0.export.caseID != c.exportCase.id }
+        guard !moving.isEmpty, let client = client(c.serverID) else { return false }
+        Task {
+            do { try await client.moveExports(moving.map(\.export.id), toCase: c.exportCase.id); await load() }
+            catch { errorMessage = error.localizedDescription }
+        }
+        return true
     }
 
     private func move(_ entry: ExportEntry, to caseID: String?) {

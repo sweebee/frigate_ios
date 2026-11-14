@@ -1415,6 +1415,26 @@
         }
       }
     },
+    "Delete case and exports": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaak én exports verwijderen"
+          }
+        }
+      }
+    },
+    "Delete case only": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen zaak verwijderen"
+          }
+        }
+      }
+    },
     "Delete event": {
       "localizations": {
         "nl": {
@@ -1815,12 +1835,12 @@
         }
       }
     },
-    "Its exports stay, outside a case.": {
+    "Its %lld exports stay available outside a case, unless you delete them too.": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "De exports blijven bewaard, buiten een zaak."
+            "value": "De %lld exports blijven bewaard buiten een zaak, tenzij je ze ook verwijdert."
           }
         }
       }
@@ -3642,6 +3662,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Testen…"
+          }
+        }
+      }
+    },
+    "The case is empty.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De zaak is leeg."
           }
         }
       }

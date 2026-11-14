@@ -239,8 +239,10 @@ final class FrigateClient: @unchecked Sendable {
     }
 
     /// Removes the case; its exports stay, without a case.
-    func deleteExportCase(_ id: String) async throws {
-        try await send("DELETE", "api/cases/\(id)", json: nil)
+    /// Deletes a case. Its exports stay, outside a case, unless `deletingExports`: then their
+    /// videos are deleted from the server too.
+    func deleteExportCase(_ id: String, deletingExports: Bool = false) async throws {
+        try await send("DELETE", "api/cases/\(id)", query: ["delete_exports": deletingExports ? "true" : nil], json: nil)
     }
 
     /// Files the exports in a case, or takes them out of theirs (`caseID` nil).
@@ -267,8 +269,8 @@ final class FrigateClient: @unchecked Sendable {
     }
 
     @discardableResult
-    private func send(_ method: String, _ path: String, json: Any?) async throws -> Data {
-        var req = URLRequest(url: url(path))
+    private func send(_ method: String, _ path: String, query: [String: String?] = [:], json: Any?) async throws -> Data {
+        var req = URLRequest(url: url(path, query: query))
         req.httpMethod = method
         req.setValue("1", forHTTPHeaderField: "X-CSRF-TOKEN")
         if let json {
