@@ -44,6 +44,32 @@ final class ClipExporter {
     }
 }
 
+extension ClipExporter {
+    /// Has Frigate export the span on the server, where it stays (Frigate's Exports page, and
+    /// the Exports row in Explore).
+    func saveToFrigate(client: FrigateClient, camera: String, start: Double, end: Double, name: String) async {
+        state = .working(L("Saving to Frigate…"))
+        do {
+            try await client.startExport(camera: camera, start: start, end: end, name: name)
+            state = .done(L("Saved to Frigate's exports"))
+        } catch {
+            state = .failed(error.localizedDescription)
+        }
+        try? await Task.sleep(for: .seconds(2.5))
+        if case .working = state {} else { state = .idle }
+    }
+
+    /// "Voortuin, 13 Nov 15:06": a name for an export made from the app.
+    static func exportName(camera: String, displayName: String?, start: Double, label: String? = nil) -> String {
+        let date = Date(timeIntervalSince1970: start)
+        let f = DateFormatter()
+        f.setLocalizedDateFormatFromTemplate("d MMM HH:mm")
+        let cam = displayName ?? FrigateFormat.prettyName(camera)
+        if let label { return "\(FrigateFormat.labelName(label).capitalizedFirst) · \(cam), \(f.string(from: date))" }
+        return "\(cam), \(f.string(from: date))"
+    }
+}
+
 /// Small status pill shown while exporting and after it finishes.
 struct ExportToast: View {
     let state: ClipExporter.State

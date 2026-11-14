@@ -13,6 +13,7 @@ struct EventDetailView: View {
     @State private var share: ShareItem?
     @State private var downloading = false
     @State private var confirmDelete = false
+    @State private var exporter = ClipExporter()
     @State private var errorMessage: String?
     /// Frigate kept no recording for this item (e.g. retention expired or the camera was down).
     @State private var noRecording = false
@@ -64,6 +65,7 @@ struct EventDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .overlay(alignment: .top) { ExportToast(state: exporter.state) }
         .confirmationDialog("Delete this review item and its recordings?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { Task { await delete() } }
         }
@@ -481,14 +483,20 @@ struct EventDetailView: View {
                     .background(isReviewed ? Theme.card : Theme.accent, in: RoundedRectangle(cornerRadius: 12))
             }
             .disabled(isReviewed)
-            Button { Task { await download() } } label: {
-                Group { if downloading { ProgressView() } else { Text("Download") } }
+            // Save: to Photos, as an export kept in Frigate, or share the clip.
+            Menu {
+                Button { saveToPhotos() } label: { Label("Save to Photos", systemImage: "square.and.arrow.down") }
+                Button { saveToFrigate() } label: { Label("Save to Frigate", systemImage: "externaldrive") }
+                Button { Task { await download() } } label: { Label("Share", systemImage: "square.and.arrow.up") }
+            } label: {
+                Group { if downloading || exporter.isWorking { ProgressView() } else { Text("Save") } }
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.text)
                     .frame(maxWidth: .infinity).frame(height: 50)
                     .card(border: Theme.controlBorder, radius: 12)
             }
-            .disabled(downloading || item.inProgress)
+            .menuStyle(.button)
+            .disabled(downloading || exporter.isWorking || item.inProgress)
             Button { confirmDelete = true } label: {
                 Text("Delete")
                     .font(.system(size: 15, weight: .semibold))
@@ -558,6 +566,18 @@ struct EventDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func saveToPhotos() {
+        guard let client else { return }
+        Task { await exporter.saveToPhotos(client: client, camera: item.camera, start: clipStart, end: clipEnd) }
+    }
+
+    private func saveToFrigate() {
+        guard let client else { return }
+        let name = ClipExporter.exportName(camera: item.camera, displayName: conn?.config?.cameras[item.camera]?.displayName,
+                                           start: activityStart, label: item.labels.first)
+        Task { await exporter.saveToFrigate(client: client, camera: item.camera, start: clipStart, end: clipEnd, name: name) }
     }
 
     private func delete() async {

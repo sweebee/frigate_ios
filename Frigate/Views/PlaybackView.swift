@@ -373,6 +373,9 @@ struct PlaybackView: View {
                     Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                         Label("Save event to Photos", systemImage: "square.and.arrow.down")
                     }
+                    Button { saveToFrigate(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3, label: r.labels.first) } label: {
+                        Label("Save event to Frigate", systemImage: "externaldrive")
+                    }
                     Button { shareClip(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                         Label("Share event", systemImage: "square.and.arrow.up")
                     }
@@ -380,7 +383,14 @@ struct PlaybackView: View {
             }
             Section("From the playhead") {
                 ForEach([30.0, 60, 300], id: \.self) { secs in
-                    Button { save(wallTime - secs / 2, wallTime + secs / 2) } label: {
+                    Menu {
+                        Button { save(wallTime - secs / 2, wallTime + secs / 2) } label: {
+                            Label("To Photos", systemImage: "square.and.arrow.down")
+                        }
+                        Button { saveToFrigate(wallTime - secs / 2, wallTime + secs / 2) } label: {
+                            Label("To Frigate's exports", systemImage: "externaldrive")
+                        }
+                    } label: {
                         Label(secs < 60 ? L("Save \(Int(secs)) seconds") : L("Save \(Int(secs / 60)) minutes"),
                               systemImage: "film")
                     }
@@ -410,6 +420,14 @@ struct PlaybackView: View {
         guard let client else { return }
         let (s, e) = clampRange(start, end)
         Task { await exporter.saveToPhotos(client: client, camera: camera, start: s, end: e) }
+    }
+
+    /// Has Frigate keep the span as an export on the server.
+    private func saveToFrigate(_ start: Double, _ end: Double, label: String? = nil) {
+        guard let client else { return }
+        let (s, e) = clampRange(start, end)
+        let name = ClipExporter.exportName(camera: camera, displayName: conn?.config?.cameras[camera]?.displayName, start: s, label: label)
+        Task { await exporter.saveToFrigate(client: client, camera: camera, start: s, end: e, name: name) }
     }
 
     private func shareClip(_ start: Double, _ end: Double) {

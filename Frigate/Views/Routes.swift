@@ -36,6 +36,8 @@ struct AppDestinations: ViewModifier {
             .navigationDestination(for: EventRoute.self) { EventDetailView(route: $0).id($0) }
             .navigationDestination(for: PlaybackRoute.self) { PlaybackView(route: $0).id($0) }
             .navigationDestination(for: ObjectRoute.self) { ObjectDetailView(route: $0).id($0) }
+            .navigationDestination(for: ExportsRoute.self) { _ in ExportsView() }
+            .navigationDestination(for: ExportRoute.self) { ExportPlayerView(route: $0).id($0) }
     }
 }
 

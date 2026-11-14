@@ -21,6 +21,14 @@ final class HLSProxy: @unchecked Sendable {
         return URLSession(configuration: c)
     }()
 
+    /// For streamed files; its delegate is each MP4Stream.
+    private let streamSession: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.httpCookieStorage = .shared
+        c.timeoutIntervalForRequest = 30
+        return URLSession(configuration: c, delegate: MP4StreamRouter.shared, delegateQueue: nil)
+    }()
+
     private init() {}
 
     /// Returns a URL that plays `upstream` through the proxy, or `upstream` itself if the proxy failed.
@@ -121,6 +129,11 @@ final class HLSProxy: @unchecked Sendable {
             let kv = line.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
             if kv.count == 2, kv[0].caseInsensitiveCompare("Range") == .orderedSame { req.setValue(kv[1], forHTTPHeaderField: "Range") }
         }
+        // Whole MP4 files (Frigate's exports) can be hundreds of MB: stream them through.
+        if upstream.path.hasSuffix(".mp4") && !upstream.path.contains("/init") {
+            MP4Stream(conn: conn, request: req, session: streamSession, queue: queue).start()
+            return
+        }
         session.dataTask(with: req) { [weak self] data, response, error in
             guard let self else { return }
             guard let http = response as? HTTPURLResponse, var body = data, error == nil else {
@@ -216,5 +229,107 @@ enum MP4Patch {
         guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return }
         let patched = hev1ToHvc1(data)
         if patched != data { try? patched.write(to: url) }
+    }
+}
+
+
+/// Hands each streamed task's callbacks to its MP4Stream.
+final class MP4StreamRouter: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    static let shared = MP4StreamRouter()
+    private let lock = NSLock()
+    private var streams: [Int: MP4Stream] = [:]
+
+    func add(_ s: MP4Stream, for task: URLSessionTask) { lock.lock(); streams[task.taskIdentifier] = s; lock.unlock() }
+    private func stream(_ task: URLSessionTask) -> MP4Stream? { lock.lock(); defer { lock.unlock() }; return streams[task.taskIdentifier] }
+    private func remove(_ task: URLSessionTask) { lock.lock(); streams[task.taskIdentifier] = nil; lock.unlock() }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        stream(dataTask)?.received(response)
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        stream(dataTask)?.received(data)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        stream(task)?.finished(error)
+        remove(task)
+    }
+}
+
+/// Streams one MP4 response to the player, renaming the `hev1` sample entry to `hvc1` on the
+/// way (Apple players only play HEVC tagged `hvc1`). Frigate writes exports with the `moov`
+/// box first, and the sample entry sits in its first few hundred bytes, so only the start of
+/// the file is looked at.
+final class MP4Stream: @unchecked Sendable {
+    private let conn: NWConnection
+    private let request: URLRequest
+    private let session: URLSession
+    private let queue: DispatchQueue
+    private var task: URLSessionDataTask?
+    /// File offset of the next byte that arrives.
+    private var offset = 0
+    private var headerSent = false
+    private static let patchLimit = 64 * 1024
+
+    init(conn: NWConnection, request: URLRequest, session: URLSession, queue: DispatchQueue) {
+        self.conn = conn
+        self.request = request
+        self.session = session
+        self.queue = queue
+    }
+
+    func start() {
+        let task = session.dataTask(with: request)
+        self.task = task
+        MP4StreamRouter.shared.add(self, for: task)
+        // The player hung up (seek, done): stop downloading.
+        conn.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .failed, .cancelled: self?.task?.cancel()
+            default: break
+            }
+        }
+        task.resume()
+    }
+
+    func received(_ response: URLResponse) {
+        guard let http = response as? HTTPURLResponse else { return }
+        if let range = http.value(forHTTPHeaderField: "Content-Range"),
+           let start = range.split(separator: " ").last?.split(separator: "-").first, let n = Int(start) {
+            offset = n
+        }
+        var head = "HTTP/1.1 \(http.statusCode) \(HTTPURLResponse.localizedString(forStatusCode: http.statusCode).capitalized)\r\n"
+        for key in ["Content-Type", "Content-Range", "Accept-Ranges", "Content-Length", "Last-Modified", "ETag"] {
+            if let v = http.value(forHTTPHeaderField: key) { head += "\(key): \(v)\r\n" }
+        }
+        head += "Connection: close\r\n\r\n"
+        headerSent = true
+        conn.send(content: Data(head.utf8), completion: .contentProcessed { _ in })
+    }
+
+    func received(_ data: Data) {
+        var chunk = data
+        if offset < Self.patchLimit {
+            let needle = Data("hev1".utf8)
+            var search = chunk.startIndex..<min(chunk.endIndex, chunk.startIndex + (Self.patchLimit - offset))
+            while let r = chunk.range(of: needle, in: search) {
+                chunk.replaceSubrange(r, with: Data("hvc1".utf8))
+                search = r.upperBound..<search.upperBound
+            }
+        }
+        offset += data.count
+        if request.httpMethod != "HEAD" { conn.send(content: chunk, completion: .contentProcessed { _ in }) }
+    }
+
+    func finished(_ error: Error?) {
+        if !headerSent {
+            conn.send(content: Data("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".utf8),
+                      completion: .contentProcessed { [conn] _ in conn.cancel() })
+            return
+        }
+        conn.send(content: nil, isComplete: true, completion: .contentProcessed { [conn] _ in conn.cancel() })
     }
 }

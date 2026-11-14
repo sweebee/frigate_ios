@@ -390,6 +390,16 @@
         }
       }
     },
+    "%lld clips": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld clips"
+          }
+        }
+      }
+    },
     "%lld days ago": {
       "localizations": {
         "en": {
@@ -658,6 +668,16 @@
     },
     "06:00": {
       "shouldTranslate": false
+    },
+    "1 clip": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 clip"
+          }
+        }
+      }
     },
     "12 h ago": {
       "localizations": {
@@ -1045,6 +1065,16 @@
         }
       }
     },
+    "Clips you export in Frigate, or save to Frigate from playback, appear here.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clips die je in Frigate exporteert, of vanuit terugkijken in Frigate bewaart, verschijnen hier."
+          }
+        }
+      }
+    },
     "Close": {
       "localizations": {
         "nl": {
@@ -1151,6 +1181,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verwijder"
+          }
+        }
+      }
+    },
+    "Delete export": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export verwijderen"
+          }
+        }
+      }
+    },
+    "Delete this export?": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze export verwijderen?"
           }
         }
       }
@@ -1281,6 +1331,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verkennen"
+          }
+        }
+      }
+    },
+    "Export": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export"
+          }
+        }
+      }
+    },
+    "Exporting…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporteren…"
+          }
+        }
+      }
+    },
+    "Exports": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exports"
           }
         }
       }
@@ -1680,6 +1760,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen gebeurtenissen op deze dag."
+          }
+        }
+      }
+    },
+    "No exports": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen exports"
           }
         }
       }
@@ -2216,6 +2306,26 @@
         }
       }
     },
+    "Rename": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hernoem"
+          }
+        }
+      }
+    },
+    "Rename export": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export hernoemen"
+          }
+        }
+      }
+    },
     "Reorder": {
       "localizations": {
         "nl": {
@@ -2296,6 +2406,16 @@
         }
       }
     },
+    "Save": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaar"
+          }
+        }
+      }
+    },
     "Save %lld minutes": {
       "localizations": {
         "en": {
@@ -2366,12 +2486,42 @@
         }
       }
     },
+    "Save event to Frigate": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaar gebeurtenis in Frigate"
+          }
+        }
+      }
+    },
     "Save event to Photos": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Gebeurtenis bewaren in Foto's"
+          }
+        }
+      }
+    },
+    "Save to Frigate": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaar in Frigate"
+          }
+        }
+      }
+    },
+    "Save to Photos": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaar in Foto's"
           }
         }
       }
@@ -2396,6 +2546,16 @@
         }
       }
     },
+    "Saved to Frigate's exports": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaard bij de exports in Frigate"
+          }
+        }
+      }
+    },
     "Saved to Photos": {
       "localizations": {
         "nl": {
@@ -2412,6 +2572,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Clip van %@ bewaren…"
+          }
+        }
+      }
+    },
+    "Saving to Frigate…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaren in Frigate…"
+          }
+        }
+      }
+    },
+    "Saving to Photos…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewaren in Foto's…"
           }
         }
       }
@@ -2502,6 +2682,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Instellingen…"
+          }
+        }
+      }
+    },
+    "Share": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delen"
           }
         }
       }
@@ -2756,6 +2946,16 @@
         }
       }
     },
+    "The video is removed from the Frigate server.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De video wordt van de Frigate-server verwijderd."
+          }
+        }
+      }
+    },
     "There are no unreviewed alerts.": {
       "localizations": {
         "nl": {
@@ -2822,6 +3022,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tijdlijn"
+          }
+        }
+      }
+    },
+    "To Frigate's exports": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bij de exports in Frigate"
+          }
+        }
+      }
+    },
+    "To Photos": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Foto's"
           }
         }
       }

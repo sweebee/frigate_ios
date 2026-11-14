@@ -463,3 +463,45 @@ extension String {
         return f.uppercased() + dropFirst()
     }
 }
+
+
+// MARK: - Exports
+
+/// A clip Frigate exported and keeps on the server (its Exports page).
+struct FrigateExport: Decodable, Identifiable, Hashable {
+    var id: String
+    var camera: String
+    var name: String
+    /// Start of the exported recording (unix seconds).
+    var date: Double
+    var videoPath: String
+    var thumbPath: String
+    var inProgress: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, camera, name, date
+        case videoPath = "video_path"
+        case thumbPath = "thumb_path"
+        case inProgress = "in_progress"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        camera = try c.decode(String.self, forKey: .camera)
+        name = (try? c.decode(String.self, forKey: .name)) ?? ""
+        date = (try? c.decode(Double.self, forKey: .date)) ?? 0
+        videoPath = (try? c.decode(String.self, forKey: .videoPath)) ?? ""
+        thumbPath = (try? c.decode(String.self, forKey: .thumbPath)) ?? ""
+        inProgress = (try? c.decode(Bool.self, forKey: .inProgress)) ?? false
+    }
+
+    var created: Date { Date(timeIntervalSince1970: date) }
+
+    /// Paths on the server ("/media/frigate/exports/x.mp4") as served over HTTP ("exports/x.mp4").
+    static func servedPath(_ path: String) -> String {
+        var p = path.replacingOccurrences(of: "/media/frigate/", with: "")
+        if p.hasPrefix("/") { p.removeFirst() }
+        return p
+    }
+}

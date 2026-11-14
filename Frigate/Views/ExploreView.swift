@@ -41,6 +41,8 @@ struct ExploreView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var rowWidth: CGFloat = 0
     @State private var showDayPicker = false
+    /// Frigate's exports, shown as the last row (only without a label or plate search).
+    @State private var exports: [ExportEntry] = []
 
     struct LabelRow: Identifiable {
         let label: String
@@ -289,13 +291,44 @@ struct ExploreView: View {
             ProgressView().frame(maxWidth: .infinity, minHeight: 200)
         } else if let loadError, empty {
             EmptyStateView(systemImage: "exclamationmark.triangle", title: L("Could not load objects"), message: loadError)
-        } else if empty {
+        } else if empty && exports.isEmpty {
             EmptyStateView(systemImage: "magnifyingglass", title: L("Nothing found"), message: L("No tracked objects match these filters."))
         } else if filter.showsGrid {
             gridView
         } else {
             ForEach(rows) { row in labelRow(row) }
+            if !exports.isEmpty { exportsRow }
         }
+    }
+
+    /// Frigate's exports, as the last row; the title opens all of them.
+    private var exportsRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            NavigationLink(value: ExportsRoute()) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Exports").font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.text)
+                    Text(exports.count == 1 ? L("1 clip") : L("\(exports.count) clips")).font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.textSecondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 10) {
+                    ForEach(exports.prefix(12)) { entry in
+                        NavigationLink(value: ExportRoute(serverID: entry.serverID, export: entry.export)) {
+                            ExportTile(entry: entry).frame(width: tileSide * 1.6)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(entry.export.inProgress)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+        .padding(.top, 6)
     }
 
     private func labelRow(_ row: LabelRow) -> some View {
@@ -428,7 +461,11 @@ struct ExploreView: View {
                 // Frigate pages by time; sorting by score shows the best matches only.
                 canLoadMore = filter.sort != .score && result.count >= pageSize
             } else {
-                rows = try await loadRows()
+                async let loadedRows = loadRows()
+                // Exports follow the camera filter; the other filters are about tracked objects.
+                async let loadedExports = ExportsLoader.load(connections, cameras: filter.cameras)
+                exports = await loadedExports
+                rows = try await loadedRows
             }
         } catch is CancellationError {
         } catch {

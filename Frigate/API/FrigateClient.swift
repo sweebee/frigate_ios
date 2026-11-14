@@ -179,6 +179,57 @@ final class FrigateClient: @unchecked Sendable {
         try await post("api/reviews/viewed", json: ["ids": ids, "reviewed": true])
     }
 
+    // MARK: Exports
+
+    /// Every export on the server, newest first.
+    func exports() async throws -> [FrigateExport] {
+        try await get([FrigateExport].self, "api/exports").sorted { $0.date > $1.date }
+    }
+
+    /// Through the local proxy, which renames HEVC's `hev1` tag so the video shows.
+    func exportVideoURL(_ export: FrigateExport) -> URL { HLSProxy.shared.url(for: exportFileURL(export)) }
+    /// The file itself, for downloading.
+    func exportFileURL(_ export: FrigateExport) -> URL { url(FrigateExport.servedPath(export.videoPath)) }
+    func exportThumbnailURL(_ export: FrigateExport) -> URL? {
+        export.thumbPath.isEmpty ? nil : url(FrigateExport.servedPath(export.thumbPath))
+    }
+
+    /// Asks Frigate to export a span of recordings; it makes the file in the background.
+    func startExport(camera: String, start: Double, end: Double, name: String) async throws {
+        try await post("api/export/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))",
+                       json: ["playback": "realtime", "source": "recordings", "name": name])
+    }
+
+    func renameExport(_ id: String, to name: String) async throws {
+        // Frigate 0.15 and later; older versions take the name in the path.
+        do {
+            try await send("PATCH", "api/export/\(id)/rename", json: ["name": name])
+        } catch FrigateError.http(let code, _) where code == 404 || code == 405 {
+            try await send("PATCH", "api/export/\(id)/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name)", json: [:])
+        }
+    }
+
+    func deleteExport(_ id: String) async throws {
+        // Frigate 0.18 deletes in bulk; earlier versions one at a time.
+        do {
+            try await post("api/exports/delete", json: ["ids": [id]])
+        } catch FrigateError.http(let code, _) where code == 404 || code == 405 {
+            try await send("DELETE", "api/export/\(id)", json: nil)
+        }
+    }
+
+    @discardableResult
+    private func send(_ method: String, _ path: String, json: Any?) async throws -> Data {
+        var req = URLRequest(url: url(path))
+        req.httpMethod = method
+        req.setValue("1", forHTTPHeaderField: "X-CSRF-TOKEN")
+        if let json {
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try JSONSerialization.data(withJSONObject: json)
+        }
+        return try await perform(req)
+    }
+
     func deleteReviews(_ ids: [String]) async throws {
         try await post("api/reviews/delete", json: ["ids": ids])
     }
