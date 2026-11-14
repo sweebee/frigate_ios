@@ -1335,6 +1335,16 @@
         }
       }
     },
+    "Event details": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details van gebeurtenis"
+          }
+        }
+      }
+    },
     "Events": {
       "localizations": {
         "nl": {

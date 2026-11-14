@@ -275,7 +275,7 @@ struct ReviewView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
                         ForEach(group.entries) { entry in
                             if let conn = model.connection(for: entry.serverID) {
-                                NavigationLink(value: EventRoute(serverID: entry.serverID, review: entry.item)) {
+                                Button { open(entry) } label: {
                                     ReviewTile(entry: entry, conn: conn, showServer: model.orderedConnections.count > 1)
                                 }
                                 .buttonStyle(.plain)
@@ -296,7 +296,7 @@ struct ReviewView: View {
                 } else {
                 ForEach(group.entries) { entry in
                     if let conn = model.connection(for: entry.serverID) {
-                        NavigationLink(value: EventRoute(serverID: entry.serverID, review: entry.item)) {
+                        Button { open(entry) } label: {
                             ReviewRow(entry: entry, conn: conn, showServer: model.orderedConnections.count > 1)
                         }
                         .buttonStyle(.plain)
@@ -317,8 +317,20 @@ struct ReviewView: View {
         }
     }
 
+    /// As in Frigate's web app: the camera's recordings from just before the item, which then
+    /// counts as reviewed. The item's own screen is in the long-press menu.
+    private func open(_ entry: ReviewEntry) {
+        let item = entry.item
+        model.reviewPath.append(PlaybackRoute(serverID: entry.serverID, camera: item.camera,
+                                              day: Calendar.current.startOfDay(for: item.start), reviewID: item.id))
+        if !item.hasBeenReviewed { Task { await markReviewed([entry]) } }
+    }
+
     @ViewBuilder
     private func reviewMenu(_ entry: ReviewEntry) -> some View {
+        Button { model.reviewPath.append(EventRoute(serverID: entry.serverID, review: entry.item)) } label: {
+            Label("Event details", systemImage: "info.circle")
+        }
         if !entry.item.hasBeenReviewed {
             Button { Task { await markReviewed([entry]) } } label: { Label("Mark reviewed", systemImage: "checkmark") }
         }
