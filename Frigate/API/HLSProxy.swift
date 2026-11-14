@@ -38,29 +38,42 @@ final class HLSProxy: @unchecked Sendable {
 
     private func startIfNeeded() -> Bool {
         queue.sync {
-            if port != 0 { return true }
-            do {
-                let params = NWParameters.tcp
-                params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: .any)
-                let l = try NWListener(using: params)
-                l.newConnectionHandler = { [weak self] conn in self?.handle(conn) }
-                let sem = DispatchSemaphore(value: 0)
-                l.stateUpdateHandler = { state in
-                    switch state {
-                    case .ready, .failed, .cancelled: sem.signal()
-                    default: break
-                    }
+            if listener != nil { return true }
+            // The old port when possible, so URLs the player already holds keep working.
+            if port != 0, let old = NWEndpoint.Port(rawValue: port), start(on: old) { return true }
+            return start(on: .any)
+        }
+    }
+
+    /// Runs on `queue`.
+    private func start(on requested: NWEndpoint.Port) -> Bool {
+        let params = NWParameters.tcp
+        params.allowLocalEndpointReuse = true
+        params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: requested)
+        guard let l = try? NWListener(using: params) else { return false }
+        l.newConnectionHandler = { [weak self] conn in self?.handle(conn) }
+        let sem = DispatchSemaphore(value: 0)
+        l.stateUpdateHandler = { [weak self, weak l] state in
+            switch state {
+            case .ready: sem.signal()
+            case .failed, .cancelled:
+                sem.signal()
+                // iOS takes the socket away while the app is suspended: listen again.
+                self?.queue.async {
+                    guard let self, let l, self.listener === l else { return }
+                    self.listener = nil
+                    l.cancel()
+                    if let old = NWEndpoint.Port(rawValue: self.port) { _ = self.start(on: old) }
                 }
-                l.start(queue: DispatchQueue(label: "hls-proxy-listener"))
-                _ = sem.wait(timeout: .now() + 2)
-                guard let p = l.port?.rawValue, p != 0 else { l.cancel(); return false }
-                listener = l
-                port = p
-                return true
-            } catch {
-                return false
+            default: break
             }
         }
+        l.start(queue: DispatchQueue(label: "hls-proxy-listener"))
+        _ = sem.wait(timeout: .now() + 2)
+        guard case .ready = l.state, let p = l.port?.rawValue, p != 0 else { l.cancel(); return false }
+        listener = l
+        port = p
+        return true
     }
 
     private func handle(_ conn: NWConnection) {
