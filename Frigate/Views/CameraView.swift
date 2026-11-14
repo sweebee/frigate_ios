@@ -31,6 +31,8 @@ struct CameraView: View {
     /// PTZ pads drawn on the video in landscape (a sheet would cover the picture).
     @State private var landscapePTZ = false
     @State private var snapshotBusy = false
+    /// The phone was turned to landscape by the full-screen button (not by hand).
+    @State private var turnedForFullscreen = false
     /// Manual ("on demand") recording, as in Frigate's live view: its event id while it runs.
     @State private var manualEventID: String?
     @State private var manualStart: Date?
@@ -118,6 +120,8 @@ struct CameraView: View {
         .onChange(of: player.micError) { _, err in
             if err != nil { player.talking = false; player.micError = nil; micDenied = true }
         }
+        // Turned back to portrait by hand: no longer "full screen".
+        .onChange(of: isLandscape) { _, landscape in if !landscape { turnedForFullscreen = false } }
         .onChange(of: scenePhase) { _, phase in
             // Stop in the background, start fresh when the app is back; picture in picture keeps
             // it running (and a manual recording with it).
@@ -438,10 +442,15 @@ struct CameraView: View {
             }
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
-                        Button { dismiss() } label: {
-                            Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                        if turnedForFullscreen {
+                            // Turned sideways by the full-screen button: this turns it back.
+                            FullscreenButton(isOn: true, size: 40) { setPhoneFullscreen(false) }
+                        } else {
+                            Button { dismiss() } label: {
+                                Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                            }
+                            .accessibilityLabel("Back")
                         }
-                        .accessibilityLabel("Back")
                         VStack(alignment: .leading, spacing: 2) {
                             Text(camera.displayName).font(.system(size: 17, weight: .semibold))
                             Text(subtitle).font(.system(size: 12)).foregroundStyle(Theme.textSecondary).lineLimit(1)
@@ -562,7 +571,8 @@ struct CameraView: View {
             controlButton("arrow.up.and.down.and.arrow.left.and.right", "PTZ", enabled: camera.hasOnvif) {
                 showPTZ = true
             }
-            controlButton("arrow.up.left.and.arrow.down.right", "Fullscreen") { fullscreen = true }
+            // Full screen on the phone is the landscape view, as in playback: turn the screen.
+            controlButton("arrow.up.left.and.arrow.down.right", "Fullscreen") { setPhoneFullscreen(true) }
         }
         .padding(.horizontal, 12)
         .padding(.top, 12)
@@ -724,6 +734,14 @@ struct CameraView: View {
         manualEventID = nil
         manualStart = nil
         Task { try? await client.endEvent(id) }
+    }
+
+    private func setPhoneFullscreen(_ on: Bool) {
+        turnedForFullscreen = on
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: on ? .landscapeRight : .portrait)) { _ in }
+        }
+        keepOverlay()
     }
 
     /// Turns the sound on or off and remembers it for the next camera opened.
