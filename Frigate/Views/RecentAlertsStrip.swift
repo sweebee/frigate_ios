@@ -6,6 +6,8 @@ import SwiftUI
 struct RecentAlertsStrip: View {
     @Environment(AppModel.self) private var model
     @State private var entries: [ReviewEntry] = []
+    /// Long-press actions, the same as on events elsewhere.
+    @State private var actions = ReviewActions()
 
     private var connections: [ServerConnection] { model.scopedConnections.filter(\.isOnline) }
     private var loadKey: String { connections.map(\.id.uuidString).joined() }
@@ -21,6 +23,7 @@ struct RecentAlertsStrip: View {
                                 AlertPreviewTile(entry: entry)
                             }
                             .buttonStyle(.plain)
+                            .contextMenu { ReviewItemMenu(item: entry.item, serverID: entry.serverID, actions: actions) }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -31,6 +34,8 @@ struct RecentAlertsStrip: View {
         }
         // Without alerts, take no room (cancel the spacing of the stack around it).
         .padding(.bottom, entries.isEmpty ? -14 : 0)
+        .reviewActionsHost(actions)
+        .onChange(of: actions.deletedIDs) { _, ids in entries.removeAll { ids.contains($0.item.id) } }
         .task(id: loadKey) {
             // Refresh while Live is visible; reviewed items drop out.
             while !Task.isCancelled {

@@ -133,6 +133,8 @@ struct PlaybackView: View {
     @State private var share: ShareItem?
     /// An event the user asked to delete; confirmed in an alert.
     @State private var deletingReview: ReviewItem?
+    /// Long-press actions on events, the same everywhere in the app.
+    @State private var reviewActions = ReviewActions()
     @State private var deleteError: String?
     /// Moment to start at once the recordings are loaded (only on the first load).
     @State private var pendingStartTime: Double?
@@ -212,6 +214,10 @@ struct PlaybackView: View {
             if isWide && fullscreen { landscapeBody.transition(.opacity) } else if isWide { wideBody.transition(.opacity) } else if isLandscape { landscapeBody } else { portraitBody }
         }
         .overlay(alignment: .top) { ExportToast(state: exporter.state) }
+        .reviewActionsHost(reviewActions)
+        .onChange(of: reviewActions.deletedIDs) { _, ids in
+            withAnimation(.easeOut(duration: 0.2)) { reviews.removeAll { ids.contains($0.id) } }
+        }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
         .alert("Delete this review item and its recordings?",
                isPresented: Binding(get: { deletingReview != nil }, set: { if !$0 { deletingReview = nil } })) {
@@ -673,21 +679,7 @@ struct PlaybackView: View {
                         }
                         .buttonStyle(.plain)
                         .id(r.id)
-                        .contextMenu {
-                            Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
-                                Label("Save video to Photos", systemImage: "square.and.arrow.down")
-                            }
-                            Button { saveToFrigate(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3, label: r.labels.first) } label: {
-                                Label("Save to Frigate", systemImage: "externaldrive")
-                            }
-                            Button { shareClip(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
-                                Label("Share video", systemImage: "square.and.arrow.up")
-                            }
-                            Divider()
-                            Button(role: .destructive) { deletingReview = r } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
+                        .contextMenu { ReviewItemMenu(item: r, serverID: route.serverID, actions: reviewActions) }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -1397,14 +1389,7 @@ extension PlaybackView {
                             }
                             .buttonStyle(.plain)
                             .id(r.id)
-                            .contextMenu {
-                                Button { saveToFrigate(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3, label: r.labels.first); keepOverlay() } label: {
-                                    Label("Save to Frigate", systemImage: "externaldrive")
-                                }
-                                Button(role: .destructive) { deletingReview = r; keepOverlay() } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+                            .contextMenu { ReviewItemMenu(item: r, serverID: route.serverID, actions: reviewActions) }
                         }
                     }
                 }
