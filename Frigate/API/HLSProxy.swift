@@ -36,6 +36,17 @@ final class HLSProxy: @unchecked Sendable {
         return comps.url ?? upstream
     }
 
+    /// A proxy URL that works now. After the app slept, the proxy may listen again on another
+    /// port (when the old one was taken); a URL the player still holds is moved to it.
+    func refreshed(_ url: URL) -> URL {
+        guard url.host == "127.0.0.1", startIfNeeded(),
+              var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        let now = queue.sync { Int(port) }
+        guard parts.port != now else { return url }
+        parts.port = now
+        return parts.url ?? url
+    }
+
     private func startIfNeeded() -> Bool {
         queue.sync {
             if listener != nil { return true }

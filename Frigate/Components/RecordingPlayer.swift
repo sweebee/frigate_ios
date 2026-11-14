@@ -40,7 +40,10 @@ final class RecordingPlayer {
             Task { @MainActor in
                 self?.isPlaying = status == .playing
                 self?.isBuffering = status == .waitingToPlayAtSpecifiedRate
-                if status == .playing { self?.reloads = 0 }
+                if status == .playing {
+                    self?.reloads = 0
+                    self?.player.currentItem?.preferredForwardBufferDuration = 0
+                }
             }
         }
     }
@@ -59,8 +62,11 @@ final class RecordingPlayer {
             // Segments load from the Frigate server directly, so send its login cookies too.
             "AVURLAssetHTTPCookiesKey": HTTPCookieStorage.shared.cookies ?? [],
         ]))
-        // 0 lets AVPlayer pick a buffer that fits the connection; on slow links it buffers more.
-        item.preferredForwardBufferDuration = 0
+        // Start once a little video is in, like Frigate's web player. Left to choose (0), AVPlayer
+        // first buffered about 15 s, which on weak Wi-Fi took 8 to 10 s instead of 4.5 (with the
+        // early start in checkProgress). Once it plays, the buffer goes back to automatic so it
+        // keeps loading ahead.
+        item.preferredForwardBufferDuration = 2
         itemStatusObserver = item.observe(\.status) { [weak self] item, _ in
             let failed = item.status == .failed
             let message = item.error?.localizedDescription
@@ -116,7 +122,7 @@ final class RecordingPlayer {
         stuckSince = nil
         watchdog = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
+                try? await Task.sleep(for: .milliseconds(500))
                 guard !Task.isCancelled, let self else { return }
                 self.checkProgress()
             }
@@ -133,6 +139,17 @@ final class RecordingPlayer {
         }
         let t = player.currentTime().seconds.isFinite ? player.currentTime().seconds : 0
         let ranges = item.loadedTimeRanges.map(\.timeRangeValue)
+
+        // Start as soon as a few seconds are loaded, like Frigate's web player, instead of
+        // waiting while AVPlayer "evaluates the buffering rate", which can take seconds.
+        if ready, wantsToPlay, seeksInFlight == 0, pendingStart == nil,
+           player.reasonForWaitingToPlay == .toMinimizeStalls || player.reasonForWaitingToPlay == .evaluatingBufferingRate,
+           let range = ranges.first(where: { $0.containsTime(player.currentTime()) }),
+           range.end.seconds - t >= 3 || (duration > 0 && range.end.seconds >= duration - 0.5) {
+            player.playImmediately(atRate: rate)
+            stuckSince = nil
+            return
+        }
         let buffered = ranges.reduce(0.0) { $0 + ($1.duration.seconds.isFinite ? $1.duration.seconds : 0) }
         // Anything still arriving or moving is a slow connection, not a hang.
         if stuckSince == nil || abs(t - lastProgress.time) > 0.05 || abs(buffered - lastProgress.buffered) > 0.05 {
@@ -161,14 +178,14 @@ final class RecordingPlayer {
             return
         }
         let attempts = reloads + 1
-        replaceItem(url, startAt: currentTime, autoplay: wantsToPlay)
+        replaceItem(HLSProxy.shared.refreshed(url), startAt: currentTime, autoplay: wantsToPlay)
         reloads = attempts
     }
 
     /// After a failure, the next play or seek opens the recording again.
     private func reloadIfFailed(at seconds: Double, autoplay: Bool) -> Bool {
         guard error != nil, let url else { return false }
-        load(url, startAt: seconds, autoplay: autoplay)
+        load(HLSProxy.shared.refreshed(url), startAt: seconds, autoplay: autoplay)
         return true
     }
 
