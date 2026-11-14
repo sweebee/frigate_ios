@@ -268,10 +268,10 @@ struct ExportPlayerView: View {
                     .accessibilityLabel("Back")
                 Spacer()
                 Button { Task { await shareFile() } } label: {
-                    Group { if working { ProgressView() } else { HeaderIconLabel(systemName: "square.and.arrow.up") } }
+                    HeaderIconLabel(systemName: "square.and.arrow.up", loading: working)
                 }
                 .buttonStyle(.plain)
-                .disabled(working)
+                // Not disabled while loading, which would dim the spinner; `shareFile()` ignores a second tap.
                 .accessibilityLabel("Share")
             }
             .headerBarPadding()
@@ -432,6 +432,7 @@ struct ExportPlayerView: View {
     }
 
     private func shareFile() async {
+        guard !working else { return }
         working = true
         defer { working = false }
         exporter.state = .working(L("Preparing clip…"))

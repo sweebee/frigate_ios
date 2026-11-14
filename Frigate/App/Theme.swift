@@ -407,11 +407,21 @@ struct BackButtonLabel: View {
 /// Mac, a bare icon on the phone.
 struct HeaderIconLabel: View {
     let systemName: String
+    /// A spinner in place of the icon, same size, while the button's work runs.
+    var loading = false
     @Environment(\.horizontalSizeClass) private var sizeClass
+
+    @ViewBuilder private var icon: some View {
+        if loading {
+            ProgressView().tint(Theme.text)
+        } else {
+            Image(systemName: systemName)
+        }
+    }
 
     var body: some View {
         if sizeClass == .regular {
-            Image(systemName: systemName)
+            icon
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.text)
                 .frame(width: 40, height: 40)
@@ -420,7 +430,7 @@ struct HeaderIconLabel: View {
                 .frame(width: 40, height: 44)
                 .contentShape(Rectangle())
         } else {
-            Image(systemName: systemName).font(.system(size: 19, weight: .medium))
+            icon.font(.system(size: 19, weight: .medium))
                 .foregroundStyle(Theme.text)
                 .frame(width: 44, height: 44, alignment: .trailing)
                 .contentShape(Rectangle())

@@ -202,7 +202,6 @@ struct EventDetailView: View {
                     .font(.system(size: 19, weight: .medium)).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Share clip")
-                .disabled(downloading)
                 Button { confirmDelete = true; keepOverlay() } label: {
                     Image(systemName: "trash").font(.system(size: 18, weight: .medium))
                         .foregroundStyle(Theme.destructive).frame(width: 44, height: 44)
@@ -245,12 +244,12 @@ struct EventDetailView: View {
             }
             .accessibilityLabel("Back")
             Spacer()
+            // Not disabled while loading: that would dim the spinner. `download()` ignores a second tap.
             Button { Task { await download() } } label: {
-                HeaderIconLabel(systemName: "square.and.arrow.up")
+                HeaderIconLabel(systemName: "square.and.arrow.up", loading: downloading)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Share clip")
-            .disabled(downloading)
         }
         .headerBarPadding()
         .padding(.bottom, 8)
@@ -540,16 +539,16 @@ struct EventDetailView: View {
                     .background(isReviewed ? Theme.card : Theme.accent, in: RoundedRectangle(cornerRadius: 12))
             }
             .disabled(isReviewed)
-            // Save: to Photos, as an export kept in Frigate, or share the clip. Kept apart from
+            // Save: to Photos, or as an export kept in Frigate (sharing is the button at the top). Kept apart from
             // the playing video, which redraws this screen several times a second: a menu
             // rebuilt while open flickers.
             Stable(key: [downloading, exporter.isWorking]) {
             Menu {
                 Button { saveToPhotos() } label: { Label("Save to Photos", systemImage: "square.and.arrow.down") }
                 Button { saveToFrigate() } label: { Label("Save to Frigate", systemImage: "externaldrive") }
-                Button { Task { await download() } } label: { Label("Share", systemImage: "square.and.arrow.up") }
             } label: {
-                Group { if downloading || exporter.isWorking { ProgressView() } else { Text("Save") } }
+                // The spinner shows on the button that started the work: sharing has its own.
+                Group { if exporter.isWorking && !downloading { ProgressView() } else { Text("Save") } }
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.text)
                     .frame(maxWidth: .infinity).frame(height: 50)
@@ -620,7 +619,7 @@ struct EventDetailView: View {
     }
 
     private func download() async {
-        guard let client else { return }
+        guard let client, !downloading else { return }
         downloading = true
         defer { downloading = false }
         exporter.state = .working(L("Preparing clip…"))
