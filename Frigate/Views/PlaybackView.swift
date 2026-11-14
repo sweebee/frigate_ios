@@ -1365,11 +1365,15 @@ private struct EventsListKey: Equatable {
 
 /// A loading spinner that stands out on any picture: large, on a dark disc.
 struct VideoSpinner: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
+        // Large only where the video is large (iPad, Mac); on an iPhone it covered the picture.
+        let large = sizeClass == .regular
         ProgressView()
-            .controlSize(.large)
+            .controlSize(large ? .large : .regular)
             .tint(.white)
-            .frame(width: 64, height: 64)
+            .frame(width: large ? 64 : 36, height: large ? 64 : 36)
             .background(.black.opacity(0.55), in: Circle())
     }
 }
