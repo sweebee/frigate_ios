@@ -131,6 +131,9 @@ struct PlaybackView: View {
     /// Low-resolution preview shown while dragging a timeline.
     @State private var preview = PreviewScrubber()
     @State private var share: ShareItem?
+    /// An event the user asked to delete; confirmed in an alert.
+    @State private var deletingReview: ReviewItem?
+    @State private var deleteError: String?
     /// Moment to start at once the recordings are loaded (only on the first load).
     @State private var pendingStartTime: Double?
 
@@ -210,6 +213,20 @@ struct PlaybackView: View {
         }
         .overlay(alignment: .top) { ExportToast(state: exporter.state) }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .alert("Delete this review item and its recordings?",
+               isPresented: Binding(get: { deletingReview != nil }, set: { if !$0 { deletingReview = nil } })) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                if let r = deletingReview { Task { await deleteReview(r) } }
+            }
+        } message: {
+            if let r = deletingReview {
+                Text("\(r.labels.first.map(FrigateFormat.labelName)?.capitalizedFirst ?? L("Event")) at \(FrigateFormat.time(r.start, seconds: true))")
+            }
+        }
+        .alert("Something went wrong", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(deleteError ?? "") }
         .sheet(isPresented: $showDatePicker) {
             RecordingCalendarSheet(day: $day, sources: client.map { [(client: $0, cameras: Optional([camera]))] } ?? [])
         }
@@ -379,6 +396,9 @@ struct PlaybackView: View {
                     Button { shareClip(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                         Label("Share event", systemImage: "square.and.arrow.up")
                     }
+                    Button(role: .destructive) { deletingReview = r } label: {
+                        Label("Delete event", systemImage: "trash")
+                    }
                 }
             }
             Section("From the playhead") {
@@ -420,6 +440,18 @@ struct PlaybackView: View {
         guard let client else { return }
         let (s, e) = clampRange(start, end)
         Task { await exporter.saveToPhotos(client: client, camera: camera, start: s, end: e) }
+    }
+
+    /// Deletes a review item (and with it its recordings on the server) and drops it from the list.
+    private func deleteReview(_ r: ReviewItem) async {
+        guard let client else { return }
+        do {
+            try await client.deleteReviews([r.id])
+            withAnimation(.easeOut(duration: 0.2)) { reviews.removeAll { $0.id == r.id } }
+            Task { await conn?.refresh() }
+        } catch {
+            deleteError = error.localizedDescription
+        }
     }
 
     /// Has Frigate keep the span as an export on the server.
@@ -645,6 +677,10 @@ struct PlaybackView: View {
                             }
                             Button { shareClip(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
                                 Label("Share video", systemImage: "square.and.arrow.up")
+                            }
+                            Divider()
+                            Button(role: .destructive) { deletingReview = r } label: {
+                                Label("Delete", systemImage: "trash")
                             }
                         }
                     }
@@ -1356,6 +1392,11 @@ extension PlaybackView {
                             }
                             .buttonStyle(.plain)
                             .id(r.id)
+                            .contextMenu {
+                                Button(role: .destructive) { deletingReview = r; keepOverlay() } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
