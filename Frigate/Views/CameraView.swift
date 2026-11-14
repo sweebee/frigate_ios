@@ -109,6 +109,12 @@ struct CameraView: View {
         .alert("Picture in picture", isPresented: Binding(get: { player.pipError != nil }, set: { if !$0 { player.pipError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(player.pipError ?? "") }
+        .task(id: player.playing) {
+            connectingShown = false
+            guard !player.playing else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            if !Task.isCancelled && !player.playing { connectingShown = true }
+        }
         .onChange(of: player.micError) { _, err in
             if err != nil { player.talking = false; player.micError = nil; micDenied = true }
         }
@@ -321,6 +327,10 @@ struct CameraView: View {
 
     }
 
+    /// "Connecting…" shows only when the video takes a moment: a stream that already plays
+    /// (opened from its tile) is there within a frame or two, and the label only flashed.
+    @State private var connectingShown = false
+
     @ViewBuilder
     private var streamStatus: some View {
             if !player.playing && ScreenshotMode.liveTime == nil {
@@ -334,7 +344,7 @@ struct CameraView: View {
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                     .padding()
-                } else {
+                } else if connectingShown {
                     // Small, so the refreshing picture underneath stays in view: at the bottom on
                     // the phone; top right on wide screens, where the controls take the bottom.
                     HStack(spacing: 6) {

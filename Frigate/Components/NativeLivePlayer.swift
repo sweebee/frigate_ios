@@ -70,6 +70,9 @@ struct NativeLivePlayer: UIViewRepresentable {
         /// The next clock sync shows its frame at once instead of `latency` later.
         private var syncWithoutDelay = false
         private var markingPlaying = false
+        /// The stream already plays elsewhere (its tile): its latest frame shows at once, without
+        /// "Connecting" or the snapshot in between.
+        private var joiningRunning = false
         /// How far behind the stream the picture runs, to even out the network's bursts.
         private static let latency = CMTime(value: 1, timescale: 4)
 
@@ -96,6 +99,7 @@ struct NativeLivePlayer: UIViewRepresentable {
         func start(client: FrigateClient, stream: String) {
             stop()
             markingPlaying = false
+            joiningRunning = false
             needsClockSync = true
             self.stream = stream
             failed = false
@@ -103,6 +107,8 @@ struct NativeLivePlayer: UIViewRepresentable {
             state.activeMode = "mse"
             state.playing = false
             state.hasAudio = false
+            joiningRunning = LiveConnection.isPlaying(client: client, stream: stream)
+            if joiningRunning { syncWithoutDelay = true }
             let connection = LiveConnection.connection(client: client, stream: stream)
             self.connection = connection
             if let other = state.bridgeStream { offerBridge(client: client, other: other) }
@@ -117,6 +123,8 @@ struct NativeLivePlayer: UIViewRepresentable {
                   LiveConnection.isPlaying(client: client, stream: other) else { return }
             let bridge = LiveConnection.connection(client: client, stream: other)
             self.bridge = bridge
+            joiningRunning = true
+            syncWithoutDelay = true
             bridge.subscribe(id) { [weak self] event in self?.handleBridge(event) }
         }
 
@@ -259,7 +267,13 @@ struct NativeLivePlayer: UIViewRepresentable {
                 }
             }
             layer.enqueue(sample)
-            if !state.playing && !markingPlaying {
+            if !state.playing && joiningRunning && shown {
+                // Joined a running stream: its frame is on screen now.
+                joiningRunning = false
+                pip?.videoStarted()
+                state.playing = true
+                state.status = "Live"
+            } else if !state.playing && !markingPlaying {
                 // Once the first frame is on screen (`latency` after it arrives): until then the
                 // picture underneath (a snapshot) stays, rather than a black frame.
                 markingPlaying = true
