@@ -18,18 +18,23 @@ struct PlaybackDetailList: View {
     let onJump: (Double) -> Void
 
     @State private var openID: String?
+    /// The card asked to open while its objects load; it opens once they are there, so it never
+    /// shows a spinner or grows afterwards.
+    @State private var pendingID: String?
     @State private var details: [String: EventDetailData] = [:]
+    @State private var loadingIDs: Set<String> = []
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 // Not lazy: a lazy stack guesses the height of rows it has not drawn, and a card
-                // opening (or its objects arriving) then made the list jump.
+                // opening then made the list jump.
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(reviews) { r in
                         let open = openID == r.id
                         let data = details[r.id]
-                        PlaybackDetailCard(review: r, open: open, playing: playingID == r.id, data: data,
+                        PlaybackDetailCard(review: r, open: open, loading: pendingID == r.id, playing: playingID == r.id,
+                                           data: data,
                                            highlight: open ? data?.entryIndex(at: wallTime - annotationOffset) : nil,
                                            compact: compact, client: client,
                                            onHeader: { tapHeader(r, proxy: proxy) },
@@ -42,41 +47,65 @@ struct PlaybackDetailList: View {
                 .padding(.horizontal, compact ? 0 : 16)
                 .padding(.bottom, 24)
             }
-            // The event that starts playing opens by itself, as in Frigate. Scrolled only as far
-            // as needed to show it, and without animation, so the list does not jump around.
+            // The event that starts playing opens by itself, as in Frigate.
             .onChange(of: playingID, initial: true) { old, id in
                 guard let id, id != openID else { return }
-                // Animated, with the scroll in the same step, so card and list move together.
-                withAnimation(old == nil ? nil : Self.motion) {
-                    openID = id
-                    proxy.scrollTo(id)
-                }
+                open(id, proxy: proxy, anchor: nil, animated: old != nil)
+                prefetch(around: id)
             }
         }
-        .task(id: openID) { await loadOpen() }
     }
 
-    /// Opening and closing cards. The scroll that keeps the tapped card in view runs in the same
-    /// animation: a separate one afterwards (or a lazy stack guessing heights) made it jump.
+    /// Cards open and close at once; only the scroll that keeps one in view is animated.
     private static let motion = Animation.easeInOut(duration: 0.28)
 
     private func tapHeader(_ r: ReviewItem, proxy: ScrollViewProxy) {
         if openID == r.id {
-            withAnimation(Self.motion) { openID = nil }
+            openID = nil
         } else {
             onJump(r.startTime + annotationOffset - 1)
             // The card that was open above it closes, which would pull this one up out of
-            // view; keep the tapped card's header where it can be seen.
-            withAnimation(Self.motion) {
-                openID = r.id
-                proxy.scrollTo(r.id, anchor: .top)
-            }
+            // view; bring the tapped card's header back to the top.
+            open(r.id, proxy: proxy, anchor: .top, animated: true)
         }
     }
 
-    private func loadOpen() async {
-        guard let id = openID, details[id] == nil, let client,
+    private func open(_ id: String, proxy: ScrollViewProxy, anchor: UnitPoint?, animated: Bool) {
+        if details[id] != nil {
+            pendingID = nil
+            openID = id
+            scroll(proxy, to: id, anchor: anchor, animated: animated)
+            return
+        }
+        pendingID = id
+        Task {
+            await load(id)
+            guard pendingID == id else { return }   // another card was asked for meanwhile
+            pendingID = nil
+            openID = id
+            scroll(proxy, to: id, anchor: anchor, animated: animated)
+        }
+    }
+
+    /// After the cards have their new size (next run loop), so the scroll aims at the right spot.
+    private func scroll(_ proxy: ScrollViewProxy, to id: String, anchor: UnitPoint?, animated: Bool) {
+        DispatchQueue.main.async {
+            withAnimation(animated ? Self.motion : nil) { proxy.scrollTo(id, anchor: anchor) }
+        }
+    }
+
+    /// The events around the one playing, so tapping a neighbour opens it at once.
+    private func prefetch(around id: String) {
+        guard let i = reviews.firstIndex(where: { $0.id == id }) else { return }
+        let near = reviews[max(0, i - 2)...min(reviews.count - 1, i + 2)].map(\.id)
+        Task { for n in near where n != id { await load(n) } }
+    }
+
+    private func load(_ id: String) async {
+        guard details[id] == nil, !loadingIDs.contains(id), let client,
               let r = reviews.first(where: { $0.id == id }) else { return }
+        loadingIDs.insert(id)
+        defer { loadingIDs.remove(id) }
         let ids = Array((r.data.detections ?? []).prefix(10))
         async let events = (try? await client.events(ids: ids)) ?? []
         var entries: [TimelineEntry] = []
@@ -85,10 +114,8 @@ struct PlaybackDetailList: View {
             for await part in group { entries += part }
         }
         let loaded = await events
-        let data = EventDetailData(objects: loaded.sorted { $0.startTime < $1.startTime },
-                                   entries: entries.sorted { $0.timestamp < $1.timestamp })
-        // The card grows from its loading height to its rows smoothly too.
-        withAnimation(Self.motion) { details[id] = data }
+        details[id] = EventDetailData(objects: loaded.sorted { $0.startTime < $1.startTime },
+                                      entries: entries.sorted { $0.timestamp < $1.timestamp })
     }
 }
 
@@ -112,6 +139,7 @@ struct EventDetailData: Equatable {
 private struct PlaybackDetailCard: View, Equatable {
     let review: ReviewItem
     let open: Bool
+    let loading: Bool
     let playing: Bool
     let data: EventDetailData?
     let highlight: Int?
@@ -121,20 +149,16 @@ private struct PlaybackDetailCard: View, Equatable {
     let onEntry: (Double) -> Void
 
     static func == (a: Self, b: Self) -> Bool {
-        a.review == b.review && a.open == b.open && a.playing == b.playing && a.data == b.data
+        a.review == b.review && a.open == b.open && a.loading == b.loading && a.playing == b.playing && a.data == b.data
             && a.highlight == b.highlight && a.compact == b.compact
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: onHeader) { header }.buttonStyle(.plain)
-            if open {
-                objects.transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            if open { objects }
         }
         .card(border: open || playing ? Theme.accent : Theme.cardBorder, radius: 12)
-        // The rows slide in from under the header, not over the cards around it.
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var header: some View {
@@ -149,8 +173,12 @@ private struct PlaybackDetailCard: View, Equatable {
                 Text(subtitle).font(.system(size: 12)).foregroundStyle(Theme.textSecondary).lineLimit(1)
             }
             Spacer(minLength: 0)
-            Image(systemName: open ? "chevron.down" : "chevron.right")
-                .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.textSecondary)
+            if loading {
+                ProgressView().controlSize(.small)
+            } else {
+                Image(systemName: open ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.textSecondary)
+            }
         }
         .padding(.horizontal, compact ? 10 : 12).padding(.vertical, 10)
         .contentShape(Rectangle())
