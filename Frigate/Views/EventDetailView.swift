@@ -26,6 +26,7 @@ struct EventDetailView: View {
     @State private var fullscreen = false
     /// The tracked object whose snapshot is shown large.
     @State private var snapshotEvent: FrigateEvent?
+    @State private var lastPointerKeep = Date.distantPast
 
     /// Seconds of recording before and after the review item or object: Frigate's REVIEW_PADDING.
     private let padding: Double = 4
@@ -79,6 +80,12 @@ struct EventDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
+        // On the screen itself, not in the objects row: that row sits in a layout that is
+        // rebuilt as the window changes, and on the Mac the sheet then would not close.
+        .sheet(item: $snapshotEvent) { e in
+            SnapshotViewer(event: e, client: client, cameraName: conn?.config?.cameras[e.camera]?.displayName,
+                           onClose: { snapshotEvent = nil })
+        }
         .overlay(alignment: .top) { ExportToast(exporter: exporter) }
         .alert("Delete this review item and its recordings?", isPresented: $confirmDelete) {
             Button("Cancel", role: .cancel) {}
@@ -161,8 +168,7 @@ struct EventDetailView: View {
                 // moves over the video; a click or tap toggles them as on a touch screen.
                 .onContinuousHover { phase in
                     guard case .active = phase else { return }
-                    if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
-                    keepOverlay()
+                    pointerMoved()
                 }
             playerStatus(showPlay: !overlayVisible)
             landscapeOverlay.fadingControls(overlayVisible)
@@ -172,6 +178,19 @@ struct EventDetailView: View {
     }
 
     private func keepOverlay() { overlayToken += 1 }
+
+    /// The pointer moved over the video (Mac, trackpad): show the controls and keep them. At
+    /// most twice a second, and not while a sheet is open: every move used to change the
+    /// screen's state, so on the Mac it was redrawn without pause (a paused video flickered,
+    /// and a sheet over it did not close until the window lost focus).
+    private func pointerMoved() {
+        guard snapshotEvent == nil, share == nil else { return }
+        if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
+        let now = Date()
+        guard now.timeIntervalSince(lastPointerKeep) > 0.5 else { return }
+        lastPointerKeep = now
+        keepOverlay()
+    }
 
     private func setFullscreen(_ on: Bool) {
         withAnimation(.easeInOut(duration: 0.3)) { fullscreen = on; model.immersive = on }
@@ -322,8 +341,7 @@ struct EventDetailView: View {
         }
         .onContinuousHover { phase in
             guard case .active = phase else { return }
-            if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
-            keepOverlay()
+            pointerMoved()
         }
     }
 
@@ -533,9 +551,6 @@ struct EventDetailView: View {
                 }
             }
             .padding(.top, 16)
-            .sheet(item: $snapshotEvent) { e in
-                SnapshotViewer(event: e, client: client, cameraName: conn?.config?.cameras[e.camera]?.displayName)
-            }
         }
     }
 

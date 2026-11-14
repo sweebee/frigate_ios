@@ -321,8 +321,10 @@ struct PlayerLayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ v: PlayerUIView, context: Context) {
-        v.playerLayer.player = player
-        v.playerLayer.videoGravity = gravity
+        // Only on a real change: setting the layer's player or gravity again on every redraw
+        // can make the picture flash, which showed on the Mac with a paused video.
+        if v.playerLayer.player !== player { v.playerLayer.player = player }
+        if v.playerLayer.videoGravity != gravity { v.playerLayer.videoGravity = gravity }
         v.onReady = onReadyForDisplay
     }
 

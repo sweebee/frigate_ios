@@ -335,16 +335,38 @@ struct SnapshotViewer: View {
     let event: FrigateEvent
     let client: FrigateClient?
     var cameraName: String?
+    /// Closes it through the presenter's own state; `dismiss` alone did not on the Mac.
+    var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var share: ShareItem?
     @State private var working = false
+
+    private func close() {
+        #if targetEnvironment(macCatalyst)
+        // On the Mac a SwiftUI dismiss (or clearing the presenting state) took effect only after
+        // the window lost focus; Esc, which UIKit handles, closed it at once. Close it that way.
+        if let top = UIApplication.shared.connectedScenes
+            .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController })
+            .first.map(Self.topPresented), top.presentingViewController != nil {
+            top.dismiss(animated: true)
+            return
+        }
+        #endif
+        if let onClose { onClose() } else { dismiss() }
+    }
+
+    private static func topPresented(_ vc: UIViewController) -> UIViewController {
+        var v = vc
+        while let next = v.presentedViewController { v = next }
+        return v
+    }
 
     var body: some View {
         // Its own top bar, not a navigation toolbar: on the Mac those buttons in a sheet did not
         // respond (the window's top inset is moved for the hidden title bar).
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Button { dismiss() } label: {
+                Button { close() } label: {
                     Text("Close").font(.system(size: 15, weight: .semibold))
                         .padding(.horizontal, 14).frame(height: 36)
                         .background(Theme.control, in: Capsule())
