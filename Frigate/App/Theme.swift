@@ -545,4 +545,13 @@ enum MacWindow {
 
     /// Posted by AppKit when a window leaves full screen (green button, Esc, the menu).
     static let didExitFullScreen = Notification.Name("NSWindowDidExitFullScreenNotification")
+    static let willEnterFullScreen = Notification.Name("NSWindowWillEnterFullScreenNotification")
+
+    /// The top inset the root view gives back from the hidden title bar: 18 pt in a window, none
+    /// in full screen, where there is no title bar (it would push the picture off the top).
+    static func applyTitleBarInset(fullScreen: Bool) {
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            for window in scene.windows { window.rootViewController?.additionalSafeAreaInsets.top = fullScreen ? 0 : -18 }
+        }
+    }
 }

@@ -194,7 +194,10 @@ struct EventDetailView: View {
     }
 
     private func setFullscreen(_ on: Bool) {
-        withAnimation(.easeInOut(duration: 0.3)) { fullscreen = on; model.immersive = on }
+        // Mac: the window animates into full screen itself; animating the layout as well made
+        // the controls jump about.
+        let animation: Animation? = ProcessInfo.processInfo.isMacCatalystApp ? nil : .easeInOut(duration: 0.3)
+        withAnimation(animation) { fullscreen = on; model.immersive = on }
         keepOverlay()
     }
 

@@ -166,8 +166,10 @@ struct CameraView: View {
                                     .frame(width: videoHeight(geo.size, camera) * videoAspect(camera),
                                            height: videoHeight(geo.size, camera))
                                     .frame(maxWidth: .infinity)
-                                if !filling { today(conn: conn) }
-                                Spacer(minLength: 0)
+                                if !filling {
+                                    today(conn: conn)
+                                    Spacer(minLength: 0)
+                                }
                             }
                             .padding(.top, filling ? 0 : 4)
                             .frame(maxHeight: .infinity, alignment: filling ? .center : .top)
@@ -559,7 +561,10 @@ struct CameraView: View {
     }
 
     private func setFilling(_ on: Bool) {
-        withAnimation(.easeInOut(duration: 0.3)) { filling = on; model.immersive = on }
+        // Mac: the window animates into full screen itself; animating the layout as well made
+        // the controls jump about.
+        let animation: Animation? = ProcessInfo.processInfo.isMacCatalystApp ? nil : .easeInOut(duration: 0.3)
+        withAnimation(animation) { filling = on; model.immersive = on }
         keepOverlay()
     }
 

@@ -1260,7 +1260,8 @@ extension PlaybackView {
             keepOverlay()
             return
         }
-        withAnimation(.easeInOut(duration: 0.3)) { fullscreen = on; model.immersive = on }
+        let animation: Animation? = ProcessInfo.processInfo.isMacCatalystApp ? nil : .easeInOut(duration: 0.3)
+        withAnimation(animation) { fullscreen = on; model.immersive = on }
         keepOverlay()
     }
 

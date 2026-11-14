@@ -35,7 +35,11 @@ struct SidebarRoot: View {
         // suggests; leaving the window's full screen (green button, Esc) ends it too.
         .onChange(of: model.immersive) { _, on in if isMac { MacWindow.setFullScreen(on) } }
         .onReceive(NotificationCenter.default.publisher(for: MacWindow.didExitFullScreen)) { _ in
+            MacWindow.applyTitleBarInset(fullScreen: false)
             if model.immersive { model.immersive = false }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: MacWindow.willEnterFullScreen)) { _ in
+            MacWindow.applyTitleBarInset(fullScreen: true)
         }
     }
 
@@ -66,8 +70,8 @@ struct SidebarRoot: View {
             scene.titlebar?.titleVisibility = .hidden
             // The hidden title bar still keeps its 28 pt at the top as safe area. The window
             // buttons sit over the rail, so give 18 of it back: screens start 10 pt down.
-            for window in scene.windows { window.rootViewController?.additionalSafeAreaInsets.top = -18 }
         }
+        MacWindow.applyTitleBarInset(fullScreen: MacWindow.isFullScreen)
         #endif
     }
 
