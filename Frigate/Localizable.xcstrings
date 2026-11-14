@@ -965,6 +965,16 @@
         }
       }
     },
+    "Already in this case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zit al in deze zaak"
+          }
+        }
+      }
+    },
     "Also on mobile data": {
       "localizations": {
         "nl": {
@@ -2576,6 +2586,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Optionele basisnaam"
+          }
+        }
+      }
+    },
+    "Other server": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere server"
           }
         }
       }

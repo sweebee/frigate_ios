@@ -166,6 +166,8 @@ struct ExportsView: View {
     @State private var deletingCase: ExportCaseEntry?
     /// The case an export is being dragged over.
     @State private var dropTarget: String?
+    /// The export being dragged.
+    @State private var dragging: ExportEntry?
 
     private var connections: [ServerConnection] { model.scopedConnections.filter(\.isOnline) }
     /// Servers that have cases (Frigate 0.18 and later).
@@ -202,23 +204,17 @@ struct ExportsView: View {
                             LazyVGrid(columns: columns, spacing: 14) {
                                 ForEach(cases) { c in
                                     NavigationLink(value: ExportCaseRoute(serverID: c.serverID, exportCase: c.exportCase)) {
-                                        ExportCaseTile(entry: c, exports: exports(in: c))
-                                            .overlay(alignment: .top) {
-                                                // Lit while an export is dragged over it.
-                                                RoundedRectangle(cornerRadius: 10)
-                                                    .stroke(Theme.accent, lineWidth: 3)
-                                                    .aspectRatio(16 / 9, contentMode: .fit)
-                                                    .opacity(dropTarget == c.id ? 1 : 0)
-                                            }
+                                        ExportCaseTile(entry: c, exports: exports(in: c),
+                                                       serverName: caseServers.count > 1 ? model.connection(for: c.serverID)?.server.name : nil)
+                                            .overlay(alignment: .top) { dropOverlay(c) }
                                     }
                                     .buttonStyle(.plain)
                                     .contextMenu { caseMenu(c) }
-                                    // Drop exports on a case to file them there.
-                                    .dropDestination(for: String.self) { ids, _ in
-                                        drop(ids, on: c)
-                                    } isTargeted: { on in
-                                        if on { dropTarget = c.id } else if dropTarget == c.id { dropTarget = nil }
-                                    }
+                                    // Drop exports on a case to file them there; a case on
+                                    // another server shows that it cannot take them.
+                                    .onDrop(of: [.text], delegate: CaseDropDelegate(
+                                        id: c.id, accepts: accepts(c), target: $dropTarget,
+                                        perform: { if let d = dragging { drop(d, on: c) } }))
                                 }
                             }
                             if !visible.isEmpty { SectionLabel(text: L("Not in a case")).padding(.top, 8) }
@@ -238,7 +234,10 @@ struct ExportsView: View {
                                     .buttonStyle(.plain)
                                     .disabled(entry.export.inProgress)
                                     .contextMenu { exportMenu(entry) }
-                                    .draggable(entry.id) {
+                                    .onDrag {
+                                        dragging = entry
+                                        return NSItemProvider(object: entry.id as NSString)
+                                    } preview: {
                                         ExportTile(entry: entry).frame(width: 180).environment(model)
                                     }
                                 }
@@ -407,23 +406,55 @@ struct ExportsView: View {
         }
     }
 
-    /// Exports dropped on a case; only those of the case's own server can go in.
-    private func drop(_ ids: [String], on c: ExportCaseEntry) -> Bool {
-        dropTarget = nil
-        let moving = entries.filter { ids.contains($0.id) && $0.serverID == c.serverID && $0.export.caseID != c.exportCase.id }
-        guard !moving.isEmpty, let client = client(c.serverID) else { return false }
-        Task {
-            do { try await client.moveExports(moving.map(\.export.id), toCase: c.exportCase.id); await load() }
-            catch { errorMessage = error.localizedDescription }
+    /// Whether the export being dragged can go in this case: same server, not already in it.
+    private func accepts(_ c: ExportCaseEntry) -> Bool {
+        guard let d = dragging else { return false }
+        return d.serverID == c.serverID && d.export.caseID != c.exportCase.id
+    }
+
+    /// Lit while an export is dragged over the case; red with the reason when it cannot go in.
+    @ViewBuilder
+    private func dropOverlay(_ c: ExportCaseEntry) -> some View {
+        if dropTarget == c.id {
+            let ok = accepts(c)
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(ok ? Theme.accent : Theme.destructive, lineWidth: 3)
+                .background(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(ok ? 0 : 0.55)))
+                .overlay {
+                    if !ok {
+                        Label(dragging?.serverID != c.serverID ? L("Other server") : L("Already in this case"),
+                              systemImage: "nosign")
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                    }
+                }
+                .aspectRatio(16 / 9, contentMode: .fit)
         }
-        return true
+    }
+
+    private func drop(_ entry: ExportEntry, on c: ExportCaseEntry) {
+        dragging = nil
+        guard entry.serverID == c.serverID, entry.export.caseID != c.exportCase.id else { return }
+        move(entry, to: c.exportCase.id)
+    }
+
+    /// Shows the export in its new place at once; the server follows.
+    private func place(_ entry: ExportEntry, in caseID: String?) {
+        loadCount += 1   // a load already under way has the old place
+        entries = entries.map { e in
+            guard e.id == entry.id else { return e }
+            var x = e.export
+            x.caseID = caseID
+            return ExportEntry(serverID: e.serverID, export: x)
+        }
     }
 
     private func move(_ entry: ExportEntry, to caseID: String?) {
         guard let client = client(entry.serverID) else { return }
+        withAnimation(.easeOut(duration: 0.2)) { place(entry, in: caseID) }
         Task {
-            do { try await client.moveExports([entry.export.id], toCase: caseID); await load() }
+            do { try await client.moveExports([entry.export.id], toCase: caseID) }
             catch { errorMessage = error.localizedDescription }
+            await load()
         }
     }
 
@@ -737,5 +768,24 @@ struct MoreView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// A case as a drop target: takes the dragged export when `accepts`, and otherwise shows the
+/// system's "not allowed" sign over it.
+private struct CaseDropDelegate: DropDelegate {
+    let id: String
+    let accepts: Bool
+    @Binding var target: String?
+    let perform: () -> Void
+
+    func dropEntered(info: DropInfo) { target = id }
+    func dropExited(info: DropInfo) { if target == id { target = nil } }
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: accepts ? .move : .forbidden) }
+    func performDrop(info: DropInfo) -> Bool {
+        target = nil
+        guard accepts else { return false }
+        perform()
+        return true
     }
 }

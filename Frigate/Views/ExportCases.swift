@@ -37,6 +37,8 @@ struct ExportCaseTile: View {
     let entry: ExportCaseEntry
     /// Its exports, newest first.
     let exports: [ExportEntry]
+    /// With cases on more than one server: which one this is on.
+    var serverName: String? = nil
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -58,7 +60,8 @@ struct ExportCaseTile: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.cardBorder, lineWidth: 1))
             Text(entry.exportCase.name.isEmpty ? L("Case") : entry.exportCase.name)
                 .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text).lineLimit(1)
-            Text(exports.count == 1 ? L("1 export") : L("\(exports.count) exports"))
+            Text([exports.count == 1 ? L("1 export") : L("\(exports.count) exports"), serverName]
+                    .compactMap { $0 }.joined(separator: " · "))
                 .font(.system(size: 12)).foregroundStyle(Theme.textSecondary).lineLimit(1)
         }
         .contentShape(Rectangle())
