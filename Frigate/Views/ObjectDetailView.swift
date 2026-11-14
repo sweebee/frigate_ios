@@ -340,39 +340,49 @@ struct SnapshotViewer: View {
     @State private var working = false
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
-                RemoteImage(url: event.hasSnapshot == true ? client?.snapshotURL(for: event) : client?.thumbnailURL(for: event),
-                            session: client?.session ?? .shared, contentMode: .fit)
-                    .zoomable()
-                    .frame(maxWidth: .infinity)
-                    .aspectRatio(16 / 9, contentMode: .fit)
-                    .background(Color.black)
-                HStack(spacing: 8) {
-                    LabelTag(label: event.label, size: 13)
-                    if let sub = event.subLabel?.name, !sub.isEmpty {
-                        Text(sub).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text)
-                    }
+        // Its own top bar, not a navigation toolbar: on the Mac those buttons in a sheet did not
+        // respond (the window's top inset is moved for the hidden title bar).
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Button { dismiss() } label: {
+                    Text("Close").font(.system(size: 15, weight: .semibold))
+                        .padding(.horizontal, 14).frame(height: 36)
+                        .background(Theme.control, in: Capsule())
+                        .contentShape(Capsule())
                 }
-                .padding(.horizontal, 16)
-                Text(subtitle).font(.system(size: 15)).foregroundStyle(Theme.textSecondary).padding(.horizontal, 16)
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
                 Spacer()
+                Button { Task { await shareSnapshot() } } label: {
+                    HeaderIconLabel(systemName: "square.and.arrow.up", loading: working)
+                }
+                .buttonStyle(.plain)
+                .disabled(event.hasSnapshot != true)
+                .accessibilityLabel("Share snapshot")
             }
-            .screenBackground()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) {
-                    Button { Task { await shareSnapshot() } } label: {
-                        if working { ProgressView() } else { Image(systemName: "square.and.arrow.up") }
-                    }
-                    .disabled(working || event.hasSnapshot != true)
-                    .accessibilityLabel("Share snapshot")
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            RemoteImage(url: event.hasSnapshot == true ? client?.snapshotURL(for: event) : client?.thumbnailURL(for: event),
+                        session: client?.session ?? .shared, contentMode: .fit)
+                .zoomable()
+                .frame(maxWidth: .infinity)
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .background(Color.black)
+            HStack(spacing: 8) {
+                LabelTag(label: event.label, size: 13)
+                if let sub = event.subLabel?.name, !sub.isEmpty {
+                    Text(sub).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal, 16)
+            Text(subtitle).font(.system(size: 15)).foregroundStyle(Theme.textSecondary).padding(.horizontal, 16)
+            Spacer(minLength: 0)
         }
+        .foregroundStyle(Theme.text)
+        .screenBackground()
         .sheet(item: $share) { ShareSheet(items: $0.items) }
         .presentationDetents([.large])
+        .modifier(LargeSheetOnWideScreens())
     }
 
     private var subtitle: String {
@@ -389,6 +399,17 @@ struct SnapshotViewer: View {
         defer { working = false }
         if let file = try? await client.download(client.snapshotURL(for: event), fileName: "\(event.camera)_\(event.id).jpg") {
             share = ShareItem(items: [file])
+        }
+    }
+}
+
+/// iPad and Mac: a sheet that fills most of the window instead of a small form.
+private struct LargeSheetOnWideScreens: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.presentationSizing(.page)
+        } else {
+            content
         }
     }
 }
