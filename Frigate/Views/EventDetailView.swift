@@ -584,15 +584,22 @@ struct EventDetailView: View {
         Task {
             if let fresh = try? await client.review(id: item.id), fresh.hasBeenReviewed { item.hasBeenReviewed = true }
         }
-        // Fetch the tracked objects first: they decide which part of the recording to load.
+        // The tracked objects (where to start) and whether there is a recording, both at once:
+        // on a remote connection every round trip before the video shows is felt.
         let ids = item.data.detections ?? []
-        events = (try? await client.events(ids: ids)) ?? []
-        if player.url == nil {
+        let needsVideo = player.url == nil
+        let (start, end) = (clipStart, clipEnd)
+        async let loadedEvents = (try? await client.events(ids: ids)) ?? []
+        async let loadedSegments = needsVideo
+            ? ((try? await client.recordings(camera: item.camera, after: Date(timeIntervalSince1970: start),
+                                             before: Date(timeIntervalSince1970: end))) ?? [])
+            : []
+        events = await loadedEvents
+        if needsVideo {
             // Opened on one object: start a moment before it appeared.
             let focus = route.focusEventID.flatMap { id in events.first { $0.id == id } }
             let startAt = focus.map { max(0, $0.startTime + offset - 1 - clipStart) } ?? 0
-            let segs = (try? await client.recordings(camera: item.camera, after: Date(timeIntervalSince1970: clipStart),
-                                                     before: Date(timeIntervalSince1970: clipEnd))) ?? []
+            let segs = await loadedSegments
             if segs.isEmpty {
                 noRecording = true
             } else {
