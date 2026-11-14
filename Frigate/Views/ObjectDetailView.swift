@@ -302,3 +302,93 @@ struct WideDetailLayout<Media: View, Details: View, Extra: View, Actions: View>:
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
 }
+
+/// Opens a tracked object from Explore: the event it belongs to when there is one (video,
+/// every object's snapshot, the actions), the object screen otherwise.
+struct ObjectOrEventView: View {
+    let route: ObjectRoute
+    @Environment(AppModel.self) private var model
+    @State private var review: ReviewItem?
+    @State private var resolved = false
+
+    var body: some View {
+        Group {
+            if let review {
+                EventDetailView(route: EventRoute(serverID: route.serverID, review: review, focusEventID: route.event.id))
+            } else if resolved {
+                ObjectDetailView(route: route)
+            } else {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).screenBackground()
+                    .toolbar(.hidden, for: .navigationBar)
+            }
+        }
+        .task {
+            guard !resolved, let client = model.connection(for: route.serverID)?.client else { resolved = true; return }
+            review = try? await client.review(forEvent: route.event.id)
+            resolved = true
+        }
+    }
+}
+
+/// A tracked object's snapshot (with its box), large, to look at and share.
+struct SnapshotViewer: View {
+    let event: FrigateEvent
+    let client: FrigateClient?
+    var cameraName: String?
+    @Environment(\.dismiss) private var dismiss
+    @State private var share: ShareItem?
+    @State private var working = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                RemoteImage(url: event.hasSnapshot == true ? client?.snapshotURL(for: event) : client?.thumbnailURL(for: event),
+                            session: client?.session ?? .shared, contentMode: .fit)
+                    .zoomable()
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .background(Color.black)
+                HStack(spacing: 8) {
+                    LabelTag(label: event.label, size: 13)
+                    if let sub = event.subLabel?.name, !sub.isEmpty {
+                        Text(sub).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text)
+                    }
+                }
+                .padding(.horizontal, 16)
+                Text(subtitle).font(.system(size: 15)).foregroundStyle(Theme.textSecondary).padding(.horizontal, 16)
+                Spacer()
+            }
+            .screenBackground()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) {
+                    Button { Task { await shareSnapshot() } } label: {
+                        if working { ProgressView() } else { Image(systemName: "square.and.arrow.up") }
+                    }
+                    .disabled(working || event.hasSnapshot != true)
+                    .accessibilityLabel("Share snapshot")
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .presentationDetents([.large])
+    }
+
+    private var subtitle: String {
+        var parts: [String] = []
+        if let s = event.bestScore { parts.append(L("Score \(Int((s * 100).rounded()))%")) }
+        parts.append(FrigateFormat.time(Date(timeIntervalSince1970: event.startTime), seconds: true))
+        if let cameraName { parts.append(cameraName) }
+        return parts.joined(separator: " · ")
+    }
+
+    private func shareSnapshot() async {
+        guard let client else { return }
+        working = true
+        defer { working = false }
+        if let file = try? await client.download(client.snapshotURL(for: event), fileName: "\(event.camera)_\(event.id).jpg") {
+            share = ShareItem(items: [file])
+        }
+    }
+}

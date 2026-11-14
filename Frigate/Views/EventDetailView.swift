@@ -24,6 +24,8 @@ struct EventDetailView: View {
     @State private var pointerOnControls = false
     /// iPad and Mac: the video fills the window with the landscape controls; same player.
     @State private var fullscreen = false
+    /// The tracked object whose snapshot is shown large.
+    @State private var snapshotEvent: FrigateEvent?
 
     /// Seconds of recording shown before and after the review item.
     private let padding: Double = 5
@@ -101,6 +103,7 @@ struct EventDetailView: View {
                 } details: {
                     info
                     tiles
+                    objects
                 } extra: {
                     lifecycle
                 } actions: {
@@ -113,6 +116,7 @@ struct EventDetailView: View {
                     scrubber
                     info
                     tiles
+                    objects
                     lifecycle
                 }
                 .padding(.bottom, 16)
@@ -413,6 +417,59 @@ struct EventDetailView: View {
         .padding(.top, 16)
     }
 
+    // MARK: Objects
+
+    /// The tracked objects in this event with their snapshots; the one opened from Explore first.
+    private var objectEvents: [FrigateEvent] {
+        let list = events.sorted { $0.startTime < $1.startTime }
+        guard let id = route.focusEventID, let i = list.firstIndex(where: { $0.id == id }) else { return list }
+        var out = list
+        out.insert(out.remove(at: i), at: 0)
+        return out
+    }
+
+    @ViewBuilder
+    private var objects: some View {
+        let list = objectEvents
+        if !list.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel(text: L("Objects"))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(list) { e in
+                            Button { snapshotEvent = e } label: { objectCard(e) }
+                                .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .sheet(item: $snapshotEvent) { e in
+                SnapshotViewer(event: e, client: client, cameraName: conn?.config?.cameras[e.camera]?.displayName)
+            }
+        }
+    }
+
+    private func objectCard(_ e: FrigateEvent) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            RemoteImage(url: e.hasSnapshot == true ? client?.snapshotURL(for: e) : client?.thumbnailURL(for: e),
+                        session: client?.session ?? .shared)
+                .frame(width: 180, height: 101)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            HStack {
+                LabelTag(label: e.label, size: 12)
+                Spacer()
+                if let score = e.bestScore {
+                    Text("\(Int((score * 100).rounded()))%").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.text)
+                }
+            }
+        }
+        .padding(8)
+        .frame(width: 196)
+        .card(border: e.id == route.focusEventID ? Theme.accent : Theme.cardBorder, radius: 12)
+    }
+
     /// How long the objects were tracked; Frigate often closes the review item itself much sooner.
     private var trackedDuration: TimeInterval { max(0, activityEnd - activityStart) }
 
@@ -529,12 +586,15 @@ struct EventDetailView: View {
         let ids = item.data.detections ?? []
         events = (try? await client.events(ids: ids)) ?? []
         if player.url == nil {
+            // Opened on one object: start a moment before it appeared.
+            let focus = route.focusEventID.flatMap { id in events.first { $0.id == id } }
+            let startAt = focus.map { max(0, $0.startTime + offset - 1 - clipStart) } ?? 0
             let segs = (try? await client.recordings(camera: item.camera, after: Date(timeIntervalSince1970: clipStart),
                                                      before: Date(timeIntervalSince1970: clipEnd))) ?? []
             if segs.isEmpty {
                 noRecording = true
             } else {
-                player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd))
+                player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd), startAt: startAt)
             }
         }
         var entries: [TimelineEntry] = []

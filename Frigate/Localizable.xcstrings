@@ -1970,6 +1970,16 @@
     "OK": {
       "shouldTranslate": false
     },
+    "Objects": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objecten"
+          }
+        }
+      }
+    },
     "Off": {
       "localizations": {
         "nl": {
@@ -2652,6 +2662,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opnieuw zoeken"
+          }
+        }
+      }
+    },
+    "Score %lld%%": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Score %lld%%"
           }
         }
       }

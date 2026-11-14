@@ -8,6 +8,8 @@ struct CameraRoute: Hashable {
 struct EventRoute: Hashable {
     let serverID: UUID
     let review: ReviewItem
+    /// A tracked object to start with (opened from Explore): shown first, video starts there.
+    var focusEventID: String? = nil
 }
 
 /// A tracked object from Explore.
@@ -35,7 +37,8 @@ struct AppDestinations: ViewModifier {
             .navigationDestination(for: CameraRoute.self) { CameraView(route: $0).id($0) }
             .navigationDestination(for: EventRoute.self) { EventDetailView(route: $0).id($0) }
             .navigationDestination(for: PlaybackRoute.self) { PlaybackView(route: $0).id($0) }
-            .navigationDestination(for: ObjectRoute.self) { ObjectDetailView(route: $0).id($0) }
+            // A tracked object opens the event it belongs to; the object screen only when it has none.
+            .navigationDestination(for: ObjectRoute.self) { ObjectOrEventView(route: $0).id($0) }
             .navigationDestination(for: ExportsRoute.self) { _ in ExportsView() }
             .navigationDestination(for: ExportRoute.self) { ExportPlayerView(route: $0).id($0) }
     }
