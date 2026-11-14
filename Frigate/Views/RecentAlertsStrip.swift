@@ -49,15 +49,17 @@ struct RecentAlertsStrip: View {
         }
     }
 
-    /// Opens the alert and marks it reviewed, as opening it in Review does: seen, so it leaves
-    /// this row of unreviewed alerts (once the event screen is closed, not while opening it).
+    /// Opens the camera's recordings at the alert and marks it reviewed, as Frigate's dashboard
+    /// and Review do: seen, so it leaves this row (once back on Live, not while opening it).
     private func open(_ entry: ReviewEntry) {
-        model.livePath.append(EventRoute(serverID: entry.serverID, review: entry.item))
-        guard !entry.item.hasBeenReviewed, let conn = model.connection(for: entry.serverID), let client = conn.client else { return }
+        let item = entry.item
+        model.livePath.append(PlaybackRoute(serverID: entry.serverID, camera: item.camera,
+                                            day: Calendar.current.startOfDay(for: item.start), reviewID: item.id))
+        guard !item.hasBeenReviewed, let conn = model.connection(for: entry.serverID), let client = conn.client else { return }
         Task {
-            guard (try? await client.markViewed([entry.item.id])) != nil else { return }
+            guard (try? await client.markViewed([item.id])) != nil else { return }
             try? await Task.sleep(for: .milliseconds(600))
-            model.reviewedIDs.insert(entry.item.id)
+            model.reviewedIDs.insert(item.id)
             await conn.refresh()
         }
     }
