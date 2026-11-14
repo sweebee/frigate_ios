@@ -957,14 +957,6 @@ struct PlaybackTimeline: View {
                             onSelect(r)
                         }
                     })
-                    // Pinch (or a trackpad pinch) zooms between the buttons' outer steps.
-                    .simultaneousGesture(MagnifyGesture()
-                        .onChanged { v in
-                            let base = pinchBase ?? secondsPerRow
-                            if pinchBase == nil { pinchBase = base; fling.cancel() }
-                            secondsPerRow = min(max(base / v.magnification, zooms.first!), zooms.last!)
-                        }
-                        .onEnded { _ in pinchBase = nil })
                     .gesture(DragGesture(minimumDistance: 10)
                         .onChanged { v in
                             // Two fingers pinching also move: no scrubbing while pinching.
@@ -990,6 +982,15 @@ struct PlaybackTimeline: View {
                                 onScrubEnd(released, snap)
                             }
                         })
+                    // Pinch (or a trackpad pinch) zooms between the buttons' outer steps. After the drag,
+                    // as on the horizontal timeline: placed before it, it held the drag back until release.
+                    .simultaneousGesture(MagnifyGesture()
+                        .onChanged { v in
+                            let base = pinchBase ?? secondsPerRow
+                            if pinchBase == nil { pinchBase = base; fling.cancel() }
+                            secondsPerRow = min(max(base / v.magnification, zooms.first!), zooms.last!)
+                        }
+                        .onEnded { _ in pinchBase = nil })
 
                 // Playhead
                 HStack(spacing: 6) {
@@ -1180,16 +1181,21 @@ struct PlaybackTimeline: View {
                          with: .color(level > 0 ? Theme.motion : Theme.controlBorder))
             }
 
-            // Ticks and labels
-            let t = Int(rowEnd.rounded())
-            if t % Int(labelEvery) == 0 {
-                row.fill(Path(CGRect(x: 0, y: rowY + 2, width: 14, height: 1)), with: .color(Color(hex: 0x6B7480)))
-                let text = Text(FrigateFormat.time(Date(timeIntervalSince1970: rowEnd)))
-                    .font(.system(size: 11).monospacedDigit())
-                    .foregroundColor(Theme.textSecondary)
-                row.draw(text, at: CGPoint(x: 20, y: rowY + 2), anchor: .leading)
-            } else if t % Int(labelEvery / 3) == 0 {
-                row.fill(Path(CGRect(x: 0, y: rowY + 2, width: 7, height: 1)), with: .color(Color(hex: 0x6B7480)))
+            // Ticks and labels where a round time falls in this row; with pinch zoom the rows no
+            // longer start on round times themselves.
+            let minor = labelEvery / 3
+            let tick = (rowEnd / minor).rounded(.down) * minor
+            if tick > rowStart - 0.001 {
+                let tickY = center + CGFloat((wallTime - tick) / secondsPerPoint)
+                if tick.truncatingRemainder(dividingBy: labelEvery) < 0.5 {
+                    row.fill(Path(CGRect(x: 0, y: tickY, width: 14, height: 1)), with: .color(Color(hex: 0x6B7480)))
+                    let text = Text(FrigateFormat.time(Date(timeIntervalSince1970: tick)))
+                        .font(.system(size: 11).monospacedDigit())
+                        .foregroundColor(Theme.textSecondary)
+                    row.draw(text, at: CGPoint(x: 20, y: tickY), anchor: .leading)
+                } else {
+                    row.fill(Path(CGRect(x: 0, y: tickY, width: 7, height: 1)), with: .color(Color(hex: 0x6B7480)))
+                }
             }
         }
         drawEvents(ctx, size: size)

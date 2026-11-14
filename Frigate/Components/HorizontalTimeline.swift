@@ -300,8 +300,13 @@ struct TrackpadScroll: UIViewRepresentable {
         init(parent: TrackpadScroll) { self.parent = parent }
 
         // Scrolling the timeline wins: the navigation's swipe back (two fingers sideways)
-        // and scroll views around it wait for this one to fail.
-        func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool { true }
+        // and scroll views around it wait for this one to fail. Only other scroll gestures:
+        // a mouse drag on the timeline itself (its own drag gesture) must not wait, or it moves
+        // only once the button is let go.
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+            guard let pan = other as? UIPanGestureRecognizer else { return false }
+            return !pan.allowedScrollTypesMask.isEmpty
+        }
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { false }
 
         @objc func pan(_ g: UIPanGestureRecognizer) {
