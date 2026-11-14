@@ -196,7 +196,7 @@ struct EventDetailView: View {
                     Text(timeRange).font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                 }
                 .lineLimit(1)
-                ForEach(item.labels, id: \.self) { LabelTag(label: $0, size: 12) }
+                ForEach(shownLabels, id: \.self) { LabelTag(label: $0, size: 12) }
                 Spacer()
                 Button { Task { await markReviewed() }; keepOverlay() } label: {
                     HStack(spacing: 5) {
@@ -405,7 +405,7 @@ struct EventDetailView: View {
     private var info: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                ForEach(item.labels, id: \.self) { LabelTag(label: $0, size: 12) }
+                ForEach(shownLabels, id: \.self) { LabelTag(label: $0, size: 12) }
                 Text(item.severity == .alert ? L("Alert") : L("Detection"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
@@ -421,12 +421,18 @@ struct EventDetailView: View {
         .padding(.top, 14)
     }
 
+    /// Opened on one object: that object's label, not the whole item's.
+    private var shownLabels: [String] { focus.map { [$0.label] } ?? item.labels }
+
     private var timeRange: String {
-        let day = FrigateFormat.dayTitle(item.start)
-        let s = FrigateFormat.time(item.start, seconds: true)
-        guard let end = item.end else { return L("\(day), \(s), in progress") }
+        // The object's own times when opened on one, otherwise the review item's.
+        let start = focus.map { Date(timeIntervalSince1970: $0.startTime) } ?? item.start
+        let end = focus.map { $0.endTime.map { Date(timeIntervalSince1970: $0) } } ?? item.end
+        let day = FrigateFormat.dayTitle(start)
+        let s = FrigateFormat.time(start, seconds: true)
+        guard let end else { return L("\(day), \(s), in progress") }
         // Frigate sometimes closes an item days later; then show the end date too.
-        if !Calendar.current.isDate(end, inSameDayAs: item.start) {
+        if !Calendar.current.isDate(end, inSameDayAs: start) {
             return L("\(day), \(s) to \(FrigateFormat.dayTitle(end)) \(FrigateFormat.time(end, seconds: true))")
         }
         return L("\(day), \(s) to \(FrigateFormat.time(end, seconds: true))")
@@ -434,8 +440,8 @@ struct EventDetailView: View {
 
     private var tiles: some View {
         let score = events.compactMap(\.bestScore).max()
-        let zones = (item.data.zones ?? []).map(FrigateFormat.prettyName)
-        let subLabels = (item.data.subLabels ?? []) + events.compactMap { $0.subLabel?.name }.filter { !$0.isEmpty }
+        let zones = (focus.map { $0.zones ?? [] } ?? item.data.zones ?? []).map(FrigateFormat.prettyName)
+        let subLabels = (focus == nil ? item.data.subLabels ?? [] : []) + events.compactMap { $0.subLabel?.name }.filter { !$0.isEmpty }
         let plates = events.compactMap(\.recognizedPlate)
         let third: (String, String) = {
             if !plates.isEmpty {
@@ -446,7 +452,7 @@ struct EventDetailView: View {
                 var seen = Set<String>()
                 return (L("SUB LABEL"), subLabels.filter { seen.insert($0).inserted }.joined(separator: ", "))
             }
-            return (L("DURATION"), item.duration > 3600 ? L("> 1 h") : FrigateFormat.shortDuration(trackedDuration))
+            return (L("DURATION"), focus == nil && item.duration > 3600 ? L("> 1 h") : FrigateFormat.shortDuration(trackedDuration))
         }()
         return HStack(spacing: 8) {
             tile(L("SCORE"), score.map { "\(Int(($0 * 100).rounded()))%" } ?? "–")
@@ -625,7 +631,8 @@ struct EventDetailView: View {
         }
         // The tracked objects and whether there is a recording, both at once: on a remote
         // connection every round trip before the video shows is felt.
-        let ids = item.data.detections ?? []
+        // Opened on one object from Explore: only that object, as Frigate's tracking details.
+        let ids = route.focusEvent.map { [$0.id] } ?? item.data.detections ?? []
         let needsVideo = player.url == nil
         let (start, end) = (clipStart, clipEnd)
         async let loadedEvents = (try? await client.events(ids: ids)) ?? []
