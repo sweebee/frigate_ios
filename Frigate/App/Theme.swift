@@ -440,3 +440,13 @@ extension View {
         onHover { flag.wrappedValue = $0 }
     }
 }
+
+/// "4 h ago" that stays right: redrawn every minute and when the app comes back, not only
+/// when the data around it changes.
+struct RelativeTimeText: View {
+    let date: Date
+
+    var body: some View {
+        TimelineView(.everyMinute) { _ in Text(FrigateFormat.relative(date)) }
+    }
+}

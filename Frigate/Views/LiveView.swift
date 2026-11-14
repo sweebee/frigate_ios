@@ -233,7 +233,8 @@ struct CameraTile: View {
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(meta(online: online))
+                // Redrawn every minute, so "4 h ago" does not freeze.
+                TimelineView(.everyMinute) { _ in Text(meta(online: online)) }
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)

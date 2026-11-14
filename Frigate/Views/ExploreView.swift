@@ -538,7 +538,7 @@ struct ObjectTile: View {
                     } else {
                         Spacer(minLength: 0)
                     }
-                    Text(FrigateFormat.relative(Date(timeIntervalSince1970: event.startTime)))
+                    RelativeTimeText(date: Date(timeIntervalSince1970: event.startTime))
                 }
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white)
