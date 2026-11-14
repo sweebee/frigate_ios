@@ -344,6 +344,16 @@ final class AppModel {
     }
     /// Whether the overview should show live video right now.
     var showsLiveGrid: Bool { liveGrid && (liveGridOnCellular || !NetworkStatus.shared.isExpensive) }
+
+    /// Live video in the overview tiles, as one choice (stored in `liveGrid` and `autoLive`).
+    enum TileLive: Hashable, CaseIterable { case always, onActivity, off }
+    var tileLive: TileLive {
+        get { liveGrid ? .always : (autoLive ? .onActivity : .off) }
+        set {
+            liveGrid = newValue == .always
+            autoLive = newValue != .off
+        }
+    }
     /// Set to open the add-server sheet.
     var showAddServer = false
     /// Review items marked reviewed in this session. Frigate can take a moment before its

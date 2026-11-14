@@ -735,6 +735,16 @@
         }
       }
     },
+    "A tile plays live video while its camera sees motion or an object, and a picture otherwise.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een tegel speelt live video zolang de camera beweging of een object ziet, en anders een foto."
+          }
+        }
+      }
+    },
     "Active server": {
       "localizations": {
         "nl": {
@@ -901,6 +911,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ook op mobiele data"
+          }
+        }
+      }
+    },
+    "Always": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altijd"
           }
         }
       }
@@ -1405,6 +1425,16 @@
         }
       }
     },
+    "Every tile plays live video. Uses more data and battery.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elke tegel speelt live video. Kost meer data en batterij."
+          }
+        }
+      }
+    },
     "Exit full screen": {
       "localizations": {
         "nl": {
@@ -1624,6 +1654,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Live"
+          }
+        }
+      }
+    },
+    "Live video": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live video"
           }
         }
       }
@@ -2130,6 +2170,16 @@
         }
       }
     },
+    "On activity": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bij activiteit"
+          }
+        }
+      }
+    },
     "Only admins can start a recording.": {
       "localizations": {
         "nl": {
@@ -2176,6 +2226,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Optioneel"
+          }
+        }
+      }
+    },
+    "Otherwise tiles go live only on activity while on mobile data.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anders gaan tegels op mobiele data alleen live bij activiteit."
           }
         }
       }
@@ -3282,6 +3342,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tegelgrootte"
+          }
+        }
+      }
+    },
+    "Tiles show a picture that refreshes every few seconds.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tegels tonen een foto die elke paar seconden ververst."
           }
         }
       }

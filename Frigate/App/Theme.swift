@@ -305,6 +305,47 @@ struct EmptyStateView: View {
 
 /// A settings row with a switch. The whole row toggles on tap: a plain Toggle inside a
 /// ScrollView does not respond to taps on iOS 27.
+/// A settings row with a menu of choices on the right, like a toggle row.
+struct PickerRow<T: Hashable>: View {
+    let title: String
+    var subtitle: String? = nil
+    let options: [T]
+    let selection: T
+    let label: (T) -> String
+    let set: (T) -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.text)
+                if let subtitle {
+                    // Swapped at once: cross-faded, the old and new explanation overlapped.
+                    Text(subtitle).font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
+                        .transaction { $0.animation = nil }
+                }
+            }
+            Spacer()
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button { set(option) } label: {
+                        if option == selection { Label(label(option), systemImage: "checkmark") } else { Text(label(option)) }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(label(selection)).font(.system(size: 15, weight: .medium))
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(Theme.accent)
+                .fixedSize()
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+        }
+        .frame(minHeight: 44)
+    }
+}
+
 struct ToggleRow: View {
     let title: String
     var subtitle: String? = nil

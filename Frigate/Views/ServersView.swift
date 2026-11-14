@@ -216,6 +216,22 @@ struct LiveSettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
+    private func tileLiveName(_ t: AppModel.TileLive) -> String {
+        switch t {
+        case .always: return L("Always")
+        case .onActivity: return L("On activity")
+        case .off: return L("Off")
+        }
+    }
+
+    private var tileLiveExplanation: String {
+        switch model.tileLive {
+        case .always: return L("Every tile plays live video. Uses more data and battery.")
+        case .onActivity: return L("A tile plays live video while its camera sees motion or an object, and a picture otherwise.")
+        case .off: return L("Tiles show a picture that refreshes every few seconds.")
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
@@ -225,17 +241,15 @@ struct LiveSettingsView: View {
 
                 SectionLabel(text: L("Camera tiles"))
                 VStack(spacing: 0) {
-                    row(ToggleRow(title: L("Live video in overview"),
-                                  subtitle: L("Plays the low-resolution stream of every camera instead of refreshing snapshots. Uses more data and battery."),
-                                  isOn: model.liveGrid) { on in withAnimation { model.liveGrid = on } })
-                    if model.liveGrid {
+                    row(PickerRow(title: L("Live video"), subtitle: tileLiveExplanation,
+                                  options: AppModel.TileLive.allCases, selection: model.tileLive, label: tileLiveName) { choice in
+                        withAnimation { model.tileLive = choice }
+                    })
+                    if model.tileLive == .always {
                         divider
-                        row(ToggleRow(title: L("Also on mobile data"), isOn: model.liveGridOnCellular) { model.liveGridOnCellular = $0 })
-                    } else {
-                        divider
-                        row(ToggleRow(title: L("Automatic live view"),
-                                      subtitle: L("Switches a camera to live video while it sees motion or a moving object, and back to snapshots when it is quiet."),
-                                      isOn: model.autoLive) { model.autoLive = $0 })
+                        row(ToggleRow(title: L("Also on mobile data"),
+                                      subtitle: L("Otherwise tiles go live only on activity while on mobile data."),
+                                      isOn: model.liveGridOnCellular) { model.liveGridOnCellular = $0 })
                     }
                 }
                 .card()
@@ -263,8 +277,8 @@ struct LiveSettingsView: View {
 
     private var divider: some View { Rectangle().fill(Theme.cardBorder).frame(height: 1) }
 
-    private func row(_ toggle: ToggleRow) -> some View {
-        toggle
+    private func row(_ content: some View) -> some View {
+        content
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .frame(minHeight: 56)
