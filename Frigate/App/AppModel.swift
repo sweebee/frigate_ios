@@ -317,6 +317,9 @@ final class AppModel {
     /// Exports deleted in this session (`ExportEntry.id`); lists leave them out, even when a
     /// load that was already under way still returns them.
     var deletedExports: Set<String> = []
+    /// Exports moved to another case in this session (`ExportEntry.id` → case id, "" for none),
+    /// until a load from the server shows them there; every exports screen uses them.
+    var movedExports: [String: String] = [:]
     /// The phone's More tab (exports, chat, settings).
     var morePath = NavigationPath()
     /// Set by deep links to switch the Review segment (alert, detection, motion).

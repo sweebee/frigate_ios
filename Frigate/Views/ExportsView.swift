@@ -176,11 +176,11 @@ struct ExportsView: View {
     private var visible: [ExportEntry] {
         let all = entries.filter { !model.deletedExports.contains($0.id) }
         if let caseRoute {
-            return all.filter { $0.serverID == caseRoute.serverID && $0.export.caseID == caseRoute.exportCase.id }
+            return all.filter { $0.serverID == caseRoute.serverID && caseID(of: $0) == caseRoute.exportCase.id }
         }
         // Outside a case (or in one this app does not know): the cases show as folders above.
         let known = Set(cases.map(\.id))
-        return all.filter { e in e.export.caseID.map { !known.contains("\(e.serverID)/\($0)") } ?? true }
+        return all.filter { e in caseID(of: e).map { !known.contains("\(e.serverID)/\($0)") } ?? true }
     }
     private var currentCase: ExportCaseEntry? {
         caseRoute.flatMap { r in cases.first { $0.serverID == r.serverID && $0.exportCase.id == r.exportCase.id } }
@@ -336,13 +336,13 @@ struct ExportsView: View {
         Button { newName = entry.export.name; renaming = entry } label: { Label("Rename", systemImage: "pencil") }
         if model.connection(for: entry.serverID)?.client?.servesCases == true {
             Menu {
-                ForEach(cases.filter { $0.serverID == entry.serverID && $0.exportCase.id != entry.export.caseID }) { c in
+                ForEach(cases.filter { $0.serverID == entry.serverID && $0.exportCase.id != caseID(of: entry) }) { c in
                     Button { move(entry, to: c.exportCase.id) } label: { Label(c.exportCase.name, systemImage: "folder") }
                 }
                 Button { creatingCaseFor = entry; startNewCase(on: entry.serverID) } label: {
                     Label("New case…", systemImage: "folder.badge.plus")
                 }
-                if entry.export.caseID != nil {
+                if caseID(of: entry) != nil {
                     Divider()
                     Button { move(entry, to: nil) } label: { Label("Remove from case", systemImage: "tray.and.arrow.up") }
                 }
@@ -362,7 +362,7 @@ struct ExportsView: View {
     // MARK: Actions
 
     private func exports(in c: ExportCaseEntry) -> [ExportEntry] {
-        entries.filter { $0.serverID == c.serverID && $0.export.caseID == c.exportCase.id && !model.deletedExports.contains($0.id) }
+        entries.filter { $0.serverID == c.serverID && caseID(of: $0) == c.exportCase.id && !model.deletedExports.contains($0.id) }
     }
 
     private func client(_ serverID: UUID) -> FrigateClient? { model.connection(for: serverID)?.client }
@@ -412,7 +412,7 @@ struct ExportsView: View {
     /// Whether the export being dragged can go in this case: same server, not already in it.
     private func accepts(_ c: ExportCaseEntry) -> Bool {
         guard let d = dragging else { return false }
-        return d.serverID == c.serverID && d.export.caseID != c.exportCase.id
+        return d.serverID == c.serverID && caseID(of: d) != c.exportCase.id
     }
 
     /// Lit while an export is dragged over the case; red with the reason when it cannot go in.
@@ -436,27 +436,26 @@ struct ExportsView: View {
 
     private func drop(_ entry: ExportEntry, on c: ExportCaseEntry) {
         dragging = nil
-        guard entry.serverID == c.serverID, entry.export.caseID != c.exportCase.id else { return }
+        guard entry.serverID == c.serverID, caseID(of: entry) != c.exportCase.id else { return }
         move(entry, to: c.exportCase.id)
     }
 
-    /// Shows the export in its new place at once; the server follows.
-    private func place(_ entry: ExportEntry, in caseID: String?) {
-        loadCount += 1   // a load already under way has the old place
-        entries = entries.map { e in
-            guard e.id == entry.id else { return e }
-            var x = e.export
-            x.caseID = caseID
-            return ExportEntry(serverID: e.serverID, export: x)
-        }
+    /// The export's case, as just moved here or in another exports screen.
+    private func caseID(of e: ExportEntry) -> String? {
+        if let moved = model.movedExports[e.id] { return moved.isEmpty ? nil : moved }
+        return e.export.caseID
     }
 
     private func move(_ entry: ExportEntry, to caseID: String?) {
         guard let client = client(entry.serverID) else { return }
-        withAnimation(.easeOut(duration: 0.2)) { place(entry, in: caseID) }
+        // Shown in its new place at once; the server follows.
+        withAnimation(.easeOut(duration: 0.2)) { model.movedExports[entry.id] = caseID ?? "" }
         Task {
             do { try await client.moveExports([entry.export.id], toCase: caseID) }
-            catch { errorMessage = error.localizedDescription }
+            catch {
+                model.movedExports[entry.id] = nil
+                errorMessage = error.localizedDescription
+            }
             await load()
         }
     }
@@ -468,6 +467,8 @@ struct ExportsView: View {
         async let loadedCases = ExportCasesLoader.load(connections)
         let (e, c) = await (loadedEntries, loadedCases)
         guard mine == loadCount else { return }
+        // Moves the server now shows are done.
+        for x in e where model.movedExports[x.id] == (x.export.caseID ?? "") { model.movedExports[x.id] = nil }
         entries = e
         cases = c
         loading = false
