@@ -175,6 +175,7 @@ final class ServerConnection: Identifiable {
     private nonisolated static func attempt(_ url: URL, remote: Bool, server: ServerConfig) async throws -> Attempt {
         let c = FrigateClient(baseURL: url)
         let v = try await authenticate(client: c, server: server, password: server.password)
+        c.version = v
         let config = try await c.config()
         return Attempt(client: c, remote: remote, version: v, config: config)
     }

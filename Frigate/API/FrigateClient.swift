@@ -20,6 +20,8 @@ enum FrigateError: LocalizedError {
 final class FrigateClient: @unchecked Sendable {
     let baseURL: URL
     let session: URLSession
+    /// The server's version ("0.18.2-cfa08c5"), once connected.
+    var version: String?
     private let decoder = JSONDecoder()
 
     init(baseURL: URL) {
@@ -353,6 +355,8 @@ final class FrigateClient: @unchecked Sendable {
 
     /// Snapshot of an object with its bounding box drawn in.
     func snapshotURL(for event: FrigateEvent) -> URL { url("api/events/\(event.id)/snapshot.jpg", query: ["bbox": "1"]) }
+    /// The same snapshot without the box: a still of the scene, e.g. while its video loads.
+    func cleanSnapshotURL(for event: FrigateEvent) -> URL { url("api/events/\(event.id)/snapshot.jpg") }
 
     func thumbnailURL(for review: ReviewItem) -> URL? {
         review.thumbnailPath.map { url($0) }
@@ -361,6 +365,21 @@ final class FrigateClient: @unchecked Sendable {
     /// HLS playlist for a recording range, routed through the local proxy so HEVC plays.
     func vodURL(camera: String, start: Double, end: Double) -> URL {
         HLSProxy.shared.url(for: url("vod/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/index.m3u8"))
+    }
+
+    /// A short clip (an event, an object) to play. Frigate 0.17 and later cut `/vod/clip` at
+    /// each recording segment: the first piece is only the seconds up to the next segment
+    /// (3 s, 1.5 MB in a test) where `/vod` sends one long first piece (13 s, 6.5 MB), which on
+    /// a remote connection is seconds before the video shows. Frigate's own web app uses it.
+    func clipVODURL(camera: String, start: Double, end: Double) -> URL {
+        guard servesClipVOD else { return vodURL(camera: camera, start: start, end: end) }
+        return HLSProxy.shared.url(for: url("vod/clip/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/index.m3u8"))
+    }
+
+    private var servesClipVOD: Bool {
+        let parts = (version ?? "").split(separator: "-").first?.split(separator: ".").compactMap { Int($0) } ?? []
+        guard parts.count >= 2 else { return false }
+        return parts[0] > 0 || parts[1] >= 17
     }
 
     func clipURL(camera: String, start: Double, end: Double) -> URL {

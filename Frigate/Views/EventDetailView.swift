@@ -281,8 +281,10 @@ struct EventDetailView: View {
                     withAnimation(.easeOut(duration: 0.2)) { overlayVisible.toggle() }
                     keepOverlay()
                 }
+            poster
             playerStatus(showPlay: !overlayVisible)
         }
+        .animation(.easeOut(duration: 0.25), value: videoShowing)
         .aspectRatio(conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .background(Color.black)
@@ -302,6 +304,27 @@ struct EventDetailView: View {
             if !overlayVisible { withAnimation(.easeOut(duration: 0.25)) { overlayVisible = true } }
             keepOverlay()
         }
+    }
+
+    /// A still of the object while the video loads, as Frigate shows its snapshot first: on a
+    /// remote connection the picture is there at once, the video seconds later.
+    @ViewBuilder
+    private var poster: some View {
+        // The object it was opened on, otherwise the first with a snapshot.
+        let shown = focus ?? objectEvents.first { $0.hasSnapshot == true } ?? objectEvents.first
+        if !videoShowing, !noRecording, let client {
+            RemoteImage(url: shown.map { $0.hasSnapshot == true ? client.cleanSnapshotURL(for: $0) : client.thumbnailURL(for: $0) }
+                            ?? client.thumbnailURL(for: item),
+                        session: client.session, contentMode: .fit,
+                        placeholder: shown.map { client.thumbnailURL(for: $0) } ?? client.thumbnailURL(for: item))
+                .allowsHitTesting(false)
+                .transition(.opacity)
+        }
+    }
+
+    /// Once frames are on screen the still goes.
+    private var videoShowing: Bool {
+        canPlay && (player.isPlaying || player.currentTime > 0.05)
     }
 
     /// Whether there is something to control: a loaded recording, not an error or a spinner.
@@ -614,7 +637,7 @@ struct EventDetailView: View {
             if segs.isEmpty {
                 noRecording = true
             } else {
-                player.load(client.vodURL(camera: item.camera, start: clipStart, end: clipEnd))
+                player.load(client.clipVODURL(camera: item.camera, start: clipStart, end: clipEnd))
             }
         }
         var entries: [TimelineEntry] = []
