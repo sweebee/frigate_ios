@@ -23,14 +23,16 @@ struct PlaybackDetailList: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
+                // Not lazy: a lazy stack guesses the height of rows it has not drawn, and a card
+                // opening (or its objects arriving) then made the list jump.
+                VStack(alignment: .leading, spacing: 8) {
                     ForEach(reviews) { r in
                         let open = openID == r.id
                         let data = details[r.id]
                         PlaybackDetailCard(review: r, open: open, playing: playingID == r.id, data: data,
                                            highlight: open ? data?.entryIndex(at: wallTime - annotationOffset) : nil,
                                            compact: compact, client: client,
-                                           onHeader: { tapHeader(r) },
+                                           onHeader: { tapHeader(r, proxy: proxy) },
                                            onEntry: { onJump($0 + annotationOffset - 1) })
                             .equatable()
                             .id(r.id)
@@ -40,22 +42,35 @@ struct PlaybackDetailList: View {
                 .padding(.horizontal, compact ? 0 : 16)
                 .padding(.bottom, 24)
             }
-            // The event that starts playing opens by itself, as in Frigate.
-            .onChange(of: playingID, initial: true) { _, id in
+            // The event that starts playing opens by itself, as in Frigate. Scrolled only as far
+            // as needed to show it, and without animation, so the list does not jump around.
+            .onChange(of: playingID, initial: true) { old, id in
                 guard let id, id != openID else { return }
-                withAnimation(.easeOut(duration: 0.2)) { openID = id }
-                proxy.scrollTo(id, anchor: .top)
+                // Animated, with the scroll in the same step, so card and list move together.
+                withAnimation(old == nil ? nil : Self.motion) {
+                    openID = id
+                    proxy.scrollTo(id)
+                }
             }
         }
         .task(id: openID) { await loadOpen() }
     }
 
-    private func tapHeader(_ r: ReviewItem) {
+    /// Opening and closing cards. The scroll that keeps the tapped card in view runs in the same
+    /// animation: a separate one afterwards (or a lazy stack guessing heights) made it jump.
+    private static let motion = Animation.easeInOut(duration: 0.28)
+
+    private func tapHeader(_ r: ReviewItem, proxy: ScrollViewProxy) {
         if openID == r.id {
-            withAnimation(.easeOut(duration: 0.2)) { openID = nil }
+            withAnimation(Self.motion) { openID = nil }
         } else {
-            withAnimation(.easeOut(duration: 0.2)) { openID = r.id }
             onJump(r.startTime + annotationOffset - 1)
+            // The card that was open above it closes, which would pull this one up out of
+            // view; keep the tapped card's header where it can be seen.
+            withAnimation(Self.motion) {
+                openID = r.id
+                proxy.scrollTo(r.id, anchor: .top)
+            }
         }
     }
 
@@ -70,8 +85,10 @@ struct PlaybackDetailList: View {
             for await part in group { entries += part }
         }
         let loaded = await events
-        details[id] = EventDetailData(objects: loaded.sorted { $0.startTime < $1.startTime },
-                                      entries: entries.sorted { $0.timestamp < $1.timestamp })
+        let data = EventDetailData(objects: loaded.sorted { $0.startTime < $1.startTime },
+                                   entries: entries.sorted { $0.timestamp < $1.timestamp })
+        // The card grows from its loading height to its rows smoothly too.
+        withAnimation(Self.motion) { details[id] = data }
     }
 }
 
@@ -111,9 +128,13 @@ private struct PlaybackDetailCard: View, Equatable {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: onHeader) { header }.buttonStyle(.plain)
-            if open { objects.transition(.opacity) }
+            if open {
+                objects.transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .card(border: open || playing ? Theme.accent : Theme.cardBorder, radius: 12)
+        // The rows slide in from under the header, not over the cards around it.
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var header: some View {
@@ -182,7 +203,9 @@ private struct PlaybackDetailCard: View, Equatable {
             }
             .padding(.horizontal, compact ? 10 : 12).padding(.bottom, 10)
         } else {
-            ProgressView().frame(maxWidth: .infinity, minHeight: 44).padding(.bottom, 6)
+            // About the height of one object with a few rows, so the card hardly grows once
+            // they arrive.
+            ProgressView().frame(maxWidth: .infinity, minHeight: 120).padding(.bottom, 6)
         }
     }
 }
