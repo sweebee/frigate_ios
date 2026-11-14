@@ -70,6 +70,10 @@ struct NativeLivePlayer: UIViewRepresentable {
         private let hubID = UUID()
         /// Showing another player's samples until this one's own stream reaches a keyframe.
         private var borrowing = false
+        /// Set the clock again from the next frame shown (a new stream, or a jump).
+        private var needsClockSync = true
+        /// How far behind the stream the picture runs, to even out the network's bursts.
+        private static let latency = CMTime(value: 1, timescale: 4)
 
         /// Picture in picture for this player's video layer, where the device supports it.
         func setUpPiP() {
@@ -92,6 +96,7 @@ struct NativeLivePlayer: UIViewRepresentable {
 
         func start(client: FrigateClient, stream: String) {
             stop()
+            needsClockSync = true
             self.stream = stream
             let key = LiveSampleHub.key(client: client, stream: stream)
             hubKey = key
@@ -118,7 +123,8 @@ struct NativeLivePlayer: UIViewRepresentable {
                 // Decode the frames since the keyframe, but show only the latest: shown one by
                 // one they flashed by as a fast-forward.
                 for (i, sample) in gop.enumerated() {
-                    enqueue(i == gop.count - 1 ? sample : Self.hidden(sample) ?? sample)
+                    let last = i == gop.count - 1
+                    enqueue(last ? sample : Self.hidden(sample) ?? sample, shown: last)
                 }
             }
             let started = Date()
@@ -210,6 +216,8 @@ struct NativeLivePlayer: UIViewRepresentable {
                         if borrowing, let hubKey {
                             LiveSampleHub.shared.unsubscribe(hubKey, id: hubID)
                             borrowing = false
+                            // Its own stream has its own timestamps.
+                            needsClockSync = true
                         }
                     }
                     enqueue(sample)
@@ -253,22 +261,32 @@ struct NativeLivePlayer: UIViewRepresentable {
             if renderer.isReadyForMoreMediaData { renderer.enqueue(sample) }
         }
 
-        private func enqueue(_ sample: CMSampleBuffer) {
+        /// `shown`: false for frames only decoded to catch up (they cannot set the clock).
+        private func enqueue(_ sample: CMSampleBuffer, shown: Bool = true) {
             guard let layer = view?.displayLayer else { return }
             if layer.status == .failed {
                 // A decoder error (e.g. an unsupported codec): try the web player instead.
                 fail(layer.error?.localizedDescription ?? "decode failed")
                 return
             }
-            if pip != nil, layer.controlTimebase == nil {
-                // Picture in picture needs the layer to run on a clock; frames still show at once
-                // (they are marked to display immediately).
+            // Frames show on a clock running `latency` behind the stream, so they come at an
+            // even pace. The clock is set again when frames would be late (a stall) or the
+            // picture falls more than a second and a half behind.
+            if layer.controlTimebase == nil {
                 var timebase: CMTimebase?
                 CMTimebaseCreateWithSourceClock(allocator: kCFAllocatorDefault, sourceClock: CMClockGetHostTimeClock(), timebaseOut: &timebase)
                 if let timebase {
-                    CMTimebaseSetTime(timebase, time: CMSampleBufferGetPresentationTimeStamp(sample))
                     CMTimebaseSetRate(timebase, rate: 1)
                     layer.controlTimebase = timebase
+                }
+                needsClockSync = true
+            }
+            if shown, let timebase = layer.controlTimebase {
+                let pts = CMSampleBufferGetPresentationTimeStamp(sample)
+                let ahead = CMTimeGetSeconds(pts - CMTimebaseGetTime(timebase))
+                if needsClockSync || ahead < -0.05 || ahead > 1.5 {
+                    CMTimebaseSetTime(timebase, time: pts - Self.latency)
+                    needsClockSync = false
                 }
             }
             layer.enqueue(sample)
@@ -672,8 +690,9 @@ struct FMP4Parser {
               let sample else { return nil }
         if let attachments = CMSampleBufferGetSampleAttachmentsArray(sample, createIfNecessary: true),
            let dict = (attachments as NSArray).firstObject as? NSMutableDictionary {
-            // Live: show each frame as soon as it is decoded instead of on a timeline.
-            dict[kCMSampleAttachmentKey_DisplayImmediately] = true
+            // Shown on the player's clock (see `Coordinator.enqueue`), not as each one arrives:
+            // frames come over the network in bursts, and shown on arrival a 25 fps camera
+            // stuttered.
             if !keyframe { dict[kCMSampleAttachmentKey_NotSync] = true }
         }
         return sample
