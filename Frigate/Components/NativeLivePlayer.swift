@@ -31,6 +31,8 @@ struct NativeLivePlayer: UIViewRepresentable {
         context.coordinator.onFailure = onFailure
         context.coordinator.setMuted(state.muted)
         if context.coordinator.stream != stream { context.coordinator.start(client: client, stream: stream) }
+        // Set on appear, after the player started: still in time while it has no picture.
+        if let other = state.bridgeStream { context.coordinator.offerBridge(client: client, other: other) }
     }
 
     static func dismantleUIView(_ view: SampleView, coordinator: Coordinator) {
@@ -61,8 +63,13 @@ struct NativeLivePlayer: UIViewRepresentable {
         /// opened from its overview tile carries on with the tile's connection, picture and all.
         private var connection: LiveConnection?
         private let id = UUID()
+        /// Another stream of the camera shown until `connection` has its first frame.
+        private var bridge: LiveConnection?
         /// Set the clock again from the next frame shown (a new stream, or a jump).
         private var needsClockSync = true
+        /// The next clock sync shows its frame at once instead of `latency` later.
+        private var syncWithoutDelay = false
+        private var markingPlaying = false
         /// How far behind the stream the picture runs, to even out the network's bursts.
         private static let latency = CMTime(value: 1, timescale: 4)
 
@@ -87,6 +94,7 @@ struct NativeLivePlayer: UIViewRepresentable {
 
         func start(client: FrigateClient, stream: String) {
             stop()
+            markingPlaying = false
             needsClockSync = true
             self.stream = stream
             failed = false
@@ -96,10 +104,47 @@ struct NativeLivePlayer: UIViewRepresentable {
             state.hasAudio = false
             let connection = LiveConnection.connection(client: client, stream: stream)
             self.connection = connection
+            if let other = state.bridgeStream { offerBridge(client: client, other: other) }
             connection.subscribe(id) { [weak self] event in self?.handle(event) }
         }
 
+        /// Opened from a tile that plays another stream of this camera (its sub stream): show
+        /// that at once, and switch when this player's own stream has a frame.
+        func offerBridge(client: FrigateClient, other: String) {
+            state.bridgeStream = nil
+            guard bridge == nil, !state.playing, other != stream, connection != nil,
+                  LiveConnection.isPlaying(client: client, stream: other) else { return }
+            let bridge = LiveConnection.connection(client: client, stream: other)
+            self.bridge = bridge
+            bridge.subscribe(id) { [weak self] event in self?.handleBridge(event) }
+        }
+
+        /// The tile's stream while bridging: its picture only.
+        private func handleBridge(_ event: LiveConnection.Event) {
+            guard bridge != nil else { return }
+            switch event {
+            case .size(let size):
+                if state.videoSize == .zero, size.width > 0 { state.videoSize = size }
+            case .video(let sample, let shown):
+                enqueue(sample, shown: shown)
+            case .failed:
+                endBridge()
+            default: break
+            }
+        }
+
+        private func endBridge() {
+            bridge?.unsubscribe(id)
+            bridge = nil
+            needsClockSync = true
+            // Show the new stream's first frame at once: the old picture stays until then, and
+            // no gap shows between the two.
+            syncWithoutDelay = true
+        }
+
         func stop() {
+            bridge?.unsubscribe(id)
+            bridge = nil
             connection?.unsubscribe(id)
             connection = nil
             if let sync = synchronizer, let renderer = audioRenderer {
@@ -131,6 +176,11 @@ struct NativeLivePlayer: UIViewRepresentable {
             case .audio(let sample):
                 enqueueAudio(sample)
             case .video(let sample, let shown):
+                // This stream's first frame: the bridge (the tile's stream) is no longer needed.
+                if bridge != nil {
+                    guard shown else { return }   // catch-up frames of a stream still bridged
+                    endBridge()
+                }
                 enqueue(sample, shown: shown)
             case .restarted:
                 // A new connection after a stall: its own timestamps.
@@ -200,14 +250,25 @@ struct NativeLivePlayer: UIViewRepresentable {
                 let pts = CMSampleBufferGetPresentationTimeStamp(sample)
                 let ahead = CMTimeGetSeconds(pts - CMTimebaseGetTime(timebase))
                 if needsClockSync || ahead < -0.05 || ahead > 1.5 {
-                    CMTimebaseSetTime(timebase, time: pts - Self.latency)
+                    CMTimebaseSetTime(timebase, time: syncWithoutDelay ? pts : pts - Self.latency)
                     needsClockSync = false
+                    syncWithoutDelay = false
                 }
             }
             layer.enqueue(sample)
-            if !state.playing || state.status != "Live" {
-                if !state.playing { pip?.videoStarted() }
-                state.playing = true
+            if !state.playing && !markingPlaying {
+                // Once the first frame is on screen (`latency` after it arrives): until then the
+                // picture underneath (a snapshot) stays, rather than a black frame.
+                markingPlaying = true
+                Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard let self, self.markingPlaying else { return }
+                    self.markingPlaying = false
+                    self.pip?.videoStarted()
+                    self.state.playing = true
+                    self.state.status = "Live"
+                }
+            } else if state.playing && state.status != "Live" {
                 state.status = "Live"
             }
         }

@@ -27,6 +27,9 @@ final class LivePlayerState {
     var micError: String?
     /// The native player could not play this stream; the web player takes over without MSE.
     var nativeFailed = false
+    /// A stream of the same camera that already plays (its overview tile): shown at once while
+    /// `stream` connects, then replaced by it without the picture stopping.
+    var bridgeStream: String?
     /// Picture in picture can start: the native player is showing video and the device supports it.
     var pipPossible = false
     /// The video is in the picture-in-picture window; the stream keeps running in the background.
