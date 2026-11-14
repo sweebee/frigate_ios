@@ -497,3 +497,24 @@ struct DestructiveMenuLabel: View {
         .tint(Theme.destructive)
     }
 }
+
+/// Closes the sheet or full-screen cover this view is in. On the Mac a SwiftUI `dismiss` (or
+/// setting the presenting state to false) took effect only once the window lost focus, while
+/// Esc, which UIKit handles, closed it at once; so on the Mac it closes the way Esc does.
+/// Outside a sheet (a screen pushed on a stack) it is the ordinary `dismiss`.
+@MainActor
+func closePresented(_ dismiss: DismissAction) {
+    #if targetEnvironment(macCatalyst)
+    let root = UIApplication.shared.connectedScenes
+        .compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }
+        .first
+    if var top = root {
+        while let next = top.presentedViewController { top = next }
+        if top.presentingViewController != nil {
+            top.dismiss(animated: true)
+            return
+        }
+    }
+    #endif
+    dismiss()
+}

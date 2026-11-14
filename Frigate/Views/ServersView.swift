@@ -294,7 +294,7 @@ struct ReorderServersSheet: View {
             .navigationTitle(L("Reorder servers"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { closePresented(dismiss) } }
             }
         }
         .presentationDetents([.medium, .large])

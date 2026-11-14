@@ -92,7 +92,7 @@ struct RecordingCalendarSheet: View {
             .navigationTitle("Pick a day")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { closePresented(dismiss) } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Today") { select(Date()) }
                 }
@@ -218,7 +218,7 @@ struct RecordingCalendarSheet: View {
 
     private func select(_ date: Date) {
         day = calendar.startOfDay(for: date)
-        dismiss()
+        closePresented(dismiss)
     }
 
     /// Dates of the month padded with nils so the first lands on its weekday.

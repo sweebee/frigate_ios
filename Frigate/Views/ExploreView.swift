@@ -562,9 +562,9 @@ struct DayPickerSheet: View {
                 .datePickerStyle(.graphical)
                 .padding(.horizontal)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { closePresented(dismiss) } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { day = Calendar.current.startOfDay(for: picked); dismiss() }
+                        Button("Done") { day = Calendar.current.startOfDay(for: picked); closePresented(dismiss) }
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)

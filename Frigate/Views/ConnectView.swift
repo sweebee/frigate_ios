@@ -82,14 +82,14 @@ struct ConnectView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !isOnboarding {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { closePresented(dismiss) } }
             }
         }
         .alert("Remove \(existing?.name ?? L("server"))?", isPresented: $confirmDelete) {
             Button("Cancel", role: .cancel) {}
             Button("Remove", role: .destructive) {
                 if let existing { model.delete(existing) }
-                dismiss()
+                closePresented(dismiss)
             }
         } message: {
             Text("Only from this app: nothing changes on the server.")
@@ -267,7 +267,7 @@ struct ConnectView: View {
         url = base.absoluteString
         if let remoteBase { remoteURL = remoteBase.absoluteString }
         model.save(server, password: password.isEmpty ? nil : password)
-        if !isOnboarding { dismiss() }
+        if !isOnboarding { closePresented(dismiss) }
     }
 }
 

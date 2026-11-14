@@ -343,22 +343,10 @@ struct SnapshotViewer: View {
 
     private func close() {
         #if targetEnvironment(macCatalyst)
-        // On the Mac a SwiftUI dismiss (or clearing the presenting state) took effect only after
-        // the window lost focus; Esc, which UIKit handles, closed it at once. Close it that way.
-        if let top = UIApplication.shared.connectedScenes
-            .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController })
-            .first.map(Self.topPresented), top.presentingViewController != nil {
-            top.dismiss(animated: true)
-            return
-        }
-        #endif
+        closePresented(dismiss)
+        #else
         if let onClose { onClose() } else { dismiss() }
-    }
-
-    private static func topPresented(_ vc: UIViewController) -> UIViewController {
-        var v = vc
-        while let next = v.presentedViewController { v = next }
-        return v
+        #endif
     }
 
     var body: some View {

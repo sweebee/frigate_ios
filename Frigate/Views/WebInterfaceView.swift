@@ -17,7 +17,7 @@ struct WebInterfaceView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { dismiss() }
+                        Button("Done") { closePresented(dismiss) }
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Button { openURL(url) } label: { Image(systemName: "safari") }

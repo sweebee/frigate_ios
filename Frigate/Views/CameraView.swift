@@ -775,7 +775,7 @@ struct FullscreenLiveView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             HStack {
-                OverlayButton(systemImage: "xmark", size: 40, label: "Close") { dismiss() }
+                OverlayButton(systemImage: "xmark", size: 40, label: "Close") { closePresented(dismiss) }
                 Spacer()
                 OverlayButton(systemImage: state.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", size: 40,
                               label: state.muted ? "Unmute" : "Mute") {
