@@ -31,8 +31,14 @@ final class HLSProxy: @unchecked Sendable {
 
     private init() {}
 
+    /// Query item on a proxy URL that becomes the playlist's EXT-X-START.
+    private static let startKey = "tender_start"
+
     /// Returns a URL that plays `upstream` through the proxy, or `upstream` itself if the proxy failed.
-    func url(for upstream: URL) -> URL {
+    /// With `playlistStart`, the playlist tells the player to begin that many seconds in
+    /// (EXT-X-START): it then loads only the video from there, where a seek after opening first
+    /// loads the beginning too (2 to 4 times slower to start on a slow connection, measured).
+    func url(for upstream: URL, playlistStart: Double? = nil) -> URL {
         guard startIfNeeded(), let scheme = upstream.scheme, let host = upstream.host else { return upstream }
         let origin = "\(scheme)://\(host)\(upstream.port.map { ":\($0)" } ?? "")"
         let hex = origin.utf8.map { String(format: "%02x", $0) }.joined()
@@ -41,6 +47,9 @@ final class HLSProxy: @unchecked Sendable {
         comps.host = "127.0.0.1"
         comps.port = Int(port)
         comps.path = "/\(hex)\(comps.path)"
+        if let playlistStart, playlistStart > 0 {
+            comps.queryItems = (comps.queryItems ?? []) + [URLQueryItem(name: Self.startKey, value: String(format: "%.3f", playlistStart))]
+        }
         return comps.url ?? upstream
     }
 
@@ -119,9 +128,18 @@ final class HLSProxy: @unchecked Sendable {
     private func respond(_ conn: NWConnection, head: String) {
         let lines = head.components(separatedBy: "\r\n")
         let parts = lines.first?.split(separator: " ") ?? []
-        guard parts.count >= 2, let upstream = upstreamURL(for: String(parts[1])) else {
+        guard parts.count >= 2, var upstream = upstreamURL(for: String(parts[1])) else {
             send(conn, status: "400 Bad Request", headers: [:], body: Data())
             return
+        }
+        // Our own start position is for the playlist, not for the server.
+        var playlistStart: Double?
+        if var c = URLComponents(url: upstream, resolvingAgainstBaseURL: false),
+           let item = c.queryItems?.first(where: { $0.name == Self.startKey }) {
+            playlistStart = item.value.flatMap(Double.init)
+            c.queryItems = c.queryItems?.filter { $0.name != Self.startKey }
+            if c.queryItems?.isEmpty == true { c.queryItems = nil }
+            upstream = c.url ?? upstream
         }
         var req = URLRequest(url: upstream)
         req.httpMethod = parts[0] == "HEAD" ? "HEAD" : "GET"
@@ -147,11 +165,16 @@ final class HLSProxy: @unchecked Sendable {
                 // Only the small init segment needs patching. Point media segments straight at the
                 // server so the player streams them without the proxy buffering each one.
                 let base = upstream.deletingLastPathComponent()
-                let lines = text.components(separatedBy: "\n").map { line -> String in
+                var lines = text.components(separatedBy: "\n").map { line -> String in
                     let t = line.trimmingCharacters(in: .whitespaces)
                     guard !t.isEmpty, !t.hasPrefix("#"), !t.contains("://"),
                           let abs = URL(string: t, relativeTo: base)?.absoluteURL else { return line }
                     return abs.absoluteString
+                }
+                // Not PRECISE: from the start of the piece holding that moment, at most a few
+                // seconds early. Exact took over 20 s to start on a slow connection.
+                if let playlistStart, let first = lines.firstIndex(where: { $0.hasPrefix("#EXTM3U") }) {
+                    lines.insert(String(format: "#EXT-X-START:TIME-OFFSET=%.3f", playlistStart), at: first + 1)
                 }
                 body = Data(lines.joined(separator: "\n").utf8)
             }

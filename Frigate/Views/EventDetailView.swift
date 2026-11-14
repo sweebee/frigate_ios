@@ -64,6 +64,12 @@ struct EventDetailView: View {
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
     private var clipEnd: Double { min(activityEnd + padding, Date().timeIntervalSince1970) }
 
+    /// Where the player's time 0 is, set when the video loads. A review item opens in its whole
+    /// hour, as Frigate's web app opens the recording there, so one can keep watching; an object
+    /// from Explore is only its clip, as in Frigate's tracking details. Saving uses the clip.
+    @State private var videoStart: Double?
+    private var origin: Double { videoStart ?? clipStart }
+
     private var isLandscape: Bool { verticalSizeClass == .compact && horizontalSizeClass != .regular }
 
     var body: some View {
@@ -282,6 +288,7 @@ struct EventDetailView: View {
             playerStatus(showPlay: !overlayVisible)
         }
         .animation(.easeOut(duration: 0.25), value: videoShowing)
+        .onChange(of: player.isPlaying) { _, playing in if playing { videoAppeared = true } }
         .aspectRatio(conn?.config?.cameras[item.camera]?.aspectRatio ?? 16 / 9, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .background(Color.black)
@@ -319,10 +326,9 @@ struct EventDetailView: View {
         }
     }
 
-    /// Once frames are on screen the still goes.
-    private var videoShowing: Bool {
-        canPlay && (player.isPlaying || player.currentTime > 0.05)
-    }
+    /// Once frames are on screen the still goes, and stays gone when paused.
+    private var videoShowing: Bool { videoAppeared }
+    @State private var videoAppeared = false
 
     /// Whether there is something to control: a loaded recording, not an error or a spinner.
     private var canPlay: Bool {
@@ -356,8 +362,9 @@ struct EventDetailView: View {
             GeometryReader { geo in
                 let w = geo.size.width
                 let total = max(player.duration, 0.1)
-                let evStart = max(0, min(1, (activityStart - clipStart) / total))
-                let evEnd = max(evStart, min(1, (activityEnd - clipStart) / total))
+                let evStart = max(0, min(1, (activityStart - origin) / total))
+                // At least a sliver: in an hour of video a short event is under a pixel.
+                let evEnd = min(1, max(evStart + 4 / max(w, 1), (activityEnd - origin) / total))
                 // Redrawn every frame while playing, so the dot glides instead of stepping.
                 TimelineView(.animation(paused: !player.isPlaying || player.isScrubbing)) { _ in
                     let progress = min(1, player.liveTime / total)
@@ -381,9 +388,9 @@ struct EventDetailView: View {
             // The buttons sit over the video (PlaybackOverlayControls), as on the playback screen.
             // The time of day, like Frigate: where the playhead is, and where the clip ends.
             HStack {
-                Text(FrigateFormat.time(Date(timeIntervalSince1970: clipStart + player.currentTime), seconds: true)).monospacedDigit()
+                Text(FrigateFormat.time(Date(timeIntervalSince1970: origin + player.currentTime), seconds: true)).monospacedDigit()
                 Spacer()
-                Text(FrigateFormat.time(Date(timeIntervalSince1970: clipStart + (player.duration > 0 ? player.duration : clipEnd - clipStart)), seconds: true))
+                Text(FrigateFormat.time(Date(timeIntervalSince1970: origin + (player.duration > 0 ? player.duration : clipEnd - origin)), seconds: true))
                     .monospacedDigit()
             }
             .font(.system(size: horizontalSizeClass == .regular ? 14 : 12))
@@ -527,7 +534,7 @@ struct EventDetailView: View {
                     .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 6)
                 ForEach(Array(timeline.enumerated()), id: \.offset) { _, entry in
                     Button {
-                        player.seek(to: entry.timestamp + offset - clipStart, precise: true)
+                        player.seek(to: entry.timestamp + offset - origin, precise: true)
                     } label: {
                         HStack(spacing: 12) {
                             Circle().fill(dotColor(entry)).frame(width: 8, height: 8)
@@ -634,7 +641,20 @@ struct EventDetailView: View {
             if segs.isEmpty {
                 noRecording = true
             } else {
-                player.load(client.clipVODURL(camera: item.camera, start: clipStart, end: clipEnd))
+                if route.focusEvent != nil {
+                    videoStart = clipStart
+                    player.load(client.clipVODURL(camera: item.camera, start: clipStart, end: clipEnd))
+                } else {
+                    // The clock hour around it, like Frigate's chunks; longer if the event runs past it.
+                    let hour = Calendar.current.dateInterval(of: .hour, for: Date(timeIntervalSince1970: clipStart))?
+                        .start.timeIntervalSince1970 ?? clipStart
+                    let end = min(max(hour + 3600, clipEnd), Date().timeIntervalSince1970)
+                    let into = clipStart - hour
+                    videoStart = hour
+                    // Started by the playlist itself, not a seek: only the video from there loads.
+                    player.load(client.vodURL(camera: item.camera, start: hour, end: end, playlistStart: into),
+                                startAt: into, startInPlaylist: true)
+                }
             }
         }
         var entries: [TimelineEntry] = []

@@ -363,8 +363,10 @@ final class FrigateClient: @unchecked Sendable {
     }
 
     /// HLS playlist for a recording range, routed through the local proxy so HEVC plays.
-    func vodURL(camera: String, start: Double, end: Double) -> URL {
-        HLSProxy.shared.url(for: url("vod/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/index.m3u8"))
+    /// `playlistStart`: seconds in where the player begins, without loading what comes before.
+    func vodURL(camera: String, start: Double, end: Double, playlistStart: Double? = nil) -> URL {
+        HLSProxy.shared.url(for: url("vod/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/index.m3u8"),
+                            playlistStart: playlistStart)
     }
 
     /// A short clip (an event, an object) to play. Frigate 0.17 and later cut `/vod/clip` at

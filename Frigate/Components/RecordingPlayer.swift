@@ -48,12 +48,14 @@ final class RecordingPlayer {
         }
     }
 
-    func load(_ url: URL, startAt: Double = 0, autoplay: Bool = true) {
+    /// `startInPlaylist`: the URL's playlist already begins at `startAt` (EXT-X-START), so no
+    /// seek; the position shows `startAt` until the player reports where it is.
+    func load(_ url: URL, startAt: Double = 0, autoplay: Bool = true, startInPlaylist: Bool = false) {
         reloads = 0
-        replaceItem(url, startAt: startAt, autoplay: autoplay)
+        replaceItem(url, startAt: startAt, autoplay: autoplay, seekToStart: !startInPlaylist)
     }
 
-    private func replaceItem(_ url: URL, startAt: Double, autoplay: Bool) {
+    private func replaceItem(_ url: URL, startAt: Double, autoplay: Bool, seekToStart: Bool = true) {
         self.url = url
         error = nil
         currentTime = startAt
@@ -101,8 +103,8 @@ final class RecordingPlayer {
             }
         }
         player.replaceCurrentItem(with: item)
-        pendingStart = startAt > 0 ? startAt : nil
-        if startAt > 0 { seek(to: startAt, precise: true) }
+        pendingStart = seekToStart && startAt > 0 ? startAt : nil
+        if seekToStart && startAt > 0 { seek(to: startAt, precise: true) }
         if autoplay { play() }
         startWatchdog()
     }
