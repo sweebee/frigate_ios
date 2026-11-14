@@ -44,8 +44,10 @@ enum ServerAddress {
     }
 
     /// The first of `candidates` that answers like Frigate: with its version, or asking for a
-    /// login (port 8971). All are tried at once; a better guess still wins over a faster one.
-    static func firstReachable(_ candidates: [URL], timeout: TimeInterval = 4) async -> URL? {
+    /// login (port 8971). All are tried at once. A better guess still wins over a faster one, but
+    /// once one has answered the others get only `grace` more. Nil when none answered within
+    /// `timeout` (a single candidate is returned untried: nothing to choose).
+    static func firstReachable(_ candidates: [URL], timeout: TimeInterval = 4, grace: TimeInterval = 1) async -> URL? {
         guard candidates.count > 1 else { return candidates.first }
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = timeout
@@ -57,11 +59,21 @@ enum ServerAddress {
                 group.addTask { (i, await answers(url, session: session)) }
             }
             var results = [Bool?](repeating: nil, count: candidates.count)
+            var graceStarted = false
             for await (i, ok) in group {
+                if i < 0 {
+                    // Grace is over: the best that answered.
+                    group.cancelAll()
+                    return results.firstIndex(of: true).map { candidates[$0] }
+                }
                 results[i] = ok
                 for (j, r) in results.enumerated() {
                     guard let r else { break }          // a better guess is still out
                     if r { group.cancelAll(); return candidates[j] }
+                }
+                if ok, !graceStarted {
+                    graceStarted = true
+                    group.addTask { try? await Task.sleep(for: .seconds(grace)); return (-1, false) }
                 }
             }
             return nil

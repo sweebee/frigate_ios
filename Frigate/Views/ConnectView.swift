@@ -221,13 +221,26 @@ struct ConnectView: View {
         guard !guesses.isEmpty else { error = FrigateError.invalidURL.localizedDescription; return }
         testing = true
         defer { testing = false }
-        // Without http(s) or a port, try the usual ones and keep the first that answers like Frigate.
-        let base = await ServerAddress.firstReachable(guesses) ?? guesses[0]
-        var remoteBase: URL?
+        // Without http(s) or a port, try the usual ones (at most a few seconds, all at once) and
+        // keep the first that answers like Frigate. A full address is used as typed.
+        var remoteGuesses: [URL] = []
         if useRemote, !remoteURL.trimmingCharacters(in: .whitespaces).isEmpty {
-            let remoteGuesses = ServerAddress.candidates(remoteURL)
+            remoteGuesses = ServerAddress.candidates(remoteURL)
             guard !remoteGuesses.isEmpty else { error = FrigateError.invalidURL.localizedDescription; return }
-            remoteBase = await ServerAddress.firstReachable(remoteGuesses) ?? remoteGuesses[0]
+        }
+        async let foundLocal = ServerAddress.firstReachable(guesses)
+        async let foundRemote = remoteGuesses.isEmpty ? nil : ServerAddress.firstReachable(remoteGuesses)
+        let (found, remoteFound) = await (foundLocal, foundRemote)
+        let base = found ?? guesses[0]
+        let remoteBase = remoteFound ?? remoteGuesses.first
+        // Nothing answered: say so now instead of waiting for a login to time out as well.
+        if found == nil && remoteFound == nil {
+            let typed = ServerAddress.parse(url)
+            let host = typed.map { p in p.host + (p.port.map { ":\($0)" } ?? "") } ?? url
+            error = typed?.port == nil
+                ? L("No Frigate server answered at \(host). Check the address, or add the port (for example :8971).")
+                : L("No Frigate server answered at \(host). Check the address and port.")
+            return
         }
         var server = existing ?? ServerConfig(name: "", url: "")
         server.name = name.trimmingCharacters(in: .whitespaces).isEmpty ? (base.host ?? "Frigate") : name.trimmingCharacters(in: .whitespaces)
@@ -237,8 +250,8 @@ struct ConnectView: View {
 
         var reached = false
         var lastError: Error?
-        var urls = [base]
-        if let remoteBase { urls.append(remoteBase) }
+        // Only what answered (or was typed in full): an address that did not answer just costs time.
+        let urls = [found, remoteFound].compactMap { $0 }
         for u in urls {
             do {
                 _ = try await ServerConnection.authenticate(client: FrigateClient(baseURL: u), server: server, password: password)

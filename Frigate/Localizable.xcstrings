@@ -1764,6 +1764,26 @@
         }
       }
     },
+    "No Frigate server answered at %@. Check the address and port.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen Frigate-server gevonden op %@. Controleer het adres en de poort."
+          }
+        }
+      }
+    },
+    "No Frigate server answered at %@. Check the address, or add the port (for example :8971).": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen Frigate-server gevonden op %@. Controleer het adres, of voeg de poort toe (bijvoorbeeld :8971)."
+          }
+        }
+      }
+    },
     "No activity today": {
       "localizations": {
         "nl": {
