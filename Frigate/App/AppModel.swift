@@ -345,6 +345,12 @@ final class AppModel {
     /// Whether the overview should show live video right now.
     var showsLiveGrid: Bool { liveGrid && (liveGridOnCellular || !NetworkStatus.shared.isExpensive) }
 
+    /// Which stream live tiles play.
+    enum TileStream: String, CaseIterable { case automatic, main, sub }
+    var tileStream: TileStream = TileStream(rawValue: UserDefaults.standard.string(forKey: "tileStream") ?? "") ?? .automatic {
+        didSet { UserDefaults.standard.set(tileStream.rawValue, forKey: "tileStream") }
+    }
+
     /// Live video in the overview tiles, as one choice (stored in `liveGrid` and `autoLive`).
     enum TileLive: Hashable, CaseIterable { case always, onActivity, off }
     var tileLive: TileLive {

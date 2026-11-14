@@ -182,9 +182,14 @@ struct CameraTile: View {
     /// then the main stream, as Frigate's own dashboard plays large tiles.
     private var tileStream: (title: String, name: String)? {
         let streams = conn.liveStreams(camera)
-        let pixels = tileWidth * displayScale
-        if streams.count > 1, pixels > 800, !NetworkStatus.shared.isExpensive { return streams.first }
-        return streams.last
+        switch model.tileStream {
+        case .main: return streams.first
+        case .sub: return streams.last
+        case .automatic:
+            let pixels = tileWidth * displayScale
+            if streams.count > 1, pixels > 800, !NetworkStatus.shared.isExpensive { return streams.first }
+            return streams.last
+        }
     }
 
     var body: some View {

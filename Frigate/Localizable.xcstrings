@@ -925,6 +925,26 @@
         }
       }
     },
+    "Always the lighter stream, a bit less sharp. Opening a camera still switches to its own stream.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altijd de lichtere stream, iets minder scherp. Een camera openen schakelt nog steeds naar zijn eigen stream."
+          }
+        }
+      }
+    },
+    "Always the sharpest picture. Uses the most data and battery.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altijd het scherpste beeld. Kost de meeste data en batterij."
+          }
+        }
+      }
+    },
     "Ask": {
       "localizations": {
         "nl": {
@@ -1743,6 +1763,16 @@
     },
     "MSE": {
       "shouldTranslate": false
+    },
+    "Main stream": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoofdstream"
+          }
+        }
+      }
     },
     "Mark all reviewed": {
       "localizations": {
@@ -3196,6 +3226,16 @@
         }
       }
     },
+    "Sub stream": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Substream"
+          }
+        }
+      }
+    },
     "Switch server": {
       "localizations": {
         "nl": {
@@ -3252,6 +3292,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Testen…"
+          }
+        }
+      }
+    },
+    "The main stream for large tiles on Wi-Fi, otherwise the lighter sub stream.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De hoofdstream bij grote tegels op wifi, anders de lichtere substream."
           }
         }
       }

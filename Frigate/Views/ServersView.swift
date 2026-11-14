@@ -224,6 +224,22 @@ struct LiveSettingsView: View {
         }
     }
 
+    private func tileStreamName(_ t: AppModel.TileStream) -> String {
+        switch t {
+        case .automatic: return L("Automatic")
+        case .main: return L("Main stream")
+        case .sub: return L("Sub stream")
+        }
+    }
+
+    private var tileStreamExplanation: String {
+        switch model.tileStream {
+        case .automatic: return L("The main stream for large tiles on Wi-Fi, otherwise the lighter sub stream.")
+        case .main: return L("Always the sharpest picture. Uses the most data and battery.")
+        case .sub: return L("Always the lighter stream, a bit less sharp. Opening a camera still switches to its own stream.")
+        }
+    }
+
     private var tileLiveExplanation: String {
         switch model.tileLive {
         case .always: return L("Every tile plays live video. Uses more data and battery.")
@@ -245,6 +261,13 @@ struct LiveSettingsView: View {
                                   options: AppModel.TileLive.allCases, selection: model.tileLive, label: tileLiveName) { choice in
                         withAnimation { model.tileLive = choice }
                     })
+                    if model.tileLive != .off {
+                        divider
+                        row(PickerRow(title: L("Stream"), subtitle: tileStreamExplanation,
+                                      options: AppModel.TileStream.allCases, selection: model.tileStream, label: tileStreamName) {
+                            model.tileStream = $0
+                        })
+                    }
                     if model.tileLive == .always {
                         divider
                         row(ToggleRow(title: L("Also on mobile data"),
