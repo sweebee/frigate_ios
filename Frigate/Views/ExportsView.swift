@@ -20,7 +20,7 @@ struct ExportRoute: Hashable {
 /// Loads the exports of every server in view, newest first.
 @MainActor
 enum ExportsLoader {
-    static func load(_ connections: [ServerConnection], cameras: Set<String> = []) async -> [ExportEntry] {
+    static func load(_ connections: [ServerConnection], cameras: Set<String> = [], deleted: Set<String> = []) async -> [ExportEntry] {
         var all: [ExportEntry] = []
         await withTaskGroup(of: [ExportEntry].self) { group in
             for conn in connections {
@@ -33,6 +33,7 @@ enum ExportsLoader {
             for await part in group { all += part }
         }
         if !cameras.isEmpty { all = all.filter { cameras.contains($0.export.camera) } }
+        all.removeAll { deleted.contains($0.id) }
         return all.sorted { $0.export.date > $1.export.date }
     }
 }
@@ -95,6 +96,7 @@ enum ExportActions {
     static func delete(_ entry: ExportEntry, model: AppModel) async throws {
         guard let client = model.connection(for: entry.serverID)?.client else { return }
         try await client.deleteExport(entry.export.id)
+        withAnimation(.easeOut(duration: 0.2)) { _ = model.deletedExports.insert(entry.id) }
     }
 
     /// The export as a local file, for sharing or Photos; with progress in `exporter`'s pill.
@@ -155,6 +157,10 @@ struct ExportsView: View {
     @State private var errorMessage: String?
 
     private var connections: [ServerConnection] { model.scopedConnections.filter(\.isOnline) }
+    /// Without what was just deleted, here or in the player.
+    private var visible: [ExportEntry] { entries.filter { !model.deletedExports.contains($0.id) } }
+    /// Each load gets a number; a slower, older one that finishes later is dropped.
+    @State private var loadCount = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -163,12 +169,12 @@ struct ExportsView: View {
                     ScreenTitle(text: L("Exports"), showsBack: !isSection).padding(.top, 8)
                     if loading && entries.isEmpty {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-                    } else if entries.isEmpty {
+                    } else if visible.isEmpty {
                         EmptyStateView(systemImage: "film.stack", title: L("No exports"),
                                        message: L("Clips you export in Frigate, or save to Frigate from playback, appear here."))
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 280 : 160), spacing: 12)], spacing: 14) {
-                            ForEach(entries) { entry in
+                            ForEach(visible) { entry in
                                 NavigationLink(value: ExportRoute(serverID: entry.serverID, export: entry.export)) {
                                     ExportTile(entry: entry)
                                 }
@@ -218,7 +224,11 @@ struct ExportsView: View {
     }
 
     private func load() async {
-        entries = await ExportsLoader.load(connections)
+        loadCount += 1
+        let mine = loadCount
+        let loaded = await ExportsLoader.load(connections)
+        guard mine == loadCount else { return }
+        entries = loaded
         loading = false
     }
 }
@@ -464,7 +474,8 @@ enum MoreRoute: Hashable { case exports, chat, settings }
 /// The phone's fourth tab: what does not get a tab of its own. iPad and Mac show these in the rail.
 struct MoreView: View {
     @Environment(AppModel.self) private var model
-    @State private var exportCount: Int?
+    @State private var exportIDs: [String]?
+    private var exportCount: Int? { exportIDs.map { $0.filter { !model.deletedExports.contains($0) }.count } }
 
     var body: some View {
         @Bindable var model = model
@@ -493,8 +504,10 @@ struct MoreView: View {
                 }
             }
             .appDestinations()
-            .task {
-                exportCount = await ExportsLoader.load(model.scopedConnections.filter(\.isOnline)).count
+            // Again on coming back to this list, after saving or deleting exports.
+            .task(id: model.morePath.isEmpty) {
+                guard model.morePath.isEmpty else { return }
+                exportIDs = await ExportsLoader.load(model.scopedConnections.filter(\.isOnline)).map(\.id)
             }
         }
     }

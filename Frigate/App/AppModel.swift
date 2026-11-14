@@ -313,6 +313,9 @@ final class AppModel {
     var reviewPath = NavigationPath()
     var explorePath = NavigationPath()
     var exportsPath = NavigationPath()
+    /// Exports deleted in this session (`ExportEntry.id`); lists leave them out, even when a
+    /// load that was already under way still returns them.
+    var deletedExports: Set<String> = []
     /// The phone's More tab (exports, chat, settings).
     var morePath = NavigationPath()
     /// Set by deep links to switch the Review segment (alert, detection, motion).
