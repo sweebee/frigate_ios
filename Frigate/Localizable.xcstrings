@@ -600,6 +600,16 @@
         }
       }
     },
+    "%lld objects": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld objecten"
+          }
+        }
+      }
+    },
     "%lld tracked objects": {
       "localizations": {
         "en": {
@@ -675,6 +685,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "1 clip"
+          }
+        }
+      }
+    },
+    "1 object": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 object"
           }
         }
       }
@@ -1241,6 +1261,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dit item en de opnames verwijderen?"
+          }
+        }
+      }
+    },
+    "Detail": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detail"
           }
         }
       }

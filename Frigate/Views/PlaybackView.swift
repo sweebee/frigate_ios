@@ -85,7 +85,7 @@ private struct FilterBarKey: Equatable {
 }
 
 struct PlaybackView: View {
-    enum Tab: Hashable { case events, timeline }
+    enum Tab: Hashable { case events, timeline, detail }
 
     let route: PlaybackRoute
     @Environment(AppModel.self) private var model
@@ -112,6 +112,8 @@ struct PlaybackView: View {
     @State private var camera: String
     @State private var day: Date
     @State private var tab: Tab = .events
+    /// The side panel (iPhone sideways) and the right column (iPad, Mac): events or detail.
+    @State private var sideTab: Tab = .events
     @State private var player = RecordingPlayer()
     /// Recordings for the whole day, used by the timeline.
     @State private var map = RecordingMap()
@@ -279,12 +281,14 @@ struct PlaybackView: View {
                     .frame(width: videoWidth)
                     .frame(maxHeight: .infinity, alignment: .top)
                     VStack(alignment: .leading, spacing: 8) {
+                        SegmentedBar(options: [Tab.events, .detail], selection: $sideTab) { tabTitle($0) }
+                            .padding(.horizontal, 16)
                         Stable(key: FilterBarKey(filter: filter, reviewIDs: reviews.map(\.id), camera: camera)) {
                             ReviewFilterBar(filter: $filter, reviews: reviews,
                                             zones: (conn?.config?.cameras[camera]?.zones?.keys).map(Array.init) ?? [])
                         }
                         .stable()
-                        eventsList
+                        if sideTab == .detail { detailList() } else { eventsList }
                     }
                     // The filters and the list bring the phone's 16 pt margins; here the column
                     // itself is the margin, so their rows line up with the video and the window.
@@ -346,7 +350,7 @@ struct PlaybackView: View {
         VStack(spacing: 0) {
             header
             videoPlayer
-            SegmentedBar(options: [Tab.events, .timeline], selection: $tab) { $0 == .events ? L("Events") : L("Timeline") }
+            SegmentedBar(options: [Tab.events, .timeline, .detail], selection: $tab) { tabTitle($0) }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
@@ -358,6 +362,7 @@ struct PlaybackView: View {
             .padding(.bottom, 8)
             switch tab {
             case .events: eventsList
+            case .detail: detailList()
             case .timeline:
                 PlaybackTimeline(dayStart: dayStart, dayEnd: dayEnd, wallTime: wallTime, motion: motion, reviews: visibleReviews,
                                  map: map, isFollowing: scrubTime == nil, annotationOffset: annotationOffset,
@@ -612,6 +617,24 @@ struct PlaybackView: View {
     private func rateTitle(_ r: Float) -> String { r == 0.5 ? "½x" : "\(Int(r))x" }
 
     // MARK: Events
+
+    private func tabTitle(_ t: Tab) -> String {
+        switch t {
+        case .events: return L("Events")
+        case .timeline: return L("Timeline")
+        case .detail: return L("Detail")
+        }
+    }
+
+    /// Frigate's "Detail": the playing event opened up with its objects and their lifecycle.
+    private func detailList(compact: Bool = false) -> some View {
+        PlaybackDetailList(reviews: visibleReviews, playingID: currentReview?.id, wallTime: wallTime,
+                           annotationOffset: annotationOffset, client: client, serverID: route.serverID,
+                           actions: reviewActions, compact: compact) { t in
+            jump(toWall: t, autoplay: true, earlier: 2)
+            keepOverlay()
+        }
+    }
 
     private var eventsList: some View {
         ScrollViewReader { proxy in
@@ -1358,12 +1381,15 @@ extension PlaybackView {
     private var landscapeEventsPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                SectionLabel(text: loading && reviews.isEmpty ? L("Events") : L("\(visibleReviews.count) events")).lineLimit(1)
+                SegmentedBar(options: [Tab.events, .detail], selection: $sideTab) { tabTitle($0) }
                 Button { withAnimation(.easeOut(duration: 0.2)) { showEventsPanel = false } } label: {
                     Image(systemName: "xmark").font(.system(size: 14, weight: .semibold)).frame(width: 32, height: 32)
                 }
                 .accessibilityLabel("Close")
             }
+            if sideTab == .detail {
+                detailList(compact: true)
+            } else {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 8) {
@@ -1395,10 +1421,11 @@ extension PlaybackView {
                 }
                 .onAppear { if let id = currentReview?.id { proxy.scrollTo(id, anchor: .center) } }
             }
+            }
         }
         .foregroundStyle(Theme.text)
         .padding(12)
-        .frame(width: 236)
+        .frame(width: sideTab == .detail ? 300 : 236)
         .frame(maxHeight: .infinity)
         .background(Theme.card.opacity(0.97).ignoresSafeArea())
     }
