@@ -126,7 +126,21 @@ private struct RenameAlert: ViewModifier {
 
 // MARK: - Grid
 
+/// Exports as a section of its own in the iPad and Mac rail.
+struct ExportsSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        NavigationStack(path: $model.exportsPath) {
+            ExportsView(isSection: true).appDestinations()
+        }
+    }
+}
+
 struct ExportsView: View {
+    /// In the rail (iPad, Mac): no back button, the title where other sections have theirs.
+    var isSection = false
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -141,16 +155,18 @@ struct ExportsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Button { dismiss() } label: { BackButtonLabel() }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Back")
-                Spacer()
+            if !isSection {
+                HStack {
+                    Button { dismiss() } label: { BackButtonLabel() }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Back")
+                    Spacer()
+                }
+                .headerBarPadding()
             }
-            .headerBarPadding()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    LargeTitle(text: L("Exports"))
+                    LargeTitle(text: L("Exports")).padding(.top, isSection ? 8 : 0)
                     if loading && entries.isEmpty {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 200)
                     } else if entries.isEmpty {

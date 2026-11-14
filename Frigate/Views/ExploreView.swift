@@ -297,7 +297,8 @@ struct ExploreView: View {
             gridView
         } else {
             ForEach(rows) { row in labelRow(row) }
-            if !exports.isEmpty { exportsRow }
+            // On iPad and Mac exports have their own place in the rail.
+            if !exports.isEmpty && sizeClass != .regular { exportsRow }
         }
     }
 

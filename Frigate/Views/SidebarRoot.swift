@@ -18,6 +18,7 @@ struct SidebarRoot: View {
                 case .live: LiveView()
                 case .review: ReviewView()
                 case .explore: ExploreView()
+                case .exports: ExportsSection()
                 case .chat: ChatView()
                 case .settings: ServersView()
                 }
@@ -37,6 +38,7 @@ struct SidebarRoot: View {
             item(.live, "Live", "square.grid.2x2")
             item(.review, "Review", "eye", badge: model.unreviewedAlerts)
             item(.explore, "Explore", "magnifyingglass")
+            item(.exports, "Exports", "film.stack")
             if !model.chatConnections.isEmpty {
                 item(.chat, "Chat", "bubble.left.and.text.bubble.right")
             }
@@ -71,6 +73,7 @@ struct SidebarRoot: View {
             case .live: if model.tab == .live { model.livePath = NavigationPath() }
             case .review: if model.tab == .review { model.reviewPath = NavigationPath() }
             case .explore: if model.tab == .explore { model.explorePath = NavigationPath() }
+            case .exports: if model.tab == .exports { model.exportsPath = NavigationPath() }
             default: break
             }
             model.tab = tab
