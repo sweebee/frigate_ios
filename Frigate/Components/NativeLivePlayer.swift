@@ -64,6 +64,12 @@ struct NativeLivePlayer: UIViewRepresentable {
         private var audioRenderer: AVSampleBufferAudioRenderer?
         private var synchronizer: AVSampleBufferRenderSynchronizer?
         private var pip: LivePiP?
+        /// This stream in the shared hub: samples go there, and a player that opens the same
+        /// stream (a tile's camera opened full) starts from them instead of waiting.
+        private var hubKey: String?
+        private let hubID = UUID()
+        /// Showing another player's samples until this one's own stream reaches a keyframe.
+        private var borrowing = false
 
         /// Picture in picture for this player's video layer, where the device supports it.
         func setUpPiP() {
@@ -87,6 +93,8 @@ struct NativeLivePlayer: UIViewRepresentable {
         func start(client: FrigateClient, stream: String) {
             stop()
             self.stream = stream
+            let key = LiveSampleHub.key(client: client, stream: stream)
+            hubKey = key
             failed = false
             gotKeyframe = false
             parser = FMP4Parser()
@@ -100,6 +108,15 @@ struct NativeLivePlayer: UIViewRepresentable {
             self.task = task
             task.resume()
             task.send(.string(Self.request)) { _ in }
+            // The same stream already plays elsewhere (the overview tile): show its picture
+            // right away and follow it until this connection has a keyframe of its own.
+            if let (gop, size) = LiveSampleHub.shared.subscribe(key, id: hubID, handler: { [weak self] sample in
+                self?.enqueue(sample)
+            }) {
+                borrowing = true
+                if size.width > 0 { state.videoSize = size }
+                for sample in gop { enqueue(sample) }
+            }
             let started = Date()
             receiving = Task { [weak self] in
                 while !Task.isCancelled {
@@ -141,6 +158,11 @@ struct NativeLivePlayer: UIViewRepresentable {
         }
 
         func stop() {
+            if let hubKey {
+                LiveSampleHub.shared.unsubscribe(hubKey, id: hubID)
+                LiveSampleHub.shared.publisherStopped(hubKey, id: hubID)
+            }
+            borrowing = false
             if let sync = synchronizer, let renderer = audioRenderer {
                 sync.setRate(0, time: .zero)
                 renderer.flush()
@@ -169,8 +191,9 @@ struct NativeLivePlayer: UIViewRepresentable {
             let output = parser.feed(data)
             for item in output {
                 switch item {
-                case .format(let format, let size):
+                case .format(_, let size):
                     if size.width > 0 { state.videoSize = size }
+                    if let hubKey { LiveSampleHub.shared.setSize(hubKey, size) }
                 case .audioFormat:
                     setUpAudio()
                 case .audio(let sample):
@@ -179,8 +202,14 @@ struct NativeLivePlayer: UIViewRepresentable {
                     if !gotKeyframe {
                         guard keyframe else { continue }
                         gotKeyframe = true
+                        // Its own stream from here on.
+                        if borrowing, let hubKey {
+                            LiveSampleHub.shared.unsubscribe(hubKey, id: hubID)
+                            borrowing = false
+                        }
                     }
                     enqueue(sample)
+                    if let hubKey { LiveSampleHub.shared.publish(hubKey, id: hubID, sample: sample, keyframe: keyframe) }
                 }
             }
         }
@@ -726,4 +755,75 @@ final class PiPPlayback: NSObject, AVPictureInPictureSampleBufferPlaybackDelegat
     func pictureInPictureController(_ c: AVPictureInPictureController, didTransitionToRenderSize size: CMVideoDimensions) {}
     func pictureInPictureController(_ c: AVPictureInPictureController, skipByInterval interval: CMTime,
                                     completion: @escaping () -> Void) { completion() }
+}
+
+// MARK: - Sharing a stream between players
+
+/// The video samples of each live stream that plays, since its last keyframe, so a second
+/// player of the same stream (the camera opened from its overview tile) shows the picture at
+/// once and follows along, instead of waiting a few seconds for the next keyframe.
+@MainActor
+final class LiveSampleHub {
+    static let shared = LiveSampleHub()
+
+    static func key(client: FrigateClient, stream: String) -> String {
+        client.baseURL.absoluteString + "|" + stream
+    }
+
+    private final class Feed {
+        var gop: [CMSampleBuffer] = []
+        var size: CGSize = .zero
+        var updated = Date.distantPast
+        var publishers: Set<UUID> = []
+        var subscribers: [UUID: (CMSampleBuffer) -> Void] = [:]
+    }
+
+    private var feeds: [String: Feed] = [:]
+
+    private func feed(_ key: String) -> Feed {
+        if let f = feeds[key] { return f }
+        let f = Feed()
+        feeds[key] = f
+        return f
+    }
+
+    func publish(_ key: String, id: UUID, sample: CMSampleBuffer, keyframe: Bool) {
+        let f = feed(key)
+        f.publishers.insert(id)
+        if keyframe { f.gop = [] }
+        f.gop.append(sample)
+        // A camera with a long keyframe interval: keep it bounded (about 10 s at 30 fps).
+        if f.gop.count > 300 { f.gop = [] }
+        f.updated = Date()
+        for (sub, handler) in f.subscribers where sub != id { handler(sample) }
+    }
+
+    func setSize(_ key: String, _ size: CGSize) {
+        if size.width > 0 { feed(key).size = size }
+    }
+
+    /// The samples since the last keyframe and the picture size, when another player is
+    /// showing this stream now; from then on `handler` gets each new sample.
+    func subscribe(_ key: String, id: UUID, handler: @escaping (CMSampleBuffer) -> Void) -> ([CMSampleBuffer], CGSize)? {
+        guard let f = feeds[key], !f.publishers.subtracting([id]).isEmpty, !f.gop.isEmpty,
+              Date().timeIntervalSince(f.updated) < 1.5 else { return nil }
+        f.subscribers[id] = handler
+        return (f.gop, f.size)
+    }
+
+    /// Whether some player shows this stream right now.
+    func isPlaying(_ key: String) -> Bool {
+        guard let f = feeds[key] else { return false }
+        return !f.publishers.isEmpty && !f.gop.isEmpty && Date().timeIntervalSince(f.updated) < 1.5
+    }
+
+    func unsubscribe(_ key: String, id: UUID) {
+        feeds[key]?.subscribers[id] = nil
+    }
+
+    func publisherStopped(_ key: String, id: UUID) {
+        guard let f = feeds[key] else { return }
+        f.publishers.remove(id)
+        if f.publishers.isEmpty && f.subscribers.isEmpty { feeds[key] = nil }
+    }
 }

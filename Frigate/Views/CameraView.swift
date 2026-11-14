@@ -127,7 +127,12 @@ struct CameraView: View {
                     // MSE and WebRTC to time out.
                     player.preferred = .mjpeg
                 }
-                if let saved = UserDefaults.standard.string(forKey: streamKey), streams.contains(where: { $0.name == saved }) {
+                if let client = conn?.client,
+                   let playing = streams.first(where: { LiveSampleHub.shared.isPlaying(LiveSampleHub.key(client: client, stream: $0.name)) }) {
+                    // Opened from its overview tile: carry on with the stream the tile plays, so
+                    // the picture is there at once. The stream chip switches to another one.
+                    player.stream = playing.name
+                } else if let saved = UserDefaults.standard.string(forKey: streamKey), streams.contains(where: { $0.name == saved }) {
                     player.stream = saved
                 } else {
                     // On mobile data start with the lighter sub stream when the camera has one.
