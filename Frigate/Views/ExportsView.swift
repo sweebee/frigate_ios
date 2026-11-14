@@ -239,7 +239,7 @@ struct ExportsView: View {
                                     .disabled(entry.export.inProgress)
                                     .contextMenu { exportMenu(entry) }
                                     .draggable(entry.id) {
-                                        ExportTile(entry: entry).frame(width: 180)
+                                        ExportTile(entry: entry).frame(width: 180).environment(model)
                                     }
                                 }
                             }
