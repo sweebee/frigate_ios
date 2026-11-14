@@ -27,8 +27,8 @@ struct EventDetailView: View {
     /// The tracked object whose snapshot is shown large.
     @State private var snapshotEvent: FrigateEvent?
 
-    /// Seconds of recording shown before and after the review item.
-    private let padding: Double = 5
+    /// Seconds of recording before and after the review item or object: Frigate's REVIEW_PADDING.
+    private let padding: Double = 4
 
     init(route: EventRoute) {
         self.route = route
@@ -38,8 +38,6 @@ struct EventDetailView: View {
     private var conn: ServerConnection? { model.connection(for: route.serverID) }
     private var isReviewed: Bool { item.hasBeenReviewed || model.reviewedIDs.contains(item.id) }
     private var client: FrigateClient? { conn?.client }
-    /// When something was actually happening: the review item widened to how long its objects
-    /// were tracked (Frigate often closes the review item sooner). Odd event times are capped.
     /// Frigate's annotation offset for this camera, so detections line up with the recording.
     private var offset: Double { conn?.config?.cameras[item.camera]?.annotationOffset ?? 0 }
 
@@ -49,19 +47,18 @@ struct EventDetailView: View {
         return events.first { $0.id == f.id } ?? f
     }
 
+    /// What the video covers, as in Frigate's web app: a review item from its start to its end
+    /// (the review page, and Frigate's own export of it), an object from Explore from when it was
+    /// first to last seen in the recording (its tracking details). The padding goes around it.
     private var activityStart: Double {
         if let focus { return focus.startTime + offset }
-        let eventStart = events.map(\.startTime).min() ?? item.startTime
-        return max(min(item.startTime, eventStart), item.startTime - 30) + offset
+        return item.startTime
     }
     private var activityEnd: Double {
         let now = Date().timeIntervalSince1970
-        // Capped like an event: a parked car can be tracked for hours.
+        // Capped at 10 minutes: a parked car can be tracked, or a review item left open, for hours.
         if let focus { return min(focus.endTime ?? now, now, focus.startTime + 600) + offset }
-        let itemEnd = item.endTime ?? now
-        let eventEnd = events.map { $0.endTime ?? now }.filter { $0 > item.startTime }.max() ?? itemEnd
-        // Cap at 10 minutes: a review item left open by Frigate can span days.
-        return min(max(itemEnd, eventEnd), itemEnd + 60, now, item.startTime + 600) + offset
+        return min(item.endTime ?? now, now, item.startTime + 600)
     }
     /// Whole seconds, as the /vod endpoint uses, so the event range lines up with the video.
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
@@ -507,7 +504,7 @@ struct EventDetailView: View {
         .card(border: e.id == route.focusEvent?.id ? Theme.accent : Theme.cardBorder, radius: 12)
     }
 
-    /// How long the objects were tracked; Frigate often closes the review item itself much sooner.
+    /// How long the review item lasted, or the object it was opened on: what the video covers.
     private var trackedDuration: TimeInterval { max(0, activityEnd - activityStart) }
 
     private func tile(_ title: String, _ value: String) -> some View {
