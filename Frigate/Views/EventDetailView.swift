@@ -555,7 +555,7 @@ struct EventDetailView: View {
                         Button { playFrom(e) } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "play.fill").font(.system(size: 9, weight: .bold))
-                                Text(FrigateFormat.time(Date(timeIntervalSince1970: e.startTime), seconds: true))
+                                Text(FrigateFormat.time(Date(timeIntervalSince1970: firstSeenInVideo(e)), seconds: true))
                                     .font(.system(size: 12, weight: .semibold).monospacedDigit())
                             }
                             .foregroundStyle(.white)
@@ -565,7 +565,7 @@ struct EventDetailView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(L("Play from \(FrigateFormat.time(Date(timeIntervalSince1970: e.startTime), seconds: true))"))
+                        .accessibilityLabel(L("Play from \(FrigateFormat.time(Date(timeIntervalSince1970: firstSeenInVideo(e)), seconds: true))"))
                     }
                 }
             HStack {
@@ -579,6 +579,18 @@ struct EventDetailView: View {
         .padding(8)
         .frame(width: 196)
         .card(border: e.id == route.focusEvent?.id ? Theme.accent : Theme.cardBorder, radius: 12)
+    }
+
+    /// When the object is first in the video (detection clock): its start, or the clip's start
+    /// for an object already tracked before, such as a parked car.
+    private func firstSeenInVideo(_ e: FrigateEvent) -> Double {
+        max(e.startTime, origin - offset)
+    }
+
+    /// The video's span on the detection clock, to tell which lifecycle rows it shows.
+    private var videoSpan: ClosedRange<Double> {
+        let length = player.duration > 0 ? player.duration : clipEnd - origin
+        return (origin - offset)...(origin - offset + max(length, 0))
     }
 
     /// Plays the video from a moment before the object appeared (the clip's start if earlier).
@@ -610,6 +622,9 @@ struct EventDetailView: View {
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 6)
                 ForEach(Array(timeline.enumerated()), id: \.offset) { _, entry in
+                    // Rows from before or after the video (a car parked long before) are dimmed:
+                    // there is nothing to jump to.
+                    let inVideo = videoSpan.contains(entry.timestamp)
                     Button {
                         player.seek(to: entry.timestamp + offset - origin, precise: true)
                     } label: {
@@ -624,8 +639,10 @@ struct EventDetailView: View {
                         .frame(minHeight: 44)
                         .overlay(alignment: .top) { Rectangle().fill(Theme.cardBorder).frame(height: 1) }
                         .contentShape(Rectangle())
+                        .opacity(inVideo ? 1 : 0.4)
                     }
                     .buttonStyle(.plain)
+                    .disabled(!inVideo)
                 }
             }
             .card()
