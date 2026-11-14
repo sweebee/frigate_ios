@@ -64,9 +64,8 @@ struct EventDetailView: View {
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
     private var clipEnd: Double { min(activityEnd + padding, Date().timeIntervalSince1970) }
 
-    /// Where the player's time 0 is, set when the video loads. A review item opens in its whole
-    /// hour, as Frigate's web app opens the recording there, so one can keep watching; an object
-    /// from Explore is only its clip, as in Frigate's tracking details. Saving uses the clip.
+    /// Where the player's time 0 is, fixed when the video loads (the clip's end can still move
+    /// while an event is in progress).
     @State private var videoStart: Double?
     private var origin: Double { videoStart ?? clipStart }
 
@@ -690,20 +689,9 @@ struct EventDetailView: View {
             if segs.isEmpty {
                 noRecording = true
             } else {
-                if route.focusEvent != nil {
-                    videoStart = clipStart
-                    player.load(client.clipVODURL(camera: item.camera, start: clipStart, end: clipEnd))
-                } else {
-                    // The clock hour around it, like Frigate's chunks; longer if the event runs past it.
-                    let hour = Calendar.current.dateInterval(of: .hour, for: Date(timeIntervalSince1970: clipStart))?
-                        .start.timeIntervalSince1970 ?? clipStart
-                    let end = min(max(hour + 3600, clipEnd), Date().timeIntervalSince1970)
-                    let into = clipStart - hour
-                    videoStart = hour
-                    // Started by the playlist itself, not a seek: only the video from there loads.
-                    player.load(client.vodURL(camera: item.camera, start: hour, end: end, playlistStart: into),
-                                startAt: into, startInPlaylist: true)
-                }
+                // Just the clip, from its start: the review item or the object with 4 s around it.
+                videoStart = clipStart
+                player.load(client.clipVODURL(camera: item.camera, start: clipStart, end: clipEnd))
             }
         }
         var entries: [TimelineEntry] = []
