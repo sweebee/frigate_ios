@@ -251,6 +251,7 @@ struct PlaybackView: View {
             }
         }
         .onDisappear { player.stop(); if fullscreen { model.immersive = false } }
+        .onChange(of: model.immersive) { _, on in if !on && fullscreen && isWide { setFullscreen(false) } }
         .onChange(of: isLandscape) { _, landscape in if !landscape && !isWide { fullscreen = false } }
         .onChange(of: player.finishedCount) { _, _ in
             // Continue with the next hour that has recordings.

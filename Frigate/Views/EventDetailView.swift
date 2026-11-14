@@ -110,6 +110,7 @@ struct EventDetailView: View {
             if !playing { withAnimation(.easeOut(duration: 0.2)) { overlayVisible = true } }
         }
         .onDisappear { player.stop(); if fullscreen { model.immersive = false } }
+        .onChange(of: model.immersive) { _, on in if !on && fullscreen { setFullscreen(false) } }
     }
 
     private var portraitBody: some View {

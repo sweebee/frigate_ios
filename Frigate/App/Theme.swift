@@ -520,3 +520,29 @@ func closePresented(_ dismiss: DismissAction) {
     #endif
     dismiss()
 }
+
+/// The Mac window's own full screen (green button). Catalyst has no API for it, so it goes
+/// through the AppKit window by name; elsewhere these do nothing.
+@MainActor
+enum MacWindow {
+    private static var keyWindow: NSObject? {
+        guard ProcessInfo.processInfo.isMacCatalystApp,
+              let app = (NSClassFromString("NSApplication") as? NSObject.Type)?.value(forKey: "sharedApplication") as? NSObject
+        else { return nil }
+        return (app.value(forKey: "keyWindow") ?? (app.value(forKey: "windows") as? [NSObject])?.first) as? NSObject
+    }
+
+    static var isFullScreen: Bool {
+        guard let mask = keyWindow?.value(forKey: "styleMask") as? UInt else { return false }
+        return mask & (1 << 14) != 0   // NSWindowStyleMaskFullScreen
+    }
+
+    static func setFullScreen(_ on: Bool) {
+        guard let window = keyWindow, on != isFullScreen else { return }
+        let toggle = NSSelectorFromString("toggleFullScreen:")
+        if window.responds(to: toggle) { window.perform(toggle, with: nil) }
+    }
+
+    /// Posted by AppKit when a window leaves full screen (green button, Esc, the menu).
+    static let didExitFullScreen = Notification.Name("NSWindowDidExitFullScreenNotification")
+}

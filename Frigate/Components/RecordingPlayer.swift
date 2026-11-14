@@ -394,6 +394,8 @@ struct FullscreenButton: View {
         Button(action: action) {
             Image(systemName: isOn ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                 .font(.system(size: size * 0.42, weight: .semibold))
+                // Swapped at once: animated, the old arrows stayed in place while the screen moved.
+                .transaction { $0.animation = nil }
                 .foregroundStyle(.white)
                 .frame(width: size, height: size)
                 .background(.black.opacity(0.6), in: Circle())

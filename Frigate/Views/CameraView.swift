@@ -86,6 +86,8 @@ struct CameraView: View {
         // Again once the server is connected: opened from a link at launch, it is not yet.
         .task(id: conn?.client == nil) { await loadReviews() }
         .task { await watchRecording() }
+        // The window left full screen on the Mac (green button, Esc): the video stops filling it.
+        .onChange(of: model.immersive) { _, on in if !on && filling { setFilling(false) } }
         .onDisappear {
             player.suspended = true; player.talking = false
             // Like Frigate's web view: leaving the camera ends a manual recording.
@@ -598,6 +600,8 @@ struct CameraView: View {
                 if busy { ProgressView().tint(.white) } else {
                     Image(systemName: icon).font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(active ? Theme.onColor : .white)
+                        // Swapped at once: animated, the old icon stayed put while the screen moved.
+                        .transaction { $0.animation = nil }
                 }
             }
             .frame(width: 56, height: 56)

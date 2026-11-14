@@ -31,6 +31,12 @@ struct SidebarRoot: View {
             .transition(.opacity.animation(.easeIn(duration: 0.16)))
         }
         .onAppear(perform: hideWindowTitle)
+        // Mac: a video filling the window also takes the screen, as the full-screen button
+        // suggests; leaving the window's full screen (green button, Esc) ends it too.
+        .onChange(of: model.immersive) { _, on in if isMac { MacWindow.setFullScreen(on) } }
+        .onReceive(NotificationCenter.default.publisher(for: MacWindow.didExitFullScreen)) { _ in
+            if model.immersive { model.immersive = false }
+        }
     }
 
     private var rail: some View {
