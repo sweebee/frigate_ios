@@ -12,9 +12,33 @@ struct ServersView: View {
     }
     @State private var editing: ServerConfig?
 
+    /// Inside another navigation stack (the phone's More tab): no stack of its own, and a
+    /// back button.
+    var embedded = false
+    @Environment(\.dismiss) private var dismissEmbedded
+
     var body: some View {
+        if embedded {
+            VStack(spacing: 0) {
+                HStack {
+                    Button { dismissEmbedded() } label: { BackButtonLabel() }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Back")
+                    Spacer()
+                }
+                .headerBarPadding()
+                content
+            }
+            .screenBackground()
+            .toolbar(.hidden, for: .navigationBar)
+        } else {
+            NavigationStack { content }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         @Bindable var model = model
-        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -113,7 +137,6 @@ struct ServersView: View {
             .sheet(item: $editing) { server in
                 NavigationStack { ConnectView(existing: server) }
             }
-        }
     }
 
     /// "Version 1.0 (202611121554) · fe23b90"; the commit links to it on GitHub.

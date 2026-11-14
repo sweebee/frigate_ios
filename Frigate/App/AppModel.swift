@@ -295,7 +295,7 @@ final class ServerConnection: Identifiable {
 @Observable @MainActor
 final class AppModel {
     /// `exports` is a section of its own only on iPad and Mac; on the phone it is a row in Explore.
-    enum Tab: Hashable { case live, review, explore, exports, chat, settings }
+    enum Tab: Hashable { case live, review, explore, exports, chat, settings, more }
     enum Scope: Hashable, Codable {
         case all
         case server(UUID)
@@ -313,6 +313,8 @@ final class AppModel {
     var reviewPath = NavigationPath()
     var explorePath = NavigationPath()
     var exportsPath = NavigationPath()
+    /// The phone's More tab (exports, chat, settings).
+    var morePath = NavigationPath()
     /// Set by deep links to switch the Review segment (alert, detection, motion).
     var reviewKindRequest: String?
     /// Play the low-resolution live stream in the camera overview instead of snapshots.

@@ -72,14 +72,22 @@ struct RootView: View {
                     ExploreView()
                         .tabItem { Label("Explore", systemImage: "magnifyingglass") }
                         .tag(AppModel.Tab.explore)
-                    if !model.chatConnections.isEmpty {
-                        ChatView()
-                            .tabItem { Label("Chat", systemImage: "bubble.left.and.text.bubble.right") }
-                            .tag(AppModel.Tab.chat)
+                    // Exports, chat and settings: one tab, so the bar keeps four.
+                    MoreView()
+                        .tabItem { Label("More", systemImage: "ellipsis") }
+                        .tag(AppModel.Tab.more)
+                }
+                // Links and menus may ask for one of those directly: open it inside More.
+                .onChange(of: model.tab, initial: true) { _, tab in
+                    let route: MoreRoute? = switch tab {
+                    case .exports: .exports
+                    case .chat: .chat
+                    case .settings: .settings
+                    default: nil
                     }
-                    ServersView()
-                        .tabItem { Label("Settings", systemImage: "gearshape") }
-                        .tag(AppModel.Tab.settings)
+                    guard let route else { return }
+                    model.tab = .more
+                    model.morePath = NavigationPath([route])
                 }
             }
         }

@@ -20,7 +20,7 @@ struct SidebarRoot: View {
                 case .explore: ExploreView()
                 case .exports: ExportsSection()
                 case .chat: ChatView()
-                case .settings: ServersView()
+                case .settings, .more: ServersView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -895,6 +895,16 @@
         }
       }
     },
+    "Ask Frigate about your cameras": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vraag Frigate over je camera's"
+          }
+        }
+      }
+    },
     "Ask a question…": {
       "localizations": {
         "nl": {
@@ -1061,6 +1071,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wis zoekopdracht"
+          }
+        }
+      }
+    },
+    "Clips kept in Frigate": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clips bewaard in Frigate"
           }
         }
       }
@@ -1660,6 +1680,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Microfoon niet beschikbaar"
+          }
+        }
+      }
+    },
+    "More": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meer"
           }
         }
       }
@@ -2672,6 +2702,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Servers"
+          }
+        }
+      }
+    },
+    "Servers and live view": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Servers en liveweergave"
           }
         }
       }

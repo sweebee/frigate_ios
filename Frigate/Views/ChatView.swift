@@ -118,8 +118,32 @@ struct ChatView: View {
     }
     private var session: ChatSession? { conn.map { model.chatSession(for: $0.server.id) } }
 
+    /// Inside another navigation stack (the phone's More tab): no stack of its own, and a
+    /// back button.
+    var embedded = false
+    @Environment(\.dismiss) private var dismissEmbedded
+
     var body: some View {
-        NavigationStack {
+        if embedded {
+            VStack(spacing: 0) {
+                HStack {
+                    Button { dismissEmbedded() } label: { BackButtonLabel() }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Back")
+                    Spacer()
+                }
+                .headerBarPadding()
+                content
+            }
+            .screenBackground()
+            .toolbar(.hidden, for: .navigationBar)
+        } else {
+            NavigationStack { content }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
             VStack(spacing: 0) {
                 header
                 if let session, let conn {
@@ -138,7 +162,6 @@ struct ChatView: View {
             }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
-        }
     }
 
     private var header: some View {

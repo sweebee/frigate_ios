@@ -456,3 +456,65 @@ struct ExportPlayerView: View {
         exporter.state = .idle
     }
 }
+
+// MARK: - More (phone)
+
+enum MoreRoute: Hashable { case exports, chat, settings }
+
+/// The phone's fourth tab: what does not get a tab of its own. iPad and Mac show these in the rail.
+struct MoreView: View {
+    @Environment(AppModel.self) private var model
+    @State private var exportCount: Int?
+
+    var body: some View {
+        @Bindable var model = model
+        NavigationStack(path: $model.morePath) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    LargeTitle(text: L("More")).padding(.bottom, 6)
+                    row(.exports, "film.stack", L("Exports"),
+                        exportCount.map { $0 == 1 ? L("1 clip") : L("\($0) clips") } ?? L("Clips kept in Frigate"))
+                    if !model.chatConnections.isEmpty {
+                        row(.chat, "bubble.left.and.text.bubble.right", L("Chat"), L("Ask Frigate about your cameras"))
+                    }
+                    row(.settings, "gearshape", L("Settings"), L("Servers and live view"))
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+            }
+            .screenBackground()
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: MoreRoute.self) { route in
+                switch route {
+                case .exports: ExportsView()
+                case .chat: ChatView(embedded: true)
+                case .settings: ServersView(embedded: true)
+                }
+            }
+            .appDestinations()
+            .task {
+                exportCount = await ExportsLoader.load(model.scopedConnections.filter(\.isOnline)).count
+            }
+        }
+    }
+
+    private func row(_ route: MoreRoute, _ icon: String, _ title: String, _ subtitle: String) -> some View {
+        NavigationLink(value: route) {
+            HStack(spacing: 14) {
+                Image(systemName: icon).font(.system(size: 19, weight: .medium)).foregroundStyle(Theme.accent)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.text)
+                    Text(subtitle).font(.system(size: 13)).foregroundStyle(Theme.textSecondary).lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textSecondary)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .card(radius: 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
