@@ -223,11 +223,9 @@ struct ConnectView: View {
         defer { testing = false }
         // Without http(s) or a port, try the usual ones (at most a few seconds, all at once) and
         // keep the first that answers like Frigate. A full address is used as typed.
-        var remoteGuesses: [URL] = []
-        if useRemote, !remoteURL.trimmingCharacters(in: .whitespaces).isEmpty {
-            remoteGuesses = ServerAddress.candidates(remoteURL)
-            guard !remoteGuesses.isEmpty else { error = FrigateError.invalidURL.localizedDescription; return }
-        }
+        let wantsRemote = useRemote && !remoteURL.trimmingCharacters(in: .whitespaces).isEmpty
+        let remoteGuesses = wantsRemote ? ServerAddress.candidates(remoteURL) : []
+        if wantsRemote && remoteGuesses.isEmpty { error = FrigateError.invalidURL.localizedDescription; return }
         async let foundLocal = ServerAddress.firstReachable(guesses)
         async let foundRemote = remoteGuesses.isEmpty ? nil : ServerAddress.firstReachable(remoteGuesses)
         let (found, remoteFound) = await (foundLocal, foundRemote)
