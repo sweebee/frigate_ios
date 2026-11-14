@@ -198,7 +198,7 @@ struct EventDetailView: View {
                     .font(.system(size: 19, weight: .medium)).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Share clip")
-                .disabled(downloading || item.inProgress)
+                .disabled(downloading)
                 Button { confirmDelete = true; keepOverlay() } label: {
                     Image(systemName: "trash").font(.system(size: 18, weight: .medium))
                         .foregroundStyle(Theme.destructive).frame(width: 44, height: 44)
@@ -246,7 +246,7 @@ struct EventDetailView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Share clip")
-            .disabled(downloading || item.inProgress)
+            .disabled(downloading)
         }
         .headerBarPadding()
         .padding(.bottom, 8)
@@ -486,7 +486,7 @@ struct EventDetailView: View {
             // Save: to Photos, as an export kept in Frigate, or share the clip. Kept apart from
             // the playing video, which redraws this screen several times a second: a menu
             // rebuilt while open flickers.
-            Stable(key: [downloading, exporter.isWorking, item.inProgress]) {
+            Stable(key: [downloading, exporter.isWorking]) {
             Menu {
                 Button { saveToPhotos() } label: { Label("Save to Photos", systemImage: "square.and.arrow.down") }
                 Button { saveToFrigate() } label: { Label("Save to Frigate", systemImage: "externaldrive") }
@@ -499,7 +499,8 @@ struct EventDetailView: View {
                     .card(border: Theme.controlBorder, radius: 12)
             }
             .menuStyle(.button)
-            .disabled(downloading || exporter.isWorking || item.inProgress)
+            // Also while the event is still going: it saves what has been recorded so far.
+            .disabled(downloading || exporter.isWorking)
             }
             .stable()
             Button { confirmDelete = true } label: {
