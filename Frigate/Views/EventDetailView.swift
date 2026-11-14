@@ -43,12 +43,21 @@ struct EventDetailView: View {
     /// Frigate's annotation offset for this camera, so detections line up with the recording.
     private var offset: Double { conn?.config?.cameras[item.camera]?.annotationOffset ?? 0 }
 
+    /// Opened on one object: just that object, freshly loaded if it was still going.
+    private var focus: FrigateEvent? {
+        guard let f = route.focusEvent else { return nil }
+        return events.first { $0.id == f.id } ?? f
+    }
+
     private var activityStart: Double {
+        if let focus { return focus.startTime + offset }
         let eventStart = events.map(\.startTime).min() ?? item.startTime
         return max(min(item.startTime, eventStart), item.startTime - 30) + offset
     }
     private var activityEnd: Double {
         let now = Date().timeIntervalSince1970
+        // Capped like an event: a parked car can be tracked for hours.
+        if let focus { return min(focus.endTime ?? now, now, focus.startTime + 600) + offset }
         let itemEnd = item.endTime ?? now
         let eventEnd = events.map { $0.endTime ?? now }.filter { $0 > item.startTime }.max() ?? itemEnd
         // Cap at 10 minutes: a review item left open by Frigate can span days.
@@ -350,10 +359,12 @@ struct EventDetailView: View {
             }
             .frame(height: 28)
             // The buttons sit over the video (PlaybackOverlayControls), as on the playback screen.
+            // The time of day, like Frigate: where the playhead is, and where the clip ends.
             HStack {
-                Text(FrigateFormat.duration(player.currentTime)).monospacedDigit()
+                Text(FrigateFormat.time(Date(timeIntervalSince1970: clipStart + player.currentTime), seconds: true)).monospacedDigit()
                 Spacer()
-                Text(FrigateFormat.duration(player.duration)).monospacedDigit()
+                Text(FrigateFormat.time(Date(timeIntervalSince1970: clipStart + (player.duration > 0 ? player.duration : clipEnd - clipStart)), seconds: true))
+                    .monospacedDigit()
             }
             .font(.system(size: horizontalSizeClass == .regular ? 14 : 12))
             .foregroundStyle(Theme.textSecondary)
@@ -424,7 +435,7 @@ struct EventDetailView: View {
     /// The tracked objects in this event with their snapshots; the one opened from Explore first.
     private var objectEvents: [FrigateEvent] {
         let list = events.sorted { $0.startTime < $1.startTime }
-        guard let id = route.focusEventID, let i = list.firstIndex(where: { $0.id == id }) else { return list }
+        guard let id = route.focusEvent?.id, let i = list.firstIndex(where: { $0.id == id }) else { return list }
         var out = list
         out.insert(out.remove(at: i), at: 0)
         return out
@@ -470,7 +481,7 @@ struct EventDetailView: View {
         }
         .padding(8)
         .frame(width: 196)
-        .card(border: e.id == route.focusEventID ? Theme.accent : Theme.cardBorder, radius: 12)
+        .card(border: e.id == route.focusEvent?.id ? Theme.accent : Theme.cardBorder, radius: 12)
     }
 
     /// How long the objects were tracked; Frigate often closes the review item itself much sooner.

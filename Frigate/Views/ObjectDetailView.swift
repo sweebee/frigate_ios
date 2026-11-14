@@ -314,7 +314,7 @@ struct ObjectOrEventView: View {
     var body: some View {
         Group {
             if let review {
-                EventDetailView(route: EventRoute(serverID: route.serverID, review: review, focusEventID: route.event.id))
+                EventDetailView(route: EventRoute(serverID: route.serverID, review: review, focusEvent: route.event))
             } else if resolved {
                 ObjectDetailView(route: route)
             } else {

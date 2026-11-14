@@ -8,8 +8,9 @@ struct CameraRoute: Hashable {
 struct EventRoute: Hashable {
     let serverID: UUID
     let review: ReviewItem
-    /// A tracked object to start with (opened from Explore): shown first, video starts there.
-    var focusEventID: String? = nil
+    /// The tracked object it was opened on from Explore: shown first, and the video is that
+    /// object's own span, as Frigate's tracking details play it.
+    var focusEvent: FrigateEvent? = nil
 }
 
 /// A tracked object from Explore.
