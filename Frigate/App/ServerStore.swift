@@ -30,16 +30,9 @@ struct ServerConfig: Codable, Identifiable, Hashable {
     }
 
     /// Accepts "host:port" or a full URL and returns a URL.
+    /// The best guess; `ServerAddress` has the others to try.
     static func normalizedURL(_ raw: String) -> URL? {
-        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !s.isEmpty else { return nil }
-        if !s.contains("://") {
-            // Port 8971 uses TLS by default on Frigate, but many installs serve it plain.
-            s = "http://" + s
-        }
-        while s.hasSuffix("/") { s.removeLast() }
-        guard let url = URL(string: s), url.host != nil else { return nil }
-        return url
+        ServerAddress.candidates(raw).first
     }
 }
 

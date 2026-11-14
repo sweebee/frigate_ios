@@ -34,14 +34,14 @@ struct ConnectView: View {
 
                 VStack(alignment: .leading, spacing: 14) {
                     field("Name", text: $name, placeholder: L("Home NVR"), field: .name)
-                    field("Server URL", text: $url, placeholder: "http://192.168.1.20:8971", field: .url, keyboard: .URL)
+                    field("Server URL", text: $url, placeholder: "192.168.1.20", field: .url, keyboard: .URL)
                     field("Username", text: $username, placeholder: L("Optional"), field: .user)
                     field("Password", text: $password, placeholder: L("Optional"), field: .password, secure: true)
                     ToggleRow(title: L("Remote address"), subtitle: L("Fallback when not on home Wi-Fi"), isOn: useRemote) { on in
                         withAnimation { useRemote = on }
                     }
                     if useRemote {
-                        field("Remote URL", text: $remoteURL, placeholder: "https://nvr.example.com", field: .remote, keyboard: .URL)
+                        field("Remote URL", text: $remoteURL, placeholder: "nvr.example.com", field: .remote, keyboard: .URL)
                     }
                 }
 
@@ -217,19 +217,28 @@ struct ConnectView: View {
     private func testAndSave() async {
         focus = nil
         error = nil
-        guard let base = ServerConfig.normalizedURL(url) else { error = FrigateError.invalidURL.localizedDescription; return }
+        let guesses = ServerAddress.candidates(url)
+        guard !guesses.isEmpty else { error = FrigateError.invalidURL.localizedDescription; return }
         testing = true
         defer { testing = false }
+        // Without http(s) or a port, try the usual ones and keep the first that answers like Frigate.
+        let base = await ServerAddress.firstReachable(guesses) ?? guesses[0]
+        var remoteBase: URL?
+        if useRemote, !remoteURL.trimmingCharacters(in: .whitespaces).isEmpty {
+            let remoteGuesses = ServerAddress.candidates(remoteURL)
+            guard !remoteGuesses.isEmpty else { error = FrigateError.invalidURL.localizedDescription; return }
+            remoteBase = await ServerAddress.firstReachable(remoteGuesses) ?? remoteGuesses[0]
+        }
         var server = existing ?? ServerConfig(name: "", url: "")
         server.name = name.trimmingCharacters(in: .whitespaces).isEmpty ? (base.host ?? "Frigate") : name.trimmingCharacters(in: .whitespaces)
         server.url = base.absoluteString
         server.username = username.isEmpty ? nil : username
-        server.remoteURL = useRemote && !remoteURL.isEmpty ? ServerConfig.normalizedURL(remoteURL)?.absoluteString : nil
+        server.remoteURL = remoteBase?.absoluteString
 
         var reached = false
         var lastError: Error?
         var urls = [base]
-        if let r = server.remoteURL.flatMap(ServerConfig.normalizedURL) { urls.append(r) }
+        if let remoteBase { urls.append(remoteBase) }
         for u in urls {
             do {
                 _ = try await ServerConnection.authenticate(client: FrigateClient(baseURL: u), server: server, password: password)
@@ -243,6 +252,9 @@ struct ConnectView: View {
             error = (lastError as? LocalizedError)?.errorDescription ?? lastError?.localizedDescription ?? L("Could not reach the server.")
             return
         }
+        // Show what was found, for the onboarding screen that stays open.
+        url = base.absoluteString
+        if let remoteBase { remoteURL = remoteBase.absoluteString }
         model.save(server, password: password.isEmpty ? nil : password)
         if !isOnboarding { dismiss() }
     }
