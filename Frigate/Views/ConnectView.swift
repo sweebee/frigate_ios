@@ -85,11 +85,14 @@ struct ConnectView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
         }
-        .confirmationDialog("Remove \(existing?.name ?? L("server"))?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("Remove \(existing?.name ?? L("server"))?", isPresented: $confirmDelete) {
+            Button("Cancel", role: .cancel) {}
             Button("Remove", role: .destructive) {
                 if let existing { model.delete(existing) }
                 dismiss()
             }
+        } message: {
+            Text("Only from this app: nothing changes on the server.")
         }
         .onAppear(perform: populate)
         .task { if existing == nil { await scanner.scan() } }

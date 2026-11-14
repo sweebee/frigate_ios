@@ -2050,6 +2050,16 @@
         }
       }
     },
+    "Only from this app: nothing changes on the server.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen uit deze app: op de server verandert niets."
+          }
+        }
+      }
+    },
     "Open in Safari": {
       "localizations": {
         "nl": {

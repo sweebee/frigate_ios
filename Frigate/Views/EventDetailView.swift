@@ -68,8 +68,11 @@ struct EventDetailView: View {
         .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
         .overlay(alignment: .top) { ExportToast(exporter: exporter) }
-        .confirmationDialog("Delete this review item and its recordings?", isPresented: $confirmDelete, titleVisibility: .visible) {
+        .alert("Delete this review item and its recordings?", isPresented: $confirmDelete) {
+            Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) { Task { await delete() } }
+        } message: {
+            Text("\(item.labels.first.map(FrigateFormat.labelName)?.capitalizedFirst ?? L("Event")) at \(FrigateFormat.time(item.start, seconds: true))")
         }
         .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
