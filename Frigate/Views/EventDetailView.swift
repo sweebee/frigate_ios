@@ -502,6 +502,8 @@ struct EventDetailView: View {
                         }
                     }
                     .padding(.horizontal, 16)
+                    // Room for the cards' borders: a scroll view clips at its edges.
+                    .padding(.vertical, 2)
                 }
             }
             .padding(.top, 16)
