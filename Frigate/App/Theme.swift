@@ -363,6 +363,8 @@ struct ToggleRow: View {
                 }
                 Spacer()
                 Toggle("", isOn: .constant(isOn))
+                    // A switch on the Mac too, where a toggle is a checkbox by default.
+                    .toggleStyle(.switch)
                     .labelsHidden()
                     .tint(Theme.online)
                     .allowsHitTesting(false)
