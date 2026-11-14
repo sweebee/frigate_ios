@@ -115,7 +115,11 @@ struct NativeLivePlayer: UIViewRepresentable {
             }) {
                 borrowing = true
                 if size.width > 0 { state.videoSize = size }
-                for sample in gop { enqueue(sample) }
+                // Decode the frames since the keyframe, but show only the latest: shown one by
+                // one they flashed by as a fast-forward.
+                for (i, sample) in gop.enumerated() {
+                    enqueue(i == gop.count - 1 ? sample : Self.hidden(sample) ?? sample)
+                }
             }
             let started = Date()
             receiving = Task { [weak self] in
@@ -275,6 +279,20 @@ struct NativeLivePlayer: UIViewRepresentable {
                 state.status = "Live"
                 retries = 0
             }
+        }
+
+        /// A copy of `sample` that the layer decodes but does not show.
+        private static func hidden(_ sample: CMSampleBuffer) -> CMSampleBuffer? {
+            var copy: CMSampleBuffer?
+            guard CMSampleBufferCreateCopy(allocator: kCFAllocatorDefault, sampleBuffer: sample, sampleBufferOut: &copy) == noErr,
+                  let copy, let attachments = CMSampleBufferGetSampleAttachmentsArray(copy, createIfNecessary: true),
+                  CFArrayGetCount(attachments) > 0 else { return nil }
+            let dict = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
+            CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DoNotDisplay).toOpaque(),
+                                 Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
+            CFDictionarySetValue(dict, Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
+                                 Unmanaged.passUnretained(kCFBooleanFalse).toOpaque())
+            return copy
         }
 
         /// The codecs we can decode, as go2rtc expects them. Without audio codecs go2rtc
@@ -816,6 +834,9 @@ final class LiveSampleHub {
         guard let f = feeds[key] else { return false }
         return !f.publishers.isEmpty && !f.gop.isEmpty && Date().timeIntervalSince(f.updated) < 1.5
     }
+
+    /// Whether another player follows this stream (a camera opened from its tile).
+    func hasSubscribers(_ key: String) -> Bool { !(feeds[key]?.subscribers.isEmpty ?? true) }
 
     func unsubscribe(_ key: String, id: UUID) {
         feeds[key]?.subscribers[id] = nil

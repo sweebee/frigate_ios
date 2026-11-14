@@ -285,6 +285,7 @@ struct TileLivePlayer: View {
     let camera: CameraConfig
     let stream: String
     @State private var state: LivePlayerState
+    @State private var visible = false
     @Environment(\.scenePhase) private var scenePhase
 
     init(client: FrigateClient, camera: CameraConfig, stream: String) {
@@ -305,12 +306,28 @@ struct TileLivePlayer: View {
             .opacity(state.playing ? 1 : 0)
             .allowsHitTesting(false)
             .onAppear {
+                visible = true
                 // Without the snapshot fallback: the snapshot underneath already shows.
                 state.stream = stream
                 state.preferred = .mse
                 state.suspended = false
             }
-            .onDisappear { state.suspended = true }
+            .onDisappear {
+                visible = false
+                // The camera opened from this tile follows its stream until it has a keyframe
+                // of its own: keep playing until then (at most a few seconds), or the picture
+                // there would stand still in between.
+                let key = LiveSampleHub.key(client: client, stream: stream)
+                Task {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    for _ in 0..<40 {
+                        if visible { return }
+                        if !LiveSampleHub.shared.hasSubscribers(key) { break }
+                        try? await Task.sleep(for: .milliseconds(250))
+                    }
+                    if !visible { state.suspended = true }
+                }
+            }
             .onChange(of: scenePhase) { _, phase in state.suspended = phase != .active }
     }
 }
