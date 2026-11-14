@@ -909,6 +909,9 @@ struct PlaybackTimeline: View {
     /// The buttons' steps; pinching goes anywhere between the first and last. At the widest
     /// about three hours fit on screen.
     private let zooms: [Double] = [10, 30, 60, 120]
+    /// Pinching moves through these: finer than the buttons, each a whole fraction or multiple
+    /// of the 30 s motion buckets.
+    private static let pinchSteps: [Double] = [10, 15, 20, 30, 45, 60, 90, 120]
     private let rowHeight: CGFloat = 5
 
     private var secondsPerPoint: Double { secondsPerRow / Double(rowHeight) }
@@ -988,7 +991,11 @@ struct PlaybackTimeline: View {
                         .onChanged { v in
                             let base = pinchBase ?? secondsPerRow
                             if pinchBase == nil { pinchBase = base; fling.cancel() }
-                            secondsPerRow = min(max(base / v.magnification, zooms.first!), zooms.last!)
+                            // To the nearest fine step, not any value: rows then line up with the
+                            // 10 s segments and 30 s motion buckets, so the bars do not jumble.
+                            let wanted = base / v.magnification
+                            let step = Self.pinchSteps.min { abs(log($0 / wanted)) < abs(log($1 / wanted)) }!
+                            if step != secondsPerRow { secondsPerRow = step }
                         }
                         .onEnded { _ in pinchBase = nil })
 
@@ -1137,15 +1144,13 @@ struct PlaybackTimeline: View {
         let topTime = wallTime + Double(center) * secondsPerPoint
         let topRowTime = (topTime / secondsPerRow).rounded(.up) * secondsPerRow
         let dayMax = max(motion.map { $0.motion ?? 0 }.max() ?? 1, 1)
-        // Segment and bucket motion use different units: match the busiest segment on screen
-        // to the busiest bucket on screen, so zooming in keeps the bars about as wide.
-        let visibleFrom = wallTime - Double(size.height - center) * secondsPerPoint
-        let visibleTo = wallTime + Double(center) * secondsPerPoint
+        // Segment and bucket motion use different units: match the busiest segment of the day
+        // to the busiest bucket of the day, so zooming in keeps the bars about as wide. Over the
+        // whole day, not what is on screen: that changed as you scrolled and all bars with it.
         var segmentFactor = 1.0
         if usesSegments {
-            let seg = segmentMotion(from: visibleFrom, to: visibleTo)
-            let coarse = maxMotion(in: motion, scale: 30, from: visibleFrom, to: visibleTo)
-            segmentFactor = seg > 0 && coarse > 0 ? coarse / seg : 1
+            let seg = segments.lazy.compactMap(\.motion).max() ?? 0
+            segmentFactor = seg > 0 ? dayMax / seg : 1
         }
         let labelEvery = labelInterval()
 
