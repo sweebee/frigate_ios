@@ -172,7 +172,20 @@ struct CameraTile: View {
     let conn: ServerConnection
     let camera: CameraConfig
     @Environment(AppModel.self) private var model
+    @Environment(\.displayScale) private var displayScale
     @State private var autoLiveOn = false
+    /// The picture's width in points, to pick a stream sharp enough for it.
+    @State private var tileWidth: CGFloat = 0
+
+    /// The stream a live tile plays. The lightest one (a camera's sub stream, often 640 wide)
+    /// unless the tile is wider than about 800 pixels on screen and the connection is not metered:
+    /// then the main stream, as Frigate's own dashboard plays large tiles.
+    private var tileStream: (title: String, name: String)? {
+        let streams = conn.liveStreams(camera)
+        let pixels = tileWidth * displayScale
+        if streams.count > 1, pixels > 800, !NetworkStatus.shared.isExpensive { return streams.first }
+        return streams.last
+    }
 
     var body: some View {
         let online = conn.isCameraOnline(camera.name)
@@ -190,12 +203,15 @@ struct CameraTile: View {
                                         session: conn.client?.session ?? .shared,
                                         refresh: online ? (objects.isEmpty ? 6 : 2) * (NetworkStatus.shared.isExpensive ? 2.5 : 1) : nil)
                             if online && (model.showsLiveGrid || (model.autoLive && autoLiveOn)), let client = conn.client,
-                               let sub = conn.liveStreams(camera).last {
-                                TileLivePlayer(client: client, camera: camera, stream: sub.name)
+                               let stream = tileStream {
+                                TileLivePlayer(client: client, camera: camera, stream: stream.name)
+                                    // A new stream (the tile grew or shrank past the threshold) starts fresh.
+                                    .id(stream.name)
                             }
                         }
                     }
                     .clipped()
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { tileWidth = $0 }
                     .opacity(online ? 1 : 0.4)
 
                 // Only flag cameras that are down; online is the normal state.
@@ -262,15 +278,27 @@ struct CameraTile: View {
     }
 }
 
-/// Muted live video of a camera's lowest-resolution stream for the overview grid.
+/// Muted live video of a camera for the overview grid (the stream `CameraTile` picks).
 /// The snapshot underneath stays visible until the video plays.
 struct TileLivePlayer: View {
     let client: FrigateClient
     let camera: CameraConfig
-    /// The lightest stream the camera has.
     let stream: String
-    @State private var state = LivePlayerState()
+    @State private var state: LivePlayerState
     @Environment(\.scenePhase) private var scenePhase
+
+    init(client: FrigateClient, camera: CameraConfig, stream: String) {
+        self.client = client
+        self.camera = camera
+        self.stream = stream
+        // The stream from the start: set only on appear, the player first tried the camera's
+        // name, which on servers whose go2rtc streams are named otherwise ("bar_1") failed and
+        // left the tile on the MJPEG fallback.
+        let state = LivePlayerState()
+        state.stream = stream
+        state.preferred = .mse
+        _state = State(initialValue: state)
+    }
 
     var body: some View {
         LivePlayerView(client: client, camera: camera.name, state: state, fill: true)
