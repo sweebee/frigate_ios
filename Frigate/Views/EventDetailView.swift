@@ -52,13 +52,14 @@ struct EventDetailView: View {
     /// first to last seen in the recording (its tracking details). The padding goes around it.
     private var activityStart: Double {
         if let focus { return focus.startTime + offset }
-        return item.startTime
+        // Review times are detection times too: in the recording they happen `offset` from them.
+        return item.startTime + offset
     }
     private var activityEnd: Double {
         let now = Date().timeIntervalSince1970
         // Capped at 10 minutes: a parked car can be tracked, or a review item left open, for hours.
         if let focus { return min(focus.endTime ?? now, now, focus.startTime + 600) + offset }
-        return min(item.endTime ?? now, now, item.startTime + 600)
+        return min(item.endTime ?? now, now, item.startTime + 600) + offset
     }
     /// Whole seconds, as the /vod endpoint uses, so the event range lines up with the video.
     private var clipStart: Double { (activityStart - padding).rounded(.down) }
