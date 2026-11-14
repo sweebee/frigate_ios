@@ -517,12 +517,11 @@ struct CameraView: View {
                         let objects = conn.activeObjects[camera.name] ?? []
                         ForEach(objects, id: \.self) { LabelIcon(label: $0, size: 22) }
                         Spacer()
-                        Button {
-                            model.tab = .explore
-                            model.explorePath = NavigationPath()
-                            model.explorePath.append(PlaybackRoute(serverID: route.serverID, camera: route.camera,
-                                                                   day: Calendar.current.startOfDay(for: Date())))
-                        } label: {
+                        // On this screen's own stack, as in portrait: back returns here, still in
+                        // full screen. (It used to open in Explore, where back left the app in
+                        // landscape on a screen made for portrait.)
+                        NavigationLink(value: PlaybackRoute(serverID: route.serverID, camera: route.camera,
+                                                            day: Calendar.current.startOfDay(for: Date()))) {
                             Label("Playback", systemImage: "clock.arrow.circlepath")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(Theme.accent)
