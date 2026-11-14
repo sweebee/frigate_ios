@@ -435,7 +435,8 @@ struct EventDetailView: View {
         let list = objectEvents
         if !list.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                SectionLabel(text: L("Objects"))
+                SectionLabel(text: L("Objects")).padding(.horizontal, 16)
+                // Runs to the screen edge, like the rows in Explore; the margin sits inside.
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(list) { e in
@@ -443,9 +444,9 @@ struct EventDetailView: View {
                                 .buttonStyle(.plain)
                         }
                     }
+                    .padding(.horizontal, 16)
                 }
             }
-            .padding(.horizontal, 16)
             .padding(.top, 16)
             .sheet(item: $snapshotEvent) { e in
                 SnapshotViewer(event: e, client: client, cameraName: conn?.config?.cameras[e.camera]?.displayName)
