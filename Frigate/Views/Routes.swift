@@ -41,6 +41,7 @@ struct AppDestinations: ViewModifier {
             // A tracked object opens the event it belongs to; the object screen only when it has none.
             .navigationDestination(for: ObjectRoute.self) { ObjectOrEventView(route: $0).id($0) }
             .navigationDestination(for: ExportsRoute.self) { _ in ExportsView() }
+            .navigationDestination(for: ExportCaseRoute.self) { ExportsView(caseRoute: $0).id($0) }
             .navigationDestination(for: ExportRoute.self) { ExportPlayerView(route: $0).id($0) }
     }
 }

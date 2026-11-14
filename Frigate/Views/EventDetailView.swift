@@ -11,6 +11,7 @@ struct EventDetailView: View {
     @State private var events: [FrigateEvent] = []
     @State private var timeline: [TimelineEntry] = []
     @State private var share: ShareItem?
+    @State private var saveRequest: SaveToFrigateRequest?
     @State private var downloading = false
     @State private var confirmDelete = false
     @State private var exporter = ClipExporter()
@@ -80,6 +81,7 @@ struct EventDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .saveToFrigateSheet($saveRequest, exporter: exporter)
         // On the screen itself, not in the objects row: that row sits in a layout that is
         // rebuilt as the window changes, and on the Mac the sheet then would not close.
         .sheet(item: $snapshotEvent) { e in
@@ -807,7 +809,8 @@ struct EventDetailView: View {
         guard let client else { return }
         let name = ClipExporter.exportName(camera: item.camera, displayName: conn?.config?.cameras[item.camera]?.displayName,
                                            start: activityStart, label: item.labels.first)
-        Task { await exporter.saveToFrigate(client: client, camera: item.camera, start: clipStart, end: clipEnd, name: name) }
+        // A sheet first: the name, and the case to file it in.
+        saveRequest = SaveToFrigateRequest(client: client, camera: item.camera, start: clipStart, end: clipEnd, name: name)
     }
 
     private func delete() async {

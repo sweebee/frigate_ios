@@ -133,6 +133,7 @@ struct PlaybackView: View {
     /// Low-resolution preview shown while dragging a timeline.
     @State private var preview = PreviewScrubber()
     @State private var share: ShareItem?
+    @State private var saveRequest: SaveToFrigateRequest?
     /// An event the user asked to delete; confirmed in an alert.
     @State private var deletingReview: ReviewItem?
     /// Long-press actions on events, the same everywhere in the app.
@@ -221,6 +222,7 @@ struct PlaybackView: View {
             withAnimation(.easeOut(duration: 0.2)) { reviews.removeAll { ids.contains($0.id) } }
         }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .saveToFrigateSheet($saveRequest, exporter: exporter)
         .alert("Delete this review item and its recordings?",
                isPresented: Binding(get: { deletingReview != nil }, set: { if !$0 { deletingReview = nil } })) {
             Button("Cancel", role: .cancel) {}
@@ -402,6 +404,7 @@ struct PlaybackView: View {
 
     private var saveMenuContent: some View {
         Menu {
+            Button { exportSpan() } label: { Label("Export…", systemImage: "film.stack") }
             if let r = menuReview {
                 Section("\(r.labels.first.map(FrigateFormat.labelName)?.capitalizedFirst ?? L("Event")) at \(FrigateFormat.time(r.start, seconds: true))") {
                     Button { save(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3) } label: {
@@ -476,7 +479,24 @@ struct PlaybackView: View {
         guard let client else { return }
         let (s, e) = clampRange(start, end)
         let name = ClipExporter.exportName(camera: camera, displayName: conn?.config?.cameras[camera]?.displayName, start: s, label: label)
-        Task { await exporter.saveToFrigate(client: client, camera: camera, start: s, end: e, name: name) }
+        // A sheet first: the name, and the case to file it in.
+        saveRequest = SaveToFrigateRequest(client: client, camera: camera, start: s, end: e, name: name)
+    }
+
+    /// Frigate's Export dialog: a span of choice, from this camera or several.
+    private func exportSpan() {
+        guard let client else { return }
+        let (s, e): (Double, Double)
+        if let r = currentReview {
+            (s, e) = clampRange(r.startTime - 3, (r.endTime ?? Date().timeIntervalSince1970) + 3)
+        } else {
+            (s, e) = clampRange(wallTime - 30, wallTime + 30)
+        }
+        let name = ClipExporter.exportName(camera: camera, displayName: conn?.config?.cameras[camera]?.displayName, start: s,
+                                           label: currentReview?.labels.first)
+        var cams = conn?.config?.orderedCameras ?? []
+        if !cams.contains(where: { $0.name == camera }), let own = conn?.config?.cameras[camera] { cams.insert(own, at: 0) }
+        saveRequest = SaveToFrigateRequest(client: client, camera: camera, start: s, end: e, name: name, cameras: cams)
     }
 
     private func shareClip(_ start: Double, _ end: Double) {

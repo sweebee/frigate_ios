@@ -66,11 +66,25 @@ final class ClipExporter {
 extension ClipExporter {
     /// Has Frigate export the span on the server, where it stays (Frigate's Exports page, and
     /// the Exports row in Explore).
-    func saveToFrigate(client: FrigateClient, camera: String, start: Double, end: Double, name: String) async {
+    func saveToFrigate(client: FrigateClient, camera: String, start: Double, end: Double, name: String, caseID: String? = nil) async {
         state = .working(L("Saving to Frigate…"))
         do {
-            try await client.startExport(camera: camera, start: start, end: end, name: name)
+            try await client.startExport(camera: camera, start: start, end: end, name: name, caseID: caseID)
             state = .done(L("Saved to Frigate's exports"))
+        } catch {
+            state = .failed(error.localizedDescription)
+        }
+        try? await Task.sleep(for: .seconds(2.5))
+        if case .working = state {} else { state = .idle }
+    }
+
+    /// Several cameras' exports at once, in one case (Frigate 0.18 and later).
+    func saveToFrigate(client: FrigateClient, items: [FrigateClient.ExportItem], caseID: String?, newCaseName: String?) async {
+        state = .working(L("Saving to Frigate…"))
+        do {
+            let queued = try await client.startExports(items, caseID: caseID, newCaseName: newCaseName)
+            state = .done(queued == items.count ? L("Saved to Frigate's exports")
+                                                : L("\(queued) of \(items.count) saved; the others have no recordings"))
         } catch {
             state = .failed(error.localizedDescription)
         }

@@ -197,9 +197,55 @@ final class FrigateClient: @unchecked Sendable {
     }
 
     /// Asks Frigate to export a span of recordings; it makes the file in the background.
-    func startExport(camera: String, start: Double, end: Double, name: String) async throws {
-        try await post("api/export/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))",
-                       json: ["playback": "realtime", "source": "recordings", "name": name])
+    /// `caseID`: file it in that case (Frigate 0.18 and later).
+    func startExport(camera: String, start: Double, end: Double, name: String, caseID: String? = nil) async throws {
+        var body: [String: Any] = ["playback": "realtime", "source": "recordings", "name": name]
+        if let caseID { body["export_case_id"] = caseID }
+        try await post("api/export/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))", json: body)
+    }
+
+    struct ExportItem { let camera: String; let start: Double; let end: Double; let name: String }
+
+    /// Exports from several cameras at once, all in one case: an existing one, or a new one
+    /// named `newCaseName` (Frigate 0.18 and later). Returns how many were queued; throws when
+    /// none were.
+    @discardableResult
+    func startExports(_ items: [ExportItem], caseID: String?, newCaseName: String?) async throws -> Int {
+        var body: [String: Any] = ["items": items.map {
+            ["camera": $0.camera, "start_time": $0.start.rounded(.down), "end_time": $0.end.rounded(.up), "friendly_name": $0.name]
+        }]
+        if let caseID { body["export_case_id"] = caseID } else if let newCaseName { body["new_case_name"] = newCaseName }
+        let data = try await post("api/exports/batch", json: body)
+        struct Response: Decodable { var exportIDs: [String]; enum CodingKeys: String, CodingKey { case exportIDs = "export_ids" } }
+        let queued = (try? JSONDecoder().decode(Response.self, from: data))?.exportIDs.count ?? items.count
+        if queued == 0 { throw FrigateError.http(400, L("No recordings in this span")) }
+        return queued
+    }
+
+    // MARK: Cases (Frigate 0.18 and later; older servers have none)
+
+    /// The server's cases, newest first; empty where Frigate has no cases.
+    func exportCases() async -> [FrigateExportCase] {
+        (try? await get([FrigateExportCase].self, "api/cases")) ?? []
+    }
+
+    func createExportCase(name: String) async throws -> FrigateExportCase {
+        let data = try await post("api/cases", json: ["name": name])
+        return try JSONDecoder().decode(FrigateExportCase.self, from: data)
+    }
+
+    func renameExportCase(_ id: String, to name: String) async throws {
+        try await send("PATCH", "api/cases/\(id)", json: ["name": name])
+    }
+
+    /// Removes the case; its exports stay, without a case.
+    func deleteExportCase(_ id: String) async throws {
+        try await send("DELETE", "api/cases/\(id)", json: nil)
+    }
+
+    /// Files the exports in a case, or takes them out of theirs (`caseID` nil).
+    func moveExports(_ ids: [String], toCase caseID: String?) async throws {
+        try await post("api/exports/reassign", json: ["ids": ids, "export_case_id": caseID as Any? ?? NSNull()])
     }
 
     func renameExport(_ id: String, to name: String) async throws {
@@ -394,10 +440,15 @@ final class FrigateClient: @unchecked Sendable {
         return HLSProxy.shared.url(for: url("vod/clip/\(camera)/start/\(Int(start.rounded(.down)))/end/\(Int(end.rounded(.up)))/index.m3u8"))
     }
 
-    private var servesClipVOD: Bool {
+    private var servesClipVOD: Bool { versionAtLeast(0, 17) }
+
+    /// Cases for exports came with Frigate 0.18.
+    var servesCases: Bool { versionAtLeast(0, 18) }
+
+    private func versionAtLeast(_ major: Int, _ minor: Int) -> Bool {
         let parts = (version ?? "").split(separator: "-").first?.split(separator: ".").compactMap { Int($0) } ?? []
         guard parts.count >= 2 else { return false }
-        return parts[0] > 0 || parts[1] >= 17
+        return parts[0] > major || (parts[0] == major && parts[1] >= minor)
     }
 
     func clipURL(camera: String, start: Double, end: Double) -> URL {

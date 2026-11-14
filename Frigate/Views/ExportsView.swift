@@ -146,43 +146,83 @@ struct ExportsSection: View {
 struct ExportsView: View {
     /// In the rail (iPad, Mac): no back button, the title where other sections have theirs.
     var isSection = false
+    /// One case's exports; nil for all of them, with the cases as folders on top.
+    var caseRoute: ExportCaseRoute? = nil
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var entries: [ExportEntry] = []
+    @State private var cases: [ExportCaseEntry] = []
     @State private var loading = true
     @State private var renaming: ExportEntry?
     @State private var newName = ""
     @State private var deleting: ExportEntry?
     @State private var errorMessage: String?
+    /// A new case to create on this server, and (from an export's menu) the export to file in it.
+    @State private var creatingCaseOn: UUID?
+    @State private var creatingCaseFor: ExportEntry?
+    @State private var caseName = ""
+    @State private var renamingCase: ExportCaseEntry?
+    @State private var deletingCase: ExportCaseEntry?
 
     private var connections: [ServerConnection] { model.scopedConnections.filter(\.isOnline) }
+    /// Servers that have cases (Frigate 0.18 and later).
+    private var caseServers: [ServerConnection] { connections.filter { $0.client?.servesCases == true } }
     /// Without what was just deleted, here or in the player.
-    private var visible: [ExportEntry] { entries.filter { !model.deletedExports.contains($0.id) } }
+    private var visible: [ExportEntry] {
+        let all = entries.filter { !model.deletedExports.contains($0.id) }
+        if let caseRoute {
+            return all.filter { $0.serverID == caseRoute.serverID && $0.export.caseID == caseRoute.exportCase.id }
+        }
+        // Outside a case (or in one this app does not know): the cases show as folders above.
+        let known = Set(cases.map(\.id))
+        return all.filter { e in e.export.caseID.map { !known.contains("\(e.serverID)/\($0)") } ?? true }
+    }
+    private var currentCase: ExportCaseEntry? {
+        caseRoute.flatMap { r in cases.first { $0.serverID == r.serverID && $0.exportCase.id == r.exportCase.id } }
+            ?? caseRoute.map { ExportCaseEntry(serverID: $0.serverID, exportCase: $0.exportCase) }
+    }
     /// Each load gets a number; a slower, older one that finishes later is dropped.
     @State private var loadCount = 0
+
+    private var columns: [GridItem] { [GridItem(.adaptive(minimum: sizeClass == .regular ? 280 : 160), spacing: 12)] }
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    ScreenTitle(text: L("Exports"), showsBack: !isSection).padding(.top, 8)
+                    titleBar.padding(.top, 8)
                     if loading && entries.isEmpty {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-                    } else if visible.isEmpty {
-                        EmptyStateView(systemImage: "film.stack", title: L("No exports"),
-                                       message: L("Clips you export in Frigate, or save to Frigate from playback, appear here."))
                     } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 280 : 160), spacing: 12)], spacing: 14) {
-                            ForEach(visible) { entry in
-                                NavigationLink(value: ExportRoute(serverID: entry.serverID, export: entry.export)) {
-                                    ExportTile(entry: entry)
+                        if caseRoute == nil && !cases.isEmpty {
+                            SectionLabel(text: L("Cases"))
+                            LazyVGrid(columns: columns, spacing: 14) {
+                                ForEach(cases) { c in
+                                    NavigationLink(value: ExportCaseRoute(serverID: c.serverID, exportCase: c.exportCase)) {
+                                        ExportCaseTile(entry: c, exports: exports(in: c))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contextMenu { caseMenu(c) }
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(entry.export.inProgress)
-                                .contextMenu {
-                                    Button { newName = entry.export.name; renaming = entry } label: { Label("Rename", systemImage: "pencil") }
-                                    Button(role: .destructive) { deleting = entry } label: { DestructiveMenuLabel(title: "Delete") }
+                            }
+                            if !visible.isEmpty { SectionLabel(text: L("Not in a case")).padding(.top, 8) }
+                        }
+                        if visible.isEmpty && (caseRoute != nil || cases.isEmpty) {
+                            EmptyStateView(systemImage: caseRoute == nil ? "film.stack" : "folder",
+                                           title: caseRoute == nil ? L("No exports") : L("No exports in this case"),
+                                           message: caseRoute == nil
+                                               ? L("Clips you export in Frigate, or save to Frigate from playback, appear here.")
+                                               : L("Long-press an export to move it into this case."))
+                        } else {
+                            LazyVGrid(columns: columns, spacing: 14) {
+                                ForEach(visible) { entry in
+                                    NavigationLink(value: ExportRoute(serverID: entry.serverID, export: entry.export)) {
+                                        ExportTile(entry: entry)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(entry.export.inProgress)
+                                    .contextMenu { exportMenu(entry) }
                                 }
                             }
                         }
@@ -218,17 +258,147 @@ struct ExportsView: View {
                 }
             }
         } message: { Text("The video is removed from the Frigate server.") }
+        .alert("New case", isPresented: Binding(get: { creatingCaseOn != nil }, set: { if !$0 { creatingCaseOn = nil; creatingCaseFor = nil } })) {
+            TextField("Case name", text: $caseName)
+            Button("Cancel", role: .cancel) {}
+            Button("Create") { createCase() }
+        } message: {
+            if let e = creatingCaseFor { Text("\(e.export.name.isEmpty ? L("The export") : e.export.name) goes into it.") }
+        }
+        .alert("Rename case", isPresented: Binding(get: { renamingCase != nil }, set: { if !$0 { renamingCase = nil } })) {
+            TextField("Case name", text: $caseName)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") { renameCase() }
+        }
+        .alert("Delete this case?", isPresented: Binding(get: { deletingCase != nil }, set: { if !$0 { deletingCase = nil } })) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { deleteCase() }
+        } message: { Text("Its exports stay, outside a case.") }
         .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
     }
 
+    // MARK: Title bar
+
+    private var titleBar: some View {
+        HStack {
+            ScreenTitle(text: currentCase.map { $0.exportCase.name.isEmpty ? L("Case") : $0.exportCase.name } ?? L("Exports"),
+                        showsBack: caseRoute != nil || !isSection)
+            Spacer()
+            if let c = currentCase {
+                Menu { caseMenu(c) } label: { HeaderIconLabel(systemName: "ellipsis") }
+                    .accessibilityLabel("More options")
+            } else if caseServers.count == 1, let id = caseServers.first?.server.id {
+                Button { startNewCase(on: id) } label: { HeaderIconLabel(systemName: "folder.badge.plus") }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("New case")
+            } else if caseServers.count > 1 {
+                Menu {
+                    Section("New case on") {
+                        ForEach(caseServers) { c in Button(c.server.name) { startNewCase(on: c.server.id) } }
+                    }
+                } label: { HeaderIconLabel(systemName: "folder.badge.plus") }
+                    .accessibilityLabel("New case")
+            }
+        }
+    }
+
+    // MARK: Menus
+
+    @ViewBuilder
+    private func exportMenu(_ entry: ExportEntry) -> some View {
+        Button { newName = entry.export.name; renaming = entry } label: { Label("Rename", systemImage: "pencil") }
+        if model.connection(for: entry.serverID)?.client?.servesCases == true {
+            Menu {
+                ForEach(cases.filter { $0.serverID == entry.serverID && $0.exportCase.id != entry.export.caseID }) { c in
+                    Button { move(entry, to: c.exportCase.id) } label: { Label(c.exportCase.name, systemImage: "folder") }
+                }
+                Button { creatingCaseFor = entry; startNewCase(on: entry.serverID) } label: {
+                    Label("New case…", systemImage: "folder.badge.plus")
+                }
+                if entry.export.caseID != nil {
+                    Divider()
+                    Button { move(entry, to: nil) } label: { Label("Remove from case", systemImage: "tray.and.arrow.up") }
+                }
+            } label: { Label("Move to case", systemImage: "folder") }
+        }
+        Divider()
+        Button(role: .destructive) { deleting = entry } label: { DestructiveMenuLabel(title: "Delete") }
+    }
+
+    @ViewBuilder
+    private func caseMenu(_ c: ExportCaseEntry) -> some View {
+        Button { caseName = c.exportCase.name; renamingCase = c } label: { Label("Rename case", systemImage: "pencil") }
+        Divider()
+        Button(role: .destructive) { deletingCase = c } label: { DestructiveMenuLabel(title: "Delete case") }
+    }
+
+    // MARK: Actions
+
+    private func exports(in c: ExportCaseEntry) -> [ExportEntry] {
+        entries.filter { $0.serverID == c.serverID && $0.export.caseID == c.exportCase.id && !model.deletedExports.contains($0.id) }
+    }
+
+    private func client(_ serverID: UUID) -> FrigateClient? { model.connection(for: serverID)?.client }
+
+    private func startNewCase(on serverID: UUID) {
+        caseName = ""
+        creatingCaseOn = serverID
+    }
+
+    private func createCase() {
+        guard let serverID = creatingCaseOn, let client = client(serverID) else { return }
+        let name = caseName.trimmingCharacters(in: .whitespaces)
+        let export = creatingCaseFor
+        guard !name.isEmpty else { return }
+        Task {
+            do {
+                let created = try await client.createExportCase(name: name)
+                if let export { try await client.moveExports([export.export.id], toCase: created.id) }
+                await load()
+            } catch { errorMessage = error.localizedDescription }
+        }
+    }
+
+    private func renameCase() {
+        guard let c = renamingCase, let client = client(c.serverID) else { return }
+        let name = caseName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        Task {
+            do { try await client.renameExportCase(c.exportCase.id, to: name); await load() }
+            catch { errorMessage = error.localizedDescription }
+        }
+    }
+
+    private func deleteCase() {
+        guard let c = deletingCase, let client = client(c.serverID) else { return }
+        Task {
+            do {
+                try await client.deleteExportCase(c.exportCase.id)
+                // Inside the case that is gone: back to all exports.
+                if caseRoute != nil { closePresented(dismiss) } else { await load() }
+            } catch { errorMessage = error.localizedDescription }
+        }
+    }
+
+    private func move(_ entry: ExportEntry, to caseID: String?) {
+        guard let client = client(entry.serverID) else { return }
+        Task {
+            do { try await client.moveExports([entry.export.id], toCase: caseID); await load() }
+            catch { errorMessage = error.localizedDescription }
+        }
+    }
+
     private func load() async {
         loadCount += 1
         let mine = loadCount
-        let loaded = await ExportsLoader.load(connections)
+        async let loadedEntries = ExportsLoader.load(connections)
+        async let loadedCases = ExportCasesLoader.load(connections)
+        let (e, c) = await (loadedEntries, loadedCases)
         guard mine == loadCount else { return }
-        entries = loaded
+        entries = e
+        cases = c
         loading = false
     }
 }

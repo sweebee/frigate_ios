@@ -74,6 +74,16 @@
         }
       }
     },
+    "%@ goes into it.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ komt erin."
+          }
+        }
+      }
+    },
     "%@ heard": {
       "localizations": {
         "nl": {
@@ -269,6 +279,16 @@
     },
     "%lld": {
       "shouldTranslate": false
+    },
+    "%lld / %lld selected": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld geselecteerd"
+          }
+        }
+      }
     },
     "%lld alerts": {
       "localizations": {
@@ -580,6 +600,16 @@
         }
       }
     },
+    "%lld exports": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld exports"
+          }
+        }
+      }
+    },
     "%lld h ago": {
       "localizations": {
         "nl": {
@@ -606,6 +636,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld objecten"
+          }
+        }
+      }
+    },
+    "%lld of %lld saved; the others have no recordings": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld van %2$lld bewaard; de rest heeft geen opnames"
           }
         }
       }
@@ -689,12 +729,32 @@
         }
       }
     },
+    "1 export": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 export"
+          }
+        }
+      }
+    },
     "1 object": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "1 object"
+          }
+        }
+      }
+    },
+    "1 tracked object": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 gevolgd object"
           }
         }
       }
@@ -1075,12 +1135,62 @@
         }
       }
     },
+    "Cameras with tracked objects in this span are selected first.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera's met gevolgde objecten in deze tijdspanne zijn vooraf geselecteerd."
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Annuleer"
+          }
+        }
+      }
+    },
+    "Case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaak"
+          }
+        }
+      }
+    },
+    "Case name": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naam van de zaak"
+          }
+        }
+      }
+    },
+    "Cases": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaken"
+          }
+        }
+      }
+    },
+    "Cases group exports, as in Frigate's Exports.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaken bundelen exports, zoals in Exports van Frigate."
           }
         }
       }
@@ -1245,6 +1355,16 @@
         }
       }
     },
+    "Create": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maak"
+          }
+        }
+      }
+    },
     "Credentials are stored in the iOS Keychain": {
       "localizations": {
         "nl": {
@@ -1285,6 +1405,16 @@
         }
       }
     },
+    "Delete case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijder zaak"
+          }
+        }
+      }
+    },
     "Delete event": {
       "localizations": {
         "nl": {
@@ -1301,6 +1431,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Export verwijderen"
+          }
+        }
+      }
+    },
+    "Delete this case?": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze zaak verwijderen?"
           }
         }
       }
@@ -1381,6 +1521,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Download"
+          }
+        }
+      }
+    },
+    "Each export gets the camera's name after it.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elke export krijgt de naam van de camera erachter."
           }
         }
       }
@@ -1485,6 +1635,26 @@
         }
       }
     },
+    "Export %lld": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporteer %lld"
+          }
+        }
+      }
+    },
+    "Export recordings": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporteren"
+          }
+        }
+      }
+    },
     "Exporting…": {
       "localizations": {
         "nl": {
@@ -1501,6 +1671,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Exports"
+          }
+        }
+      }
+    },
+    "Export…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporteren…"
           }
         }
       }
@@ -1551,6 +1731,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "De AI-assistent van Frigate bekijkt je gebeurtenissen, camera's en opnames om te antwoorden."
+          }
+        }
+      }
+    },
+    "From": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Van"
           }
         }
       }
@@ -1621,6 +1811,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Thuis"
+          }
+        }
+      }
+    },
+    "Its exports stay, outside a case.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De exports blijven bewaard, buiten een zaak."
           }
         }
       }
@@ -1748,6 +1948,16 @@
         }
       }
     },
+    "Long-press an export to move it into this case.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Houd een export ingedrukt om hem naar deze zaak te verplaatsen."
+          }
+        }
+      }
+    },
     "Looking for Frigate servers…": {
       "localizations": {
         "nl": {
@@ -1844,6 +2054,16 @@
         }
       }
     },
+    "Move to case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verplaats naar zaak"
+          }
+        }
+      }
+    },
     "Mute": {
       "localizations": {
         "nl": {
@@ -1860,6 +2080,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Naam"
+          }
+        }
+      }
+    },
+    "New case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieuwe zaak"
+          }
+        }
+      }
+    },
+    "New case on": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieuwe zaak op"
+          }
+        }
+      }
+    },
+    "New case…": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieuwe zaak…"
           }
         }
       }
@@ -1934,6 +2184,16 @@
         }
       }
     },
+    "No case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen zaak"
+          }
+        }
+      }
+    },
     "No events match the filters.": {
       "localizations": {
         "nl": {
@@ -1960,6 +2220,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen exports"
+          }
+        }
+      }
+    },
+    "No exports in this case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen exports in deze zaak"
           }
         }
       }
@@ -2014,6 +2284,16 @@
         }
       }
     },
+    "No recordings in this span": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen opnames in deze tijdspanne"
+          }
+        }
+      }
+    },
     "No servers online": {
       "localizations": {
         "nl": {
@@ -2050,6 +2330,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen"
+          }
+        }
+      }
+    },
+    "Not in a case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet in een zaak"
           }
         }
       }
@@ -2256,6 +2546,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Optioneel"
+          }
+        }
+      }
+    },
+    "Optional base name": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optionele basisnaam"
           }
         }
       }
@@ -2646,6 +2946,16 @@
         }
       }
     },
+    "Remove from case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haal uit zaak"
+          }
+        }
+      }
+    },
     "Remove server": {
       "localizations": {
         "nl": {
@@ -2662,6 +2972,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hernoem"
+          }
+        }
+      }
+    },
+    "Rename case": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaak hernoemen"
           }
         }
       }
@@ -3056,6 +3376,16 @@
         }
       }
     },
+    "Several cameras": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meerdere camera's"
+          }
+        }
+      }
+    },
     "Share": {
       "localizations": {
         "nl": {
@@ -3316,6 +3646,26 @@
         }
       }
     },
+    "The end must be after the start.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het einde moet na het begin liggen."
+          }
+        }
+      }
+    },
+    "The export": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De export"
+          }
+        }
+      }
+    },
     "The main stream for large tiles on Wi-Fi, otherwise the lighter sub stream.": {
       "localizations": {
         "nl": {
@@ -3396,6 +3746,16 @@
         }
       }
     },
+    "This camera": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze camera"
+          }
+        }
+      }
+    },
     "This group has no cameras on %@.": {
       "localizations": {
         "nl": {
@@ -3426,12 +3786,32 @@
         }
       }
     },
+    "Time span": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tijdspanne"
+          }
+        }
+      }
+    },
     "Timeline": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Tijdlijn"
+          }
+        }
+      }
+    },
+    "To": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tot"
           }
         }
       }

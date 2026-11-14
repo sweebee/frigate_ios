@@ -7,6 +7,7 @@ import SwiftUI
 final class ReviewActions {
     let exporter = ClipExporter()
     var share: ShareItem?
+    var saveRequest: SaveToFrigateRequest?
     var pendingDelete: (item: ReviewItem, serverID: UUID)?
     var error: String?
     /// Items deleted here; screens drop them from their lists.
@@ -32,7 +33,8 @@ final class ReviewActions {
         let (s, e) = span(r)
         let name = ClipExporter.exportName(camera: r.camera, displayName: c.config?.cameras[r.camera]?.displayName,
                                            start: r.startTime, label: r.labels.first)
-        Task { await exporter.saveToFrigate(client: client, camera: r.camera, start: s, end: e, name: name) }
+        // A sheet first: the name, and the case to file it in.
+        saveRequest = SaveToFrigateRequest(client: client, camera: r.camera, start: s, end: e, name: name)
     }
 
     func shareClip(_ r: ReviewItem, serverID: UUID) {
@@ -100,6 +102,7 @@ private struct ReviewActionsHost: ViewModifier {
         content
             .overlay(alignment: .top) { ExportToast(exporter: actions.exporter) }
             .sheet(item: $actions.share) { ShareSheet(items: $0.items) }
+            .saveToFrigateSheet($actions.saveRequest, exporter: actions.exporter)
             .alert("Delete this review item and its recordings?",
                    isPresented: Binding(get: { actions.pendingDelete != nil }, set: { if !$0 { actions.pendingDelete = nil } })) {
                 Button("Cancel", role: .cancel) {}

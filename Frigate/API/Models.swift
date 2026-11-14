@@ -467,6 +467,27 @@ extension String {
 
 // MARK: - Exports
 
+/// A case in Frigate's Exports (0.18 and later): a named folder that exports are filed in.
+struct FrigateExportCase: Decodable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var description: String?
+    var createdAt: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = (try? c.decode(String.self, forKey: .name)) ?? ""
+        description = try? c.decodeIfPresent(String.self, forKey: .description)
+        createdAt = (try? c.decode(Double.self, forKey: .createdAt)) ?? 0
+    }
+}
+
 /// A clip Frigate exported and keeps on the server (its Exports page).
 struct FrigateExport: Decodable, Identifiable, Hashable {
     var id: String
@@ -477,12 +498,15 @@ struct FrigateExport: Decodable, Identifiable, Hashable {
     var videoPath: String
     var thumbPath: String
     var inProgress: Bool
+    /// The case (a folder in Frigate's Exports, 0.18 and later) it is filed under.
+    var caseID: String?
 
     enum CodingKeys: String, CodingKey {
         case id, camera, name, date
         case videoPath = "video_path"
         case thumbPath = "thumb_path"
         case inProgress = "in_progress"
+        case caseID = "export_case"
     }
 
     init(from decoder: Decoder) throws {
@@ -494,6 +518,7 @@ struct FrigateExport: Decodable, Identifiable, Hashable {
         videoPath = (try? c.decode(String.self, forKey: .videoPath)) ?? ""
         thumbPath = (try? c.decode(String.self, forKey: .thumbPath)) ?? ""
         inProgress = (try? c.decode(Bool.self, forKey: .inProgress)) ?? false
+        caseID = (try? c.decodeIfPresent(String.self, forKey: .caseID)).flatMap { $0 }
     }
 
     var created: Date { Date(timeIntervalSince1970: date) }
