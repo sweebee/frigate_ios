@@ -31,6 +31,12 @@ struct CameraView: View {
     /// PTZ pads drawn on the video in landscape (a sheet would cover the picture).
     @State private var landscapePTZ = false
     @State private var snapshotBusy = false
+    /// Manual ("on demand") recording, as in Frigate's live view: its event id while it runs.
+    @State private var manualEventID: String?
+    @State private var manualStart: Date?
+    @State private var recordBusy = false
+    /// Short message at the top ("Recording started"), in the same pill as saving clips.
+    @State private var toast: ClipExporter.State = .idle
     /// nil until checked; true when a recording segment was written recently.
     @State private var recordingNow: Bool?
     @State private var errorMessage: String?
@@ -66,6 +72,7 @@ struct CameraView: View {
             }
         }
         .sheet(item: $share) { ShareSheet(items: $0.items) }
+        .overlay(alignment: .top) { ExportToast(state: toast) }
         .sheet(isPresented: $showPTZ) {
             if let client = conn?.client { PTZSheet(client: client, camera: route.camera)
                 .presentationDetents([.height(320)])
@@ -81,6 +88,8 @@ struct CameraView: View {
         .task { await watchRecording() }
         .onDisappear {
             player.suspended = true; player.talking = false
+            // Like Frigate's web view: leaving the camera ends a manual recording.
+            stopManualRecording()
             if filling { filling = false; model.immersive = false }
         }
         .task(id: player.stream) {
@@ -99,8 +108,11 @@ struct CameraView: View {
             if err != nil { player.talking = false; player.micError = nil; micDenied = true }
         }
         .onChange(of: scenePhase) { _, phase in
-            // Stop in the background, start fresh when the app is back.
+            // Stop in the background, start fresh when the app is back; picture in picture keeps
+            // it running (and a manual recording with it).
+            guard !player.pipActive else { return }
             player.suspended = phase != .active
+            if phase == .background { stopManualRecording() }
         }
         .onAppear {
             player.suspended = false
@@ -258,7 +270,7 @@ struct CameraView: View {
     private func playerView(client: FrigateClient, camera: CameraConfig) -> some View {
         ZStack {
             Color.black
-            LivePlayerView(client: client, camera: camera.name, state: player)
+            LivePlayerView(client: client, camera: camera.name, state: player, pip: true)
                 .zoomable()
                 // Wide screens: a tap shows or hides the controls over the video, as in playback.
                 .onTapGesture { if isWide { toggleOverlay() } }
@@ -273,10 +285,25 @@ struct CameraView: View {
             HStack(spacing: 6) {
                 clock(size: 12)
                 recBadge
+                manualRecordingBadge
                 // Objects being tracked, like the label beside the time in playback.
                 ForEach(conn?.activeObjects[camera.name] ?? [], id: \.self) { LabelIcon(label: $0, size: VideoChip.height) }
             }
             .padding(10)
+        }
+        // Phone: picture in picture on the video itself (the row under it is full).
+        .overlay(alignment: .topTrailing) {
+            if !isWide && (player.pipPossible || player.pipActive) {
+                Button { player.togglePiP?() } label: {
+                    Image(systemName: "pip.enter").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                        .frame(width: 32, height: VideoChip.height + 6)
+                        .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+                        .padding(8)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Picture in picture")
+            }
         }
         .overlay(alignment: .bottomTrailing) { streamChip.padding(8) }
 
@@ -373,7 +400,7 @@ struct CameraView: View {
     private func landscapeBody(conn: ServerConnection, client: FrigateClient, camera: CameraConfig) -> some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            LivePlayerView(client: client, camera: camera.name, state: player)
+            LivePlayerView(client: client, camera: camera.name, state: player, pip: true)
                 .zoomable()
                 .ignoresSafeArea()
                 .onTapGesture { toggleOverlay() }
@@ -416,6 +443,15 @@ struct CameraView: View {
                             }
                             OverlayButton(systemImage: "camera.fill", label: "Snapshot") {
                                 Task { await snapshot(client: client, camera: camera) }; keepOverlay()
+                            }
+                            OverlayButton(systemImage: manualEventID == nil ? "record.circle" : "stop.fill", label: "Record") {
+                                Task { await toggleManualRecording() }; keepOverlay()
+                            }
+                            .overlay(Circle().stroke(manualEventID != nil ? Theme.recording : .clear, lineWidth: 2))
+                            if player.pipPossible || player.pipActive {
+                                OverlayButton(systemImage: "pip.enter", label: "Picture in picture") {
+                                    player.togglePiP?(); keepOverlay()
+                                }
                             }
                             if canTalk {
                                 OverlayButton(systemImage: player.talking ? "mic.fill" : "mic", label: "Talk") {
@@ -497,6 +533,10 @@ struct CameraView: View {
             controlButton("camera", "Snapshot", busy: snapshotBusy) {
                 Task { await snapshot(client: client, camera: camera) }
             }
+            controlButton(manualEventID == nil ? "record.circle" : "stop.circle.fill", "Record",
+                          active: manualEventID != nil, activeColor: Theme.recording, busy: recordBusy) {
+                Task { await toggleManualRecording() }
+            }
             controlButton("arrow.up.and.down.and.arrow.left.and.right", "PTZ", enabled: camera.hasOnvif) {
                 showPTZ = true
             }
@@ -535,8 +575,13 @@ struct CameraView: View {
                 overlayButton(player.talking ? "mic.fill" : "mic", "Talk", active: player.talking) { Task { await toggleTalk() } }
             }
             overlayButton("camera", "Snapshot", busy: snapshotBusy) { Task { await snapshot(client: client, camera: camera) } }
+            overlayButton(manualEventID == nil ? "record.circle" : "stop.fill", "Record", active: manualEventID != nil,
+                          activeColor: Theme.recording, busy: recordBusy) { Task { await toggleManualRecording() } }
             if camera.hasOnvif {
                 overlayButton("arrow.up.and.down.and.arrow.left.and.right", "PTZ") { showPTZ = true }
+            }
+            if player.pipPossible || player.pipActive {
+                overlayButton("pip.enter", "Picture in picture", active: player.pipActive) { player.togglePiP?() }
             }
             overlayButton(filling ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
                           filling ? "Exit full screen" : "Fullscreen") { setFilling(!filling) }
@@ -544,12 +589,12 @@ struct CameraView: View {
         .padding(16)
     }
 
-    private func overlayButton(_ icon: String, _ label: LocalizedStringKey, active: Bool = false, enabled: Bool = true,
-                               busy: Bool = false, action: @escaping () -> Void) -> some View {
+    private func overlayButton(_ icon: String, _ label: LocalizedStringKey, active: Bool = false, activeColor: Color = Theme.accent,
+                               enabled: Bool = true, busy: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             // The same round buttons as OverlayButton in playback, with an on state.
             ZStack {
-                Circle().fill(active ? Theme.accent : .black.opacity(0.6))
+                Circle().fill(active ? activeColor : .black.opacity(0.6))
                 if busy { ProgressView().tint(.white) } else {
                     Image(systemName: icon).font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(active ? Theme.onColor : .white)
@@ -565,12 +610,12 @@ struct CameraView: View {
         .accessibilityLabel(label)
     }
 
-    private func controlButton(_ icon: String, _ label: LocalizedStringKey, active: Bool = false, enabled: Bool = true,
-                               busy: Bool = false, action: @escaping () -> Void) -> some View {
+    private func controlButton(_ icon: String, _ label: LocalizedStringKey, active: Bool = false, activeColor: Color = Theme.accent,
+                               enabled: Bool = true, busy: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 ZStack {
-                    Circle().fill(active ? Theme.accent : Theme.control)
+                    Circle().fill(active ? activeColor : Theme.control)
                     Circle().stroke(Theme.controlBorder, lineWidth: 1)
                     if busy { ProgressView() } else {
                         Image(systemName: icon).font(.system(size: 19))
@@ -587,6 +632,71 @@ struct CameraView: View {
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
         .accessibilityLabel(label)
+    }
+
+    // MARK: Manual recording
+
+    /// "● REC 0:12" while a manual recording runs.
+    @ViewBuilder
+    private var manualRecordingBadge: some View {
+        if let start = manualStart {
+            TimelineView(.periodic(from: start, by: 1)) { ctx in
+                HStack(spacing: 5) {
+                    Circle().fill(.white).frame(width: 7, height: 7)
+                    Text("REC \(FrigateFormat.duration(max(0, ctx.date.timeIntervalSince(start))))")
+                        .font(.system(size: 11, weight: .bold).monospacedDigit())
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8).frame(height: VideoChip.height)
+                .background(Theme.recording, in: RoundedRectangle(cornerRadius: 6))
+            }
+            .accessibilityLabel("Recording")
+        }
+    }
+
+    /// Starts or ends a manual recording, as the record button in Frigate's live view does: an
+    /// event without an end that keeps the recording until it is stopped here.
+    private func toggleManualRecording() async {
+        guard let client = conn?.client, !recordBusy else { return }
+        recordBusy = true
+        defer { recordBusy = false }
+        if let id = manualEventID {
+            manualEventID = nil
+            manualStart = nil
+            do {
+                try await client.endEvent(id)
+                showToast(L("Recording stopped"))
+            } catch {
+                errorMessage = L("Could not stop the recording: \(error.localizedDescription)")
+            }
+        } else {
+            do {
+                manualEventID = try await client.startManualRecording(camera: route.camera)
+                manualStart = Date()
+                showToast(recordingNow == false ? L("Recording started. This camera does not keep recordings, so only a snapshot is saved.")
+                                                : L("Recording started"))
+            } catch FrigateError.unauthorized {
+                errorMessage = L("Only admins can start a recording.")
+            } catch {
+                errorMessage = L("Could not start a recording: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation { toast = .done(text) }
+        Task {
+            try? await Task.sleep(for: .seconds(text.count > 40 ? 5 : 2.5))
+            if toast == .done(text) { withAnimation { toast = .idle } }
+        }
+    }
+
+    /// Ends a running manual recording without waiting (leaving the screen, the app going away).
+    private func stopManualRecording() {
+        guard let id = manualEventID, let client = conn?.client else { return }
+        manualEventID = nil
+        manualStart = nil
+        Task { try? await client.endEvent(id) }
     }
 
     /// Turns the sound on or off and remembers it for the next camera opened.
@@ -695,12 +805,16 @@ struct CameraView: View {
                             .contextMenu { ReviewItemMenu(item: r, serverID: route.serverID, actions: reviewActions) }
                         }
                     }
+                    // The margin inside the scroll view, so the row runs to the screen edge.
+                    .padding(.horizontal, 16)
                 }
                 // Only as tall as the thumbnails: under the big video on wide screens the
                 // row would otherwise take all the height that is left.
                 .fixedSize(horizontal: false, vertical: true)
                 }
                 .stable()
+                // Undo the column's margin for the row only.
+                .padding(.horizontal, -16)
             }
         }
         // Beside the video (vertical) the column already has its margins; its top lines up

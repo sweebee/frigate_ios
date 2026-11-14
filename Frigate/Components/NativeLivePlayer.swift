@@ -1,4 +1,5 @@
 import AVFoundation
+import AVKit
 import SwiftUI
 import VideoToolbox
 
@@ -11,6 +12,7 @@ struct NativeLivePlayer: UIViewRepresentable {
     let stream: String
     let state: LivePlayerState
     var fill = false
+    var pip = false
     /// Called once when the stream cannot play natively (no data, unsupported codec).
     let onFailure: (String) -> Void
 
@@ -19,6 +21,7 @@ struct NativeLivePlayer: UIViewRepresentable {
         view.backgroundColor = .black
         view.displayLayer.videoGravity = fill ? .resizeAspectFill : .resizeAspect
         context.coordinator.view = view
+        if pip { context.coordinator.setUpPiP() }
         context.coordinator.start(client: client, stream: stream)
         return view
     }
@@ -32,6 +35,7 @@ struct NativeLivePlayer: UIViewRepresentable {
 
     static func dismantleUIView(_ view: SampleView, coordinator: Coordinator) {
         coordinator.stop()
+        coordinator.tearDownPiP()
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(state: state, onFailure: onFailure) }
@@ -59,6 +63,21 @@ struct NativeLivePlayer: UIViewRepresentable {
         /// shows each frame as it arrives, so the audio is not synced to it, as in any live view.
         private var audioRenderer: AVSampleBufferAudioRenderer?
         private var synchronizer: AVSampleBufferRenderSynchronizer?
+        private var pip: LivePiP?
+
+        /// Picture in picture for this player's video layer, where the device supports it.
+        func setUpPiP() {
+            guard pip == nil, let layer = view?.displayLayer, AVPictureInPictureController.isPictureInPictureSupported() else { return }
+            pip = LivePiP(layer: layer, state: state)
+        }
+
+        func tearDownPiP() {
+            pip?.stop()
+            pip = nil
+            state.pipPossible = false
+            state.pipActive = false
+            state.togglePiP = nil
+        }
 
         init(state: LivePlayerState, onFailure: @escaping (String) -> Void) {
             self.state = state
@@ -208,9 +227,21 @@ struct NativeLivePlayer: UIViewRepresentable {
                 fail(layer.error?.localizedDescription ?? "decode failed")
                 return
             }
+            if pip != nil, layer.controlTimebase == nil {
+                // Picture in picture needs the layer to run on a clock; frames still show at once
+                // (they are marked to display immediately).
+                var timebase: CMTimebase?
+                CMTimebaseCreateWithSourceClock(allocator: kCFAllocatorDefault, sourceClock: CMClockGetHostTimeClock(), timebaseOut: &timebase)
+                if let timebase {
+                    CMTimebaseSetTime(timebase, time: CMSampleBufferGetPresentationTimeStamp(sample))
+                    CMTimebaseSetRate(timebase, rate: 1)
+                    layer.controlTimebase = timebase
+                }
+            }
             layer.enqueue(sample)
             lastSample = Date()
             if !state.playing {
+                pip?.videoStarted()
                 state.playing = true
                 state.status = "Live"
                 retries = 0
@@ -610,3 +641,89 @@ struct FMP4Parser {
     private func u64(_ i: Int) -> UInt64 { UInt64(u32(i)) << 32 | UInt64(u32(i + 4)) }
 }
 
+// MARK: - Picture in picture
+
+/// Picture in picture for the native live player: the same video layer moves into the system's
+/// floating window. iPhone and iPad only: on the Mac (Catalyst) the system does not take a sample
+/// buffer layer ("content source not supported"), so the button does not show there. Live: no
+/// time range to seek in, and pausing is not offered.
+@MainActor
+final class LivePiP: NSObject, AVPictureInPictureControllerDelegate {
+    private let controller: AVPictureInPictureController
+    private weak var state: LivePlayerState?
+    private var possibleObservation: NSKeyValueObservation?
+
+    init(layer: AVSampleBufferDisplayLayer, state: LivePlayerState) {
+        self.state = state
+        // Picture in picture is only possible with a playback audio session in place.
+        let session = AVAudioSession.sharedInstance()
+        if session.category != .playAndRecord { try? session.setCategory(.playback, mode: .moviePlayback) }
+        let source = AVPictureInPictureController.ContentSource(sampleBufferDisplayLayer: layer, playbackDelegate: PiPPlayback.shared)
+        controller = AVPictureInPictureController(contentSource: source)
+        super.init()
+        controller.delegate = self
+        controller.requiresLinearPlayback = true
+        #if !targetEnvironment(macCatalyst)
+        controller.canStartPictureInPictureAutomaticallyFromInline = false
+        #endif
+        possibleObservation = controller.observe(\.isPictureInPicturePossible, options: [.initial, .new]) { [weak self] c, _ in
+            let possible = c.isPictureInPicturePossible
+            Task { @MainActor in self?.state?.pipPossible = possible }
+        }
+        state.togglePiP = { [weak self] in self?.toggle() }
+    }
+
+    func toggle() {
+        if controller.isPictureInPictureActive {
+            controller.stopPictureInPicture()
+        } else {
+            // The system needs an active playback session for the window to keep running.
+            let session = AVAudioSession.sharedInstance()
+            if session.category != .playAndRecord { try? session.setCategory(.playback, mode: .moviePlayback) }
+            try? session.setActive(true)
+            controller.startPictureInPicture()
+        }
+    }
+
+    /// The first frame is on the layer: the system checks again whether the window can open.
+    func videoStarted() {
+        controller.invalidatePlaybackState()
+    }
+
+    func stop() {
+        if controller.isPictureInPictureActive { controller.stopPictureInPicture() }
+        possibleObservation = nil
+    }
+
+    nonisolated func pictureInPictureControllerWillStartPictureInPicture(_ c: AVPictureInPictureController) {
+        Task { @MainActor in self.state?.pipActive = true }
+    }
+
+    nonisolated func pictureInPictureControllerDidStopPictureInPicture(_ c: AVPictureInPictureController) {
+        Task { @MainActor in self.state?.pipActive = false }
+    }
+
+    nonisolated func pictureInPictureController(_ c: AVPictureInPictureController, failedToStartPictureInPictureWithError error: Error) {
+        NSLog("Tender PiP failed: \(error.localizedDescription)")
+        Task { @MainActor in self.state?.pipActive = false }
+    }
+
+    nonisolated func pictureInPictureController(_ c: AVPictureInPictureController,
+                                                restoreUserInterfaceForPictureInPictureStopWithCompletionHandler done: @escaping (Bool) -> Void) {
+        // The camera screen is still there underneath; the video goes back into it.
+        done(true)
+    }
+}
+
+/// Live playback as the picture-in-picture window sees it: always playing, no timeline.
+final class PiPPlayback: NSObject, AVPictureInPictureSampleBufferPlaybackDelegate {
+    static let shared = PiPPlayback()
+    static let liveRange = CMTimeRange(start: .negativeInfinity, duration: .positiveInfinity)
+
+    func pictureInPictureController(_ c: AVPictureInPictureController, setPlaying playing: Bool) {}
+    func pictureInPictureControllerTimeRangeForPlayback(_ c: AVPictureInPictureController) -> CMTimeRange { Self.liveRange }
+    func pictureInPictureControllerIsPlaybackPaused(_ c: AVPictureInPictureController) -> Bool { false }
+    func pictureInPictureController(_ c: AVPictureInPictureController, didTransitionToRenderSize size: CMVideoDimensions) {}
+    func pictureInPictureController(_ c: AVPictureInPictureController, skipByInterval interval: CMTime,
+                                    completion: @escaping () -> Void) { completion() }
+}

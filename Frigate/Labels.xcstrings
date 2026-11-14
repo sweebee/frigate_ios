@@ -289,6 +289,22 @@
         }
       }
     },
+    "on_demand": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "manual"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "handmatig"
+          }
+        }
+      }
+    },
     "package": {
       "localizations": {
         "en": {

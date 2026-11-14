@@ -50,6 +50,7 @@ enum Theme {
         case "package", "amazon", "ups", "fedex", "dhl", "dpd", "gls", "postnl", "usps", "postnord", "an_post", "canada_post", "nzpost":
             return Color(hex: 0x5B9BFF)
         case "bicycle": return Color(hex: 0x3DD6B5)
+        case "on_demand": return Color(hex: 0xFF5A5F)
         default:
             if label.hasPrefix("audio:") || ["speech", "bark", "yell", "fire_alarm"].contains(label) {
                 return Color(hex: 0xB48CFF)
@@ -118,6 +119,7 @@ struct LabelIcon: View {
         case "bus", "school_bus": candidates = ["bus.fill"]
         case "motorcycle": candidates = ["motorcycle", "moped.fill"]
         case "bicycle": candidates = ["bicycle"]
+        case "on_demand": candidates = ["record.circle.fill"]
         case "boat": candidates = ["sailboat.fill"]
         case "license_plate": candidates = ["123.rectangle.fill"]
         case "package": candidates = ["shippingbox.fill"]

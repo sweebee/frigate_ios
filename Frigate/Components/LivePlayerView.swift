@@ -27,6 +27,12 @@ final class LivePlayerState {
     var micError: String?
     /// The native player could not play this stream; the web player takes over without MSE.
     var nativeFailed = false
+    /// Picture in picture can start: the native player is showing video and the device supports it.
+    var pipPossible = false
+    /// The video is in the picture-in-picture window; the stream keeps running in the background.
+    var pipActive = false
+    /// Starts or stops picture in picture; set by the native player.
+    @ObservationIgnored var togglePiP: (() -> Void)?
 
     fileprivate weak var webView: WKWebView?
 
@@ -69,6 +75,8 @@ struct LivePlayerView: View {
     let camera: String
     @Bindable var state: LivePlayerState
     var fill: Bool = false
+    /// Offer picture in picture (a camera's own screen, not the overview tiles).
+    var pip = false
 
     private var stream: String { state.stream.isEmpty ? camera : state.stream }
     /// Native for MSE; talking needs WebRTC, and WebRTC or MJPEG picked by hand use the web.
@@ -89,7 +97,7 @@ struct LivePlayerView: View {
     private var livePlayer: some View {
         Group {
             if useNative {
-                NativeLivePlayer(client: client, stream: stream, state: state, fill: fill) { reason in
+                NativeLivePlayer(client: client, stream: stream, state: state, fill: fill, pip: pip) { reason in
                     state.nativeFailed = true
                 }
                 .id("\(stream)|\(state.reloadToken)")

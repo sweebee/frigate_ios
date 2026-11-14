@@ -1185,6 +1185,26 @@
         }
       }
     },
+    "Could not start a recording: %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon geen opname starten: %@"
+          }
+        }
+      }
+    },
+    "Could not stop the recording: %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kon de opname niet stoppen: %@"
+          }
+        }
+      }
+    },
     "Credentials are stored in the iOS Keychain": {
       "localizations": {
         "nl": {
@@ -2110,6 +2130,16 @@
         }
       }
     },
+    "Only admins can start a recording.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alleen beheerders kunnen een opname starten."
+          }
+        }
+      }
+    },
     "Only from this app: nothing changes on the server.": {
       "localizations": {
         "nl": {
@@ -2219,6 +2249,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kies datum…"
+          }
+        }
+      }
+    },
+    "Picture in picture": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beeld-in-beeld"
           }
         }
       }
@@ -2356,12 +2396,72 @@
     "REC": {
       "shouldTranslate": false
     },
+    "REC %@": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "REC %@"
+          }
+        }
+      }
+    },
     "Reconnecting…": {
       "localizations": {
         "nl": {
           "stringUnit": {
             "state": "translated",
             "value": "Opnieuw verbinden…"
+          }
+        }
+      }
+    },
+    "Record": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opnemen"
+          }
+        }
+      }
+    },
+    "Recording": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opname"
+          }
+        }
+      }
+    },
+    "Recording started": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opname gestart"
+          }
+        }
+      }
+    },
+    "Recording started. This camera does not keep recordings, so only a snapshot is saved.": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opname gestart. Deze camera bewaart geen opnames, dus alleen een foto wordt bewaard."
+          }
+        }
+      }
+    },
+    "Recording stopped": {
+      "localizations": {
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opname gestopt"
           }
         }
       }

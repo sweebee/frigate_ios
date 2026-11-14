@@ -232,6 +232,22 @@ final class FrigateClient: @unchecked Sendable {
         return try await perform(req)
     }
 
+    /// Starts a manual ("on demand") recording, as Frigate's live view does: an event without an
+    /// end, kept with its recording. Returns its id, for `endEvent`. Admin only.
+    func startManualRecording(camera: String) async throws -> String {
+        let data = try await post("api/events/\(camera)/on_demand/create",
+                                  json: ["include_recording": true, "duration": NSNull()])
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              obj["success"] as? Bool == true, let id = obj["event_id"] as? String else {
+            throw FrigateError.http(500, (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String)
+        }
+        return id
+    }
+
+    func endEvent(_ id: String) async throws {
+        try await send("PUT", "api/events/\(id)/end", json: ["end_time": Int(Date().timeIntervalSince1970.rounded(.up))])
+    }
+
     func deleteReviews(_ ids: [String]) async throws {
         try await post("api/reviews/delete", json: ["ids": ids])
     }
